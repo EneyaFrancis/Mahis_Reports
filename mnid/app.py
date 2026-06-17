@@ -494,6 +494,11 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
                 network_df, tracked, facility_code
             )
         _trim_cache(_heatmap_store_cache, _HEATMAP_CACHE_MAX)
+    
+    # Pass sub_tab state into layout through facility_df attrs
+    sub_tab = getattr(facility_df, 'attrs', {}).get('mnid_subtab', 'Default')
+    facility_df.attrs['mnid_subtab'] = sub_tab
+
     performance_div, heatmap_div = _coverage_heatmap_section(
         all_inds, facility_code, network_df,
         precomputed_store=_heatmap_store_cache[_heatmap_cache_key],
@@ -2426,7 +2431,8 @@ def prewarm_cache(dataset_version: str | None = None) -> bool:
 
 def render_mnid_dashboard(data_opd, config,
                           facility_code, start_date, end_date,
-                          scope_meta: dict | None = None):
+                          scope_meta: dict | None = None,
+                          sub_tab: str = 'Default'):
     dataset_version = (scope_meta or {}).get('dataset_version')
     selected_programs = tuple(sorted((scope_meta or {}).get('mnid_categories') or []))
     selected_facilities = tuple(sorted((scope_meta or {}).get('selected_facilities') or []))
@@ -2444,6 +2450,38 @@ def render_mnid_dashboard(data_opd, config,
         _network_df_cache[_opd_key] = _prepare_mnid_dataframe(data_opd)
         _trim_cache(_network_df_cache, _NETWORK_DF_CACHE_MAX)
     network_df = _network_df_cache[_opd_key]
+
+    network_df.attrs['mnid_subtab'] = sub_tab
+
+    if sub_tab == 'Nest 360- Neotree' and config.get('report_name') == 'Maternal Health':
+        primary_bundle = _build_mnid_indicator_content(
+            network_df=network_df,
+            config=config,
+            facility_code=facility_code,
+            start_date=start_date,
+            end_date=end_date,
+            scope_meta=scope_meta,
+            include_content=False,
+        )
+        facility_df = primary_bundle['facility_df']
+        facility_df.attrs['mnid_subtab'] = sub_tab
+        
+        return html.Div([
+            _topbar(
+                facility=facility_code,
+                period=f'{start_date} to {end_date}',
+                n_tracked=0,
+                n_await=0,
+                facility_df=facility_df,
+                network_df=network_df,
+                title='MNH Program Dashboard',
+                subtitle='ANC, labour, and postnatal performance, comparison, coverage, and readiness.',
+                theme='default'
+            ),
+            html.Div([
+                html.H3("Nest 360- Neotree Dashboards", style={'textAlign': 'center', 'padding': '50px', 'color': DIM})
+            ], className='mnid-section-card', style={'marginTop': '20px'})
+        ], className='mnid-dashboard-root')
 
     primary_bundle = _build_mnid_indicator_content(
         network_df=network_df,
@@ -2560,6 +2598,9 @@ def _render_mnid_executive_tab(active_tab, executive_token):
         return views[selected]
 
     if selected == 'maternal-dashboard' and network_df is not None and config is not None:
+        # Pass sub_tab from state to bundle
+        sub_tab = getattr(facility_df, 'attrs', {}).get('mnid_subtab', 'Default') if facility_df is not None else 'Default'
+        
         bundle = _build_mnid_indicator_content(
             network_df=network_df,
             config=config,
@@ -2569,6 +2610,10 @@ def _render_mnid_executive_tab(active_tab, executive_token):
             scope_meta=scope_meta,
             include_content=True,
         )
+        # Ensure sub_tab is preserved in bundle's facility_df for _topbar to find it
+        if bundle.get('facility_df') is not None:
+            bundle['facility_df'].attrs['mnid_subtab'] = sub_tab
+            
         views[selected] = bundle.get('indicator_content', html.Div())
         return views[selected]
 
@@ -2620,6 +2665,9 @@ def _preload_mnid_executive_tabs(_tick, executive_token):
     end_date = state.get('end_date')
     scope_meta = state.get('scope_meta')
     if network_df is not None and config is not None and 'maternal-dashboard' not in views:
+        # Pass sub_tab from state to bundle
+        sub_tab = getattr(facility_df, 'attrs', {}).get('mnid_subtab', 'Default') if facility_df is not None else 'Default'
+
         bundle = _build_mnid_indicator_content(
             network_df=network_df,
             config=config,
@@ -2629,6 +2677,10 @@ def _preload_mnid_executive_tabs(_tick, executive_token):
             scope_meta=scope_meta,
             include_content=True,
         )
+        # Ensure sub_tab is preserved in bundle's facility_df for _topbar to find it
+        if bundle.get('facility_df') is not None:
+            bundle['facility_df'].attrs['mnid_subtab'] = sub_tab
+
         views['maternal-dashboard'] = bundle.get('indicator_content', html.Div())
 
     newborn_config = state.get('newborn_config')

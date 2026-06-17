@@ -260,7 +260,7 @@ PREMIUM_DASHBOARD_REPORTS = {"Maternal and Child Health"}
 
 
 def build_charts_from_json(filtered, data_opd, delta_days, dashboards_json, filter_summary=None,
-                          start_date=None, end_date=None, facility_code=None, scope_meta=None, url_object=None):
+                          start_date=None, end_date=None, facility_code=None, scope_meta=None, url_object=None, sub_tab='Default'):
     config = dashboards_json
     count_items_per_row = config.get("count_items_per_row") or 5
 
@@ -273,6 +273,7 @@ def build_charts_from_json(filtered, data_opd, delta_days, dashboards_json, filt
             start_date=str(start_date)[:10] if start_date else '',
             end_date=str(end_date)[:10] if end_date else '',
             scope_meta=scope_meta,
+            sub_tab=sub_tab
         )
 
     # Render all non-MNID dashboards with the generic chart builder.
@@ -608,7 +609,8 @@ def update_menu(interval, color):
      Output('dashboard-district-note', 'children'),
      Output('dashboard-facility-filter', 'options'),
      Output('dashboard-facility-filter', 'value'),
-     Output('active-button-store', 'data')],
+     Output('active-button-store', 'data'),
+     Output({'type': 'mnid-mnh-subtabs', 'index': ALL}, 'value')],
     [
         Input('dashboard-btn-generate', 'n_clicks'),
         Input('dashboard-date-range-picker', 'start_date'),
@@ -619,7 +621,10 @@ def update_menu(interval, color):
         Input('dashboard-overview-filter', 'value'),
         Input('dashboard-category-filter', 'value'),
         Input({"type": "menu-button", "name": ALL}, "n_clicks"),
-        Input('url', 'pathname')
+        Input('url', 'pathname'),
+        Input('url', 'search'),
+        Input({'type': 'trend-cat-btn', 'index': ALL}, 'n_clicks'), # dummy to catch clicks
+        Input({'type': 'mnid-mnh-subtabs', 'index': ALL}, 'value'),
     ],
     [
         State('url-params-store', 'data'),
@@ -629,10 +634,23 @@ def update_menu(interval, color):
 )
 def update_dashboard(gen, start_date, end_date, level,
                      districts, facilities, overview, category,
-                     menu_clicks, pathname, urlparams, age, current_active):
+                     menu_clicks, pathname, url_search, trend_clicks, mnh_subtab_list,
+                     urlparams, age, current_active):
     try:
         ctx = callback_context
         triggered_id = ctx.triggered[0]['prop_id'] if ctx.triggered else None
+
+        # Extract sub_tab from URL or input
+        sub_tab = 'Default'
+        if url_search:
+            import urllib.parse
+            parsed = urllib.parse.parse_qs(url_search.lstrip('?'))
+            if 'sub_tab' in parsed:
+                sub_tab = parsed['sub_tab'][0]
+        
+        mnh_subtab = mnh_subtab_list[0] if mnh_subtab_list else None
+        if triggered_id and 'mnid-mnh-subtabs' in str(triggered_id) and mnh_subtab:
+            sub_tab = mnh_subtab
 
         if not urlparams:
             urlparams = {"Location": [DEMO_LOCATION], "uuid": [DEMO_UUID]}
@@ -1043,7 +1061,8 @@ def update_dashboard(gen, start_date, end_date, level,
                         'data_period_note': data_period_note,
                         'dataset_version': dataset_version,
                     },
-                    url_object=url_object
+                    url_object=url_object,
+                    sub_tab=sub_tab
                 )
                 rendered.append(html.Div([
                     html.H2(display_report_name(report_name), style={"marginTop": "10px"}),
@@ -1074,7 +1093,8 @@ def update_dashboard(gen, start_date, end_date, level,
             district_note,
             [{'label': f, 'value': f} for f in all_facilities],
             facilities,
-            clicked_name
+            clicked_name,
+            [sub_tab] if mnh_subtab_list else []
         )
     except PreventUpdate:
         raise
@@ -1087,6 +1107,8 @@ def update_dashboard(gen, start_date, end_date, level,
                 html.P(f"{type(e).__name__}", style={"color": "#64748b", "fontSize": "12px", "fontWeight": "600"}),
                 html.P(str(e), style={"color": "#94A3B8", "fontSize": "12px"}),
             ]),
+            dash.no_update,
+            dash.no_update,
             dash.no_update,
             dash.no_update,
             dash.no_update,

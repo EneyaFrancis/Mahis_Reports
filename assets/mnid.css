@@ -202,6 +202,25 @@ html { scroll-behavior: smooth; }
   margin-bottom: 6px;
 }
 
+/* MNH Sub-tabs styling */
+.mnid-subtabs-container {
+  border-bottom: 1px solid #E2E8F0;
+  margin-bottom: 10px;
+}
+.mnid-subtab {
+  background: transparent !important;
+  border: none !important;
+  color: #64748B !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 8px 16px !important;
+  cursor: pointer;
+}
+.mnid-subtab--selected {
+  color: #15803D !important;
+  border-bottom: 2px solid #15803D !important;
+}
+
 /* MNID metadata pills */
 .mnid-info-pills {
   display: flex;

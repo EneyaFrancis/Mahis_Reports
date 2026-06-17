@@ -473,6 +473,18 @@ def _topbar(facility, period, n_tracked, n_await, facility_df=None, network_df=N
             html.H1(title),
             html.P(subtitle),
             newborn_focus,
+            # Sub-tabs for MNH Program
+            html.Div(id='mnid-mnh-subtabs-container', children=[
+                dcc.Tabs(
+                    id={'type': 'mnid-mnh-subtabs', 'index': 'mnh'},
+                    value=getattr(facility_df, 'attrs', {}).get('mnid_subtab', 'Default'),
+                    children=[
+                        dcc.Tab(label='Default', value='Default', className='mnid-subtab', selected_className='mnid-subtab--selected'),
+                        dcc.Tab(label='Nest 360- Neotree', value='Nest 360- Neotree', className='mnid-subtab', selected_className='mnid-subtab--selected'),
+                    ],
+                    className='mnid-subtabs-container'
+                )
+            ], style={'marginTop': '15px', 'display': 'block'} if 'MNH' in str(title).upper() else {'display': 'none'}),
         ]),
         html.Div(className='mnid-info-pills', children=[
             html.Div(className='mnid-info-pill', children=[
