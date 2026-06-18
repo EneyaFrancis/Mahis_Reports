@@ -2494,7 +2494,8 @@ def render_mnid_dashboard(data_opd, config,
                 network_df=network_df,
                 title='MNH Program Dashboard',
                 subtitle='ANC, labour, and postnatal performance, comparison, coverage, and readiness.',
-                theme='default'
+                theme='default',
+                minimal=True
             ),
             html.Div([
                 newborn_bundle.get('indicator_content') if newborn_bundle else html.H3("Nest 360- Neotree Dashboards", style={'textAlign': 'center', 'padding': '50px', 'color': DIM})

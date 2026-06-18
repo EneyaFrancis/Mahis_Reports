@@ -420,7 +420,7 @@ def _pph_cascade(df):
 def _topbar(facility, period, n_tracked, n_await, facility_df=None, network_df=None,
             period_note=None,
             title='Maternal and Child Health Indicators', subtitle='Clean view of performance, comparison, coverage, and readiness.',
-            theme='default'):
+            theme='default', minimal=False):
     facility_name = _FACILITY_NAMES.get(facility, facility or 'Network view')
     district = _FACILITY_DISTRICT.get(facility, 'All districts')
 
@@ -450,7 +450,7 @@ def _topbar(facility, period, n_tracked, n_await, facility_df=None, network_df=N
 
     topbar_label = 'N-NID Dashboard' if theme == 'newborn' else 'M-NID Dashboard'
     newborn_focus = None
-    if theme == 'newborn':
+    if theme == 'newborn' and not minimal:
         newborn_focus = html.Div(className='mnid-topbar-highlight', children=[
             html.Div(className='mnid-topbar-highlight-copy', children=[
                 html.Div('Neonatal service overview', className='mnid-topbar-highlight-title'),
@@ -467,7 +467,42 @@ def _topbar(facility, period, n_tracked, n_await, facility_df=None, network_df=N
             ]),
         ])
 
-    return html.Div(className=f'mnid-topbar{" mnid-topbar-newborn" if theme == "newborn" else ""}', children=[
+    info_pills = html.Div(className='mnid-info-pills', children=[
+        html.Div(className='mnid-info-pill', children=[
+            html.Div('Facility', className='mnid-info-pill-label'),
+            html.Div(facility_name, className='mnid-info-pill-value'),
+        ]),
+        html.Div(className='mnid-info-pill', children=[
+            html.Div('District', className='mnid-info-pill-label'),
+            html.Div(district, className='mnid-info-pill-value'),
+        ]),
+        html.Div(className='mnid-info-pill', children=[
+            html.Div('Period', className='mnid-info-pill-label'),
+            html.Div([
+                html.Div(period,
+                         style={'fontSize': '11px', 'fontWeight': '700',
+                                'color': TEXT, 'lineHeight': '1.2'}),
+                html.Div(period_note,
+                         style={'fontSize': '10px', 'color': MUTED, 'lineHeight': '1.3', 'marginTop': '4px'})
+                if period_note else None,
+            ]),
+        ]),
+        html.Div(className='mnid-info-pill', children=[
+            html.Div('Program', className='mnid-info-pill-label'),
+            html.Div(
+                'Labour & Delivery' if selected_program == 'Labour' else selected_program,
+                className='mnid-info-pill-value mnid-info-pill-value-compact',
+            ),
+        ]),
+        html.Div(className='mnid-info-pill', children=[
+            html.Div('Indicators', className='mnid-info-pill-label'),
+            html.Div(f'{n_tracked} available / {n_await} pending',
+                     style={'fontSize': '11px', 'fontWeight': '700',
+                            'color': TEXT, 'lineHeight': '1.2'}),
+        ]),
+    ])
+
+    return html.Div(className=f'mnid-topbar{" mnid-topbar-newborn" if theme == "newborn" else ""}{" mnid-topbar-minimal" if minimal else ""}', children=[
         html.Div(className='mnid-topbar-copy', children=[
             html.Div(topbar_label, className='mnid-topbar-label'),
             html.H1(title),
@@ -486,40 +521,7 @@ def _topbar(facility, period, n_tracked, n_await, facility_df=None, network_df=N
                 )
             ], style={'marginTop': '15px', 'display': 'block'} if 'MNH' in str(title).upper() else {'display': 'none'}),
         ]),
-        html.Div(className='mnid-info-pills', children=[
-            html.Div(className='mnid-info-pill', children=[
-                html.Div('Facility', className='mnid-info-pill-label'),
-                html.Div(facility_name, className='mnid-info-pill-value'),
-            ]),
-            html.Div(className='mnid-info-pill', children=[
-                html.Div('District', className='mnid-info-pill-label'),
-                html.Div(district, className='mnid-info-pill-value'),
-            ]),
-            html.Div(className='mnid-info-pill', children=[
-                html.Div('Period', className='mnid-info-pill-label'),
-                html.Div([
-                    html.Div(period,
-                             style={'fontSize': '11px', 'fontWeight': '700',
-                                    'color': TEXT, 'lineHeight': '1.2'}),
-                    html.Div(period_note,
-                             style={'fontSize': '10px', 'color': MUTED, 'lineHeight': '1.3', 'marginTop': '4px'})
-                    if period_note else None,
-                ]),
-            ]),
-            html.Div(className='mnid-info-pill', children=[
-                html.Div('Program', className='mnid-info-pill-label'),
-                html.Div(
-                    'Labour & Delivery' if selected_program == 'Labour' else selected_program,
-                    className='mnid-info-pill-value mnid-info-pill-value-compact',
-                ),
-            ]),
-            html.Div(className='mnid-info-pill', children=[
-                html.Div('Indicators', className='mnid-info-pill-label'),
-                html.Div(f'{n_tracked} available / {n_await} pending',
-                         style={'fontSize': '11px', 'fontWeight': '700',
-                                'color': TEXT, 'lineHeight': '1.2'}),
-            ]),
-        ]),
+        None if minimal else info_pills,
     ])
 
 
