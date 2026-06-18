@@ -2454,6 +2454,12 @@ def render_mnid_dashboard(data_opd, config,
     network_df.attrs['mnid_subtab'] = sub_tab
 
     if sub_tab == 'Nest 360- Neotree' and config.get('report_name') == 'Maternal Health':
+        newborn_config = _load_mnid_report_config('Newborn')
+        newborn_scope_meta = None
+        if newborn_config:
+            newborn_scope_meta = dict(scope_meta or {})
+            newborn_scope_meta['mnid_categories'] = newborn_config.get('mnid_categories') or ['Newborn']
+
         primary_bundle = _build_mnid_indicator_content(
             network_df=network_df,
             config=config,
@@ -2466,6 +2472,18 @@ def render_mnid_dashboard(data_opd, config,
         facility_df = primary_bundle['facility_df']
         facility_df.attrs['mnid_subtab'] = sub_tab
         
+        newborn_bundle = None
+        if newborn_config:
+            newborn_bundle = _build_mnid_indicator_content(
+                network_df=network_df,
+                config=newborn_config,
+                facility_code=facility_code,
+                start_date=start_date,
+                end_date=end_date,
+                scope_meta=newborn_scope_meta,
+                include_content=True,
+            )
+
         return html.Div([
             _topbar(
                 facility=facility_code,
@@ -2479,7 +2497,7 @@ def render_mnid_dashboard(data_opd, config,
                 theme='default'
             ),
             html.Div([
-                html.H3("Nest 360- Neotree Dashboards", style={'textAlign': 'center', 'padding': '50px', 'color': DIM})
+                newborn_bundle.get('indicator_content') if newborn_bundle else html.H3("Nest 360- Neotree Dashboards", style={'textAlign': 'center', 'padding': '50px', 'color': DIM})
             ], className='mnid-section-card', style={'marginTop': '20px'})
         ], className='mnid-dashboard-root')
 
