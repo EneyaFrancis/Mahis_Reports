@@ -1,0 +1,32 @@
+{
+  "roles": {
+    "beginnings": {
+      "label": "Beginnings",
+      "description": "Full access to all MNID dashboard tabs",
+      "allowed_tabs": [
+        "country-profile",
+        "newborn-dashboard",
+        "operational-readiness",
+        "maternal-dashboard"
+      ]
+    },
+    "moh": {
+      "label": "MoH",
+      "description": "Ministry of Health dashboards",
+      "allowed_tabs": [
+        "country-profile",
+        "newborn-dashboard",
+        "maternal-dashboard"
+      ]
+    },
+    "nest360": {
+      "label": "Nest360",
+      "description": "Nest360 program dashboards",
+      "allowed_tabs": [
+        "country-profile",
+        "newborn-dashboard",
+        "operational-readiness"
+      ]
+    }
+  }
+}

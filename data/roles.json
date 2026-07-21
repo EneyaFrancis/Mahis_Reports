@@ -1,0 +1,37 @@
+[
+  {
+    "Role": "BF",
+    "Permissions": [
+      "COUNTRY_PROFILE_TAB",
+      "OPERATIONAL_READINESS_TAB",
+      "MATERNAL_TAB",
+      "NEONATAL_TAB",
+      "MATERNAL_COMPLICATIONS_TAB"
+    ]
+  },
+  {
+    "Role": "MOH",
+    "Permissions": [
+      "COUNTRY_PROFILE_TAB",
+      "MATERNAL_TAB",
+      "NEONATAL_TAB",
+      "MATERNAL_COMPLICATIONS_TAB"
+    ]
+  },
+  {
+    "Role": "NEST360",
+    "Permissions": [
+      "COUNTRY_PROFILE_TAB",
+      "MATERNAL_TAB",
+      "NEONATAL_TAB"
+    ]
+  },
+  {
+    "Role": "FACILITY_ADMIN",
+    "Permissions": [
+      "MATERNAL_TAB",
+      "NEONATAL_TAB",
+      "MATERNAL_COMPLICATIONS_TAB"
+    ]
+  }
+]

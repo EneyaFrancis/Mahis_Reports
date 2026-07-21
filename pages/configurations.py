@@ -617,6 +617,10 @@ layout = html.Div(
                                     [nav_icon("lucide:plug-zap"), "Configure Data Sources"],
                                     id="configure-datasources-btn", n_clicks=0, className="nav-btn-modern"
                                 ),
+                                html.Button(
+                                    [nav_icon("lucide:shield"), "Configure Permissions"],
+                                    id="configure-users-roles-btn", n_clicks=0, className="nav-btn-modern"
+                                ),
                             ]
                         ),
 
@@ -1233,6 +1237,49 @@ layout = html.Div(
                                         ]),
                                     ]),
                                 ]),
+                            ]),
+                        ]),
+                    ],
+                ),
+
+                # ── Permissions Configuration Panel ───────────────────────
+                html.Div(
+                    id="permissions-config-panel",
+                    style={"display": "none"},
+                    children=[
+                        html.Div(className="dashboard-card", style={"margin": "16px 0"}, children=[
+                            html.Div(
+                                className="dashboard-card-header",
+                                style={"display": "flex", "justifyContent": "space-between",
+                                       "alignItems": "flex-start"},
+                                children=[
+                                    html.Div([
+                                        html.H4("Configure Permissions", className="dashboard-card-title",
+                                                style={"marginBottom": "4px"}),
+                                        html.P("Map permissions to roles — checked means the role is granted that permission.",
+                                               className="perm-panel-desc"),
+                                    ]),
+                                    html.Button("✕ Close", id="close-permissions-btn", n_clicks=0,
+                                                className="btn-secondary btn-small"),
+                                ],
+                            ),
+                            html.Div(className="dashboard-card-body", children=[
+                                html.Div(
+                                    id="permissions-matrix-container",
+                                    className="perm-matrix-wrapper",
+                                ),
+                                html.Hr(className="perm-divider"),
+                                html.Div(
+                                    className="perm-save-area",
+                                    children=[
+                                        html.Button("Save Permissions", id="save-permissions-btn", n_clicks=0,
+                                                    className="btn-primary-modern",
+                                                    style={"padding": "10px 24px", "fontSize": "0.9rem"}),
+                                        html.Span(id="permissions-save-status",
+                                                  className="perm-save-status"),
+                                        dcc.Interval(id="perm-save-interval", interval=8000, disabled=True),
+                                    ],
+                                ),
                             ]),
                         ]),
                     ],
@@ -3151,16 +3198,17 @@ def toggle_confirmation_modal(show_confirmation):
 
 # 1. Toggle panel visibility — show user config, hide main content area (and vice-versa)
 @callback(
-    [Output("user-config-panel",  "style"),
-     Output("reports-table-wrapper", "style", allow_duplicate=True)],
+    [Output("user-config-panel",        "style"),
+     Output("permissions-config-panel", "style", allow_duplicate=True),
+     Output("reports-table-wrapper",    "style", allow_duplicate=True)],
     [Input("configure-users-btn",  "n_clicks"),
      Input("close-user-config-btn","n_clicks")],
     prevent_initial_call=True,
 )
 def toggle_user_config_panel(open_clicks, close_clicks):
     if ctx.triggered_id == "configure-users-btn":
-        return {"display": "block"}, {"display": "none"}
-    return {"display": "none"}, dash.no_update
+        return {"display": "block"}, {"display": "none"}, {"display": "none"}
+    return {"display": "none"}, {"display": "none"}, dash.no_update
 
 
 # 2. Populate user search dropdown when panel opens
@@ -3436,17 +3484,18 @@ def paginate_users_table(n_prev, n_next, page, urlparams):
 
 # 1. Toggle panel (also hides user-config-panel so both never show at once)
 @callback(
-    [Output("datasource-panel",  "style"),
-     Output("user-config-panel", "style", allow_duplicate=True),
-     Output("reports-table-wrapper", "style", allow_duplicate=True)],
+    [Output("datasource-panel",           "style"),
+     Output("user-config-panel",          "style", allow_duplicate=True),
+     Output("permissions-config-panel",   "style", allow_duplicate=True),
+     Output("reports-table-wrapper",      "style", allow_duplicate=True)],
     [Input("configure-datasources-btn", "n_clicks"),
      Input("close-datasource-btn",      "n_clicks")],
     prevent_initial_call=True,
 )
 def toggle_datasource_panel(open_clicks, close_clicks):
     if ctx.triggered_id == "configure-datasources-btn":
-        return {"display": "block"}, {"display": "none"}, {"display": "none"}
-    return {"display": "none"}, {"display": "none"}, dash.no_update
+        return {"display": "block"}, {"display": "none"}, {"display": "none"}, {"display": "none"}
+    return {"display": "none"}, {"display": "none"}, {"display": "none"}, dash.no_update
 
 
 # 2. Populate SSH key dropdown and datasource list when panel opens
@@ -6250,3 +6299,115 @@ def _prog_rpt_delete(n_clicks, rpt_id, name):
         return "✓ Deleted.", None, opts
     except Exception as exc:
         return f"Error: {exc}", no_update, no_update
+
+
+# ── Permissions Configuration Callbacks ───────────────────────────────────
+
+# 14a. Toggle permissions panel visibility
+@callback(
+    [Output("permissions-config-panel", "style"),
+     Output("user-config-panel",        "style", allow_duplicate=True),
+     Output("datasource-panel",         "style", allow_duplicate=True),
+     Output("reports-table-wrapper",    "style", allow_duplicate=True)],
+    [Input("configure-users-roles-btn", "n_clicks"),
+     Input("close-permissions-btn",     "n_clicks")],
+    prevent_initial_call=True,
+)
+def toggle_permissions_panel(open_clicks, close_clicks):
+    if ctx.triggered_id == "configure-users-roles-btn":
+        return {"display": "block"}, {"display": "none"}, {"display": "none"}, {"display": "none"}
+    return {"display": "none"}, dash.no_update, dash.no_update, dash.no_update
+
+
+# 14b. Build permissions matrix when panel opens
+@callback(
+    Output("permissions-matrix-container", "children"),
+    Input("permissions-config-panel", "style"),
+)
+def build_permissions_matrix(panel_style):
+    if not panel_style or panel_style.get("display") == "none":
+        raise PreventUpdate
+
+    roles_path = os.path.join(os.getcwd(), "data", "roles.json")
+    perms_path = os.path.join(os.getcwd(), "data", "all_permissions.json")
+
+    with open(roles_path) as f:
+        roles_data = json.load(f)
+    with open(perms_path) as f:
+        all_permissions = json.load(f)
+
+    role_names = [r["Role"] for r in roles_data]
+    role_perms = {r["Role"]: r.get("Permissions", []) for r in roles_data}
+
+    header_cells = [html.Th("Permission", className="perm-table-header")]
+    for role in role_names:
+        header_cells.append(html.Th(role, className="perm-table-header"))
+
+    rows = []
+    for perm in all_permissions:
+        cells = [html.Td(perm, className="perm-table-cell perm-label")]
+        for role in role_names:
+            has_perm = perm in role_perms.get(role, [])
+            cells.append(html.Td(
+                dcc.Checklist(
+                    id={"type": "perm-checkbox", "role": role, "permission": perm},
+                    options=[{"label": "", "value": "checked"}],
+                    value=["checked"] if has_perm else [],
+                    labelStyle={"display": "none"},
+                    className="perm-checkbox-inline",
+                ),
+                className="perm-table-cell perm-checkbox-cell",
+            ))
+        rows.append(html.Tr(cells))
+
+    return html.Div(
+        html.Table(
+            [html.Thead(html.Tr(header_cells)), html.Tbody(rows)],
+            className="perm-matrix-table",
+        ),
+        style={"overflowX": "auto"},
+    )
+
+
+# 14c. Save permissions
+@callback(
+    Output("permissions-save-status", "children"),
+    Output("perm-save-interval", "disabled"),
+    Output("perm-save-interval", "n_intervals"),
+    Input("save-permissions-btn", "n_clicks"),
+    State({"type": "perm-checkbox", "role": ALL, "permission": ALL}, "value"),
+    State({"type": "perm-checkbox", "role": ALL, "permission": ALL}, "id"),
+    prevent_initial_call=True,
+)
+def save_permissions(n_clicks, values, ids):
+    if not n_clicks:
+        raise PreventUpdate
+
+    roles_perms = {}
+    for id_dict, val in zip(ids, values):
+        role = id_dict["role"]
+        perm = id_dict["permission"]
+        roles_perms.setdefault(role, [])
+        if val:
+            roles_perms[role].append(perm)
+
+    result = [{"Role": role, "Permissions": perms} for role, perms in roles_perms.items()]
+
+    roles_path = os.path.join(os.getcwd(), "data", "roles.json")
+    try:
+        with open(roles_path, "w") as f:
+            json.dump(result, f, indent=2)
+        return "Permissions saved successfully!", False, 0
+    except Exception as exc:
+        return f"Error saving: {exc}", True, no_update
+
+
+# 14d. Auto-hide save status after interval
+@callback(
+    Output("permissions-save-status", "children", allow_duplicate=True),
+    Output("perm-save-interval", "disabled", allow_duplicate=True),
+    Input("perm-save-interval", "n_intervals"),
+    prevent_initial_call=True,
+)
+def clear_save_status(n):
+    return "", True
