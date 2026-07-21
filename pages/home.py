@@ -1456,8 +1456,21 @@ def _set_active_button(menu_clicks):
     # which report is active, so this mirrors update_dashboard's own
     # clicked_name logic without needing moh_level as an input at all.
     ctx = callback_context
-    triggered_id = ctx.triggered[0]['prop_id'] if ctx.triggered else None
-    if not triggered_id or "menu-button" not in triggered_id:
+    if not ctx.triggered:
+        raise PreventUpdate
+    triggered = ctx.triggered[0]
+    triggered_id = triggered['prop_id']
+    if "menu-button" not in triggered_id:
+        raise PreventUpdate
+    # scrolling-menu's buttons are fully regenerated (fresh component
+    # instances) every time update_menu re-runs -- e.g. on the periodic
+    # dashboard-interval-update-today tick -- which re-fires this
+    # pattern-matching Input even though nothing was actually clicked. Without
+    # this guard that spurious fire (n_clicks None/0) would overwrite
+    # active-button-store with whichever button happened to report the
+    # "trigger" (in practice always General Summary, the first button built),
+    # silently kicking the user back to General Summary mid-session.
+    if not triggered.get('value'):
         raise PreventUpdate
     prop_dict = json.loads(triggered_id.split('.')[0])
     return prop_dict['name']
@@ -1505,9 +1518,17 @@ def update_dashboard(gen, start_date, end_date, level,
         data_route = (urlparams or {}).get('route', ["default"])[0]
         dataset_version = _dataset_version_token(data_route)
 
-        # Determine which report to show
+        # Determine which report to show. scrolling-menu's buttons are fully
+        # regenerated on every update_menu re-run (e.g. the periodic
+        # dashboard-interval-update-today tick), which re-fires this
+        # pattern-matching Input with no real click behind it -- guard on a
+        # truthy n_clicks so a spurious fire doesn't silently reset the
+        # selected report back to General Summary.
         clicked_name = current_active
-        if triggered_id and "menu-button" in triggered_id:
+        if (
+            triggered_id and "menu-button" in triggered_id
+            and ctx.triggered[0].get('value')
+        ):
             prop_dict = json.loads(triggered_id.split('.')[0])
             clicked_name = prop_dict['name']
 
@@ -1764,14 +1785,33 @@ def update_dashboard(gen, start_date, end_date, level,
      Output('dashboard-date-range-picker', 'end_date')],
     [Input('dashboard-period-type-filter', 'value'),
      Input('dashboard-interval-update-today', 'n_intervals')],
-    [State('url-params-store', 'data')],
+    [State('url-params-store', 'data'),
+     State('active-button-store', 'data')],
 )
-def sync_picker_with_logic(period_type, n, urlparams):
+def sync_picker_with_logic(period_type, n, urlparams, current_active):
     ctx = callback_context
     triggered_id = ctx.triggered[0]['prop_id'] if ctx.triggered else ""
     data_route = (urlparams or {}).get('route', ["default"])[0]
     default_start, default_end = _default_date_window(data_route)
     anchor = default_end
+
+    # Maternal Health in DHIS2 mode: "Today" etc. should anchor to DHIS2's
+    # own latest reported month, not the local MAHIS dataset's last date --
+    # those two can drift apart by months (DHIS2 gets a fresh monthly pull,
+    # MAHIS's local parquet only updates on its own refresh schedule), and
+    # anchoring to the stale MAHIS date would hide DHIS2 data that's already
+    # available. Every other report keeps the existing MAHIS-anchored
+    # behavior unchanged.
+    if current_active == 'Maternal Health' and MNID_DATA_SOURCE == 'dhis2':
+        try:
+            from mnid.aggregation.store import get_aggregate as _get_dhis2_agg
+            dhis2_agg = _get_dhis2_agg(route='dhis2')
+            if dhis2_agg is not None and not dhis2_agg.empty:
+                dhis2_latest = dhis2_agg['period_start'].max()
+                if pd.notna(dhis2_latest) and (anchor is None or dhis2_latest.normalize() > pd.Timestamp(anchor)):
+                    anchor = dhis2_latest.normalize()
+        except Exception:
+            pass
 
     if "dashboard-interval-update-today" in triggered_id:
         if period_type == "Today":
