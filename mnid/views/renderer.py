@@ -2,6 +2,7 @@
 import hashlib
 import json
 import logging
+import os
 import pickle
 import threading
 from pathlib import Path
@@ -36,6 +37,31 @@ from mnid.core.constants import BORDER, TEXT
 
 _LOGGER = logging.getLogger(__name__)
 
+"""
+    Role-based access control simulation
+"""
+SIMULATED_ROLE_FILE = os.path.join(os.getcwd(), 'data', 'simulated_role.json')
+ROLES_JSON_PATH = os.path.join(os.getcwd(), 'data', 'roles.json')
+
+def _get_simulated_permissions():
+    """Return the set of permissions for the currently simulated role."""
+    if not os.path.exists(SIMULATED_ROLE_FILE):
+        return None
+    try:
+        with open(SIMULATED_ROLE_FILE, 'r') as f:
+            sim_role = json.load(f).get("role")
+        if not sim_role:
+            return None
+        if not os.path.exists(ROLES_JSON_PATH):
+            return None
+        with open(ROLES_JSON_PATH, 'r') as f:
+            roles_data = json.load(f)
+        for r in roles_data:
+            if r.get("Role") == sim_role:
+                return set(r.get("Permissions", []))
+    except Exception:
+        pass
+    return None
 
 def _render_mnh_placeholder(label: str) -> html.Div:
     return html.Div(
@@ -181,6 +207,21 @@ def _build_executive_tab_view(
     config_override: dict | None = None,
     store_in_views: bool = True,
 ):
+    perms = _get_simulated_permissions()
+    if perms is not None:
+        perm_map = {
+            'country-profile': 'COUNTRY_PROFILE_TAB',
+            'operational-readiness': 'OPERATIONAL_READINESS_TAB',
+            'maternal-dashboard': 'MATERNAL_TAB',
+            'newborn-dashboard': 'NEONATAL_TAB'
+        }
+        required_perm = perm_map.get(selected)
+        if required_perm and required_perm not in perms:
+            return html.Div([
+                html.H3("Access Denied", style={'color': '#DC2626'}),
+                html.P(f"You do not have permission to view the {selected.replace('-', ' ').title()} tab.")
+            ], style={'padding': '40px', 'textAlign': 'center', 'background': '#FFF', 'borderRadius': '12px', 'margin': '20px', 'border': f'1px solid {BORDER}'})
+
     import time as _time
 
     config       = config_override or state.get('config')
@@ -314,21 +355,32 @@ def _render_beginnings_shell(initial_tab: str, hidden_mnid_tabs: set[str], newbo
     }
     _tab_active2 = dict(_tab_active, backgroundColor='#F8FAFC')
 
+    perms = _get_simulated_permissions()
+
     _profile_tab_label = _profile_scope_name(scope_meta)['tab_label']
-    tab_children = [
-        dcc.Tab(label=_profile_tab_label, value='country-profile', style=_tab_style, selected_style=_tab_active),
-    ]
+    tab_children = []
+    
+    if perms is None or 'COUNTRY_PROFILE_TAB' in perms:
+        tab_children.append(
+            dcc.Tab(label=_profile_tab_label, value='country-profile', style=_tab_style, selected_style=_tab_active)
+        )
+        
     if 'operational-readiness' not in hidden_mnid_tabs:
+        if perms is None or 'OPERATIONAL_READINESS_TAB' in perms:
+            tab_children.append(
+                dcc.Tab(label='Operational Readiness', value='operational-readiness', style=_tab_style, selected_style=_tab_active2)
+            )
+            
+    if perms is None or 'MATERNAL_TAB' in perms:
         tab_children.append(
-            dcc.Tab(label='Operational Readiness', value='operational-readiness', style=_tab_style, selected_style=_tab_active2)
+            dcc.Tab(label='Maternal', value='maternal-dashboard', style=_tab_style, selected_style=_tab_active2)
         )
-    tab_children.append(
-        dcc.Tab(label='Maternal', value='maternal-dashboard', style=_tab_style, selected_style=_tab_active2)
-    )
+        
     if newborn_config is not None:
-        tab_children.append(
-            dcc.Tab(label='Newborn', value='newborn-dashboard', style=_tab_style, selected_style=_tab_active2)
-        )
+        if perms is None or 'NEONATAL_TAB' in perms:
+            tab_children.append(
+                dcc.Tab(label='Newborn', value='newborn-dashboard', style=_tab_style, selected_style=_tab_active2)
+            )
 
     visible_tab_values = [getattr(tab, 'value', None) for tab in tab_children]
     resolved_initial_tab = initial_tab if initial_tab in visible_tab_values else (visible_tab_values[0] if visible_tab_values else 'country-profile')
@@ -351,6 +403,22 @@ def _render_beginnings_shell(initial_tab: str, hidden_mnid_tabs: set[str], newbo
 
 
 def _render_mnh_dashboard_view(selected_view: str, state: dict, views: dict):
+    perms = _get_simulated_permissions()
+    if perms is not None:
+        # Check permission for standard tabs if they are being rendered directly
+        perm_map = {
+            'country-profile': 'COUNTRY_PROFILE_TAB',
+            'operational-readiness': 'OPERATIONAL_READINESS_TAB',
+            'maternal-dashboard': 'MATERNAL_TAB',
+            'newborn-dashboard': 'NEONATAL_TAB'
+        }
+        required_perm = perm_map.get(selected_view)
+        if required_perm and required_perm not in perms:
+             return html.Div([
+                html.H3("Access Denied", style={'color': '#DC2626'}),
+                html.P(f"You do not have permission to view the {selected_view.replace('-', ' ').title()} view.")
+            ], style={'padding': '40px', 'textAlign': 'center', 'background': '#FFF', 'borderRadius': '12px', 'margin': '20px', 'border': f'1px solid {BORDER}'})
+
     if selected_view == 'mnh-beginnings':
         if views.get('beginnings-shell') is not None:
             return views['beginnings-shell']
