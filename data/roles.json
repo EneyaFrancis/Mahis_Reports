@@ -1,5 +1,25 @@
 [
   {
+    "Role": "reports_admin",
+    "Permissions": [
+      "COUNTRY_PROFILE_TAB",
+      "OPERATIONAL_READINESS_TAB",
+      "MATERNAL_TAB",
+      "NEONATAL_TAB",
+      "MATERNAL_COMPLICATIONS_TAB"
+    ]
+  },
+  {
+    "Role": "Global Superuser",
+    "Permissions": [
+      "COUNTRY_PROFILE_TAB",
+      "OPERATIONAL_READINESS_TAB",
+      "MATERNAL_TAB",
+      "NEONATAL_TAB",
+      "MATERNAL_COMPLICATIONS_TAB"
+    ]
+  },
+  {
     "Role": "BF",
     "Permissions": [
       "COUNTRY_PROFILE_TAB",
@@ -13,6 +33,7 @@
     "Role": "MOH",
     "Permissions": [
       "COUNTRY_PROFILE_TAB",
+      "OPERATIONAL_READINESS_TAB",
       "MATERNAL_TAB",
       "NEONATAL_TAB",
       "MATERNAL_COMPLICATIONS_TAB"
