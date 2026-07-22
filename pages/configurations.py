@@ -33,6 +33,29 @@ from helpers.navigation_callbacks import DEMO_UUID
 
 dash.register_page(__name__, path="/reports_config", title="Admin Dashboard")
 
+"""
+    Role-based access control simulation
+"""
+ROLES_JSON_PATH = os.path.join(os.getcwd(), 'data', 'roles.json')
+SIMULATED_ROLE_FILE = os.path.join(os.getcwd(), 'data', 'simulated_role.json')
+
+def _load_simulated_role():
+    if os.path.exists(SIMULATED_ROLE_FILE):
+        try:
+            with open(SIMULATED_ROLE_FILE, 'r') as f:
+                return json.load(f).get("role")
+        except:
+            return None
+    return None
+
+def _save_simulated_role(role):
+    with open(SIMULATED_ROLE_FILE, 'w') as f:
+        json.dump({"role": role}, f)
+
+def _clear_simulated_role():
+    if os.path.exists(SIMULATED_ROLE_FILE):
+        os.remove(SIMULATED_ROLE_FILE)
+
 from dash_iconify import DashIconify
 def nav_icon(icon_name):
     return DashIconify(icon=icon_name, className="nav-icon")
@@ -1280,6 +1303,28 @@ layout = html.Div(
                                         dcc.Interval(id="perm-save-interval", interval=8000, disabled=True),
                                     ],
                                 ),
+                                # Role-based access control simulation
+                                html.Hr(className="perm-divider"),
+                                html.Div([
+                                    html.H5("Simulate User Role", className="dashboard-card-title",
+                                            style={"marginTop": "16px", "marginBottom": "8px"}),
+                                    html.P("Temporarily assign a role to the default user for development testing.",
+                                           className="perm-panel-desc"),
+                                    html.Div(style={"display": "flex", "alignItems": "center", "gap": "12px"}, children=[
+                                        dcc.Dropdown(
+                                            id="simulate-role-dropdown",
+                                            placeholder="Select role to simulate...",
+                                            style={"width": "300px"}
+                                        ),
+                                        html.Button("Simulate Role", id="simulate-role-btn", n_clicks=0,
+                                                    className="btn-primary-modern",
+                                                    style={"padding": "8px 16px", "fontSize": "0.85rem"}),
+                                        html.Button("Clear Simulation", id="clear-simulation-btn", n_clicks=0,
+                                                    className="btn-secondary btn-small",
+                                                    style={"padding": "8px 16px", "fontSize": "0.85rem"}),
+                                    ]),
+                                    html.Div(id="simulate-role-status", style={"marginTop": "8px", "fontSize": "0.9rem", "fontWeight": "500"}),
+                                ]),
                             ]),
                         ]),
                     ],
@@ -1344,6 +1389,17 @@ def validate_admin_access(urlparams):
     data_route = urlparams.get('route', ["default"])[0]
     user_uuid = urlparams.get('uuid', [None])[0]
     DATA_PATH_ = f"data/{data_route}/parquet"
+
+    # Role-based access controll fallback
+    simulated_role = _load_simulated_role()
+    if simulated_role:
+        if simulated_role == "reports_admin":
+            return dash.no_update, dash.no_update
+        else:
+            return dash.no_update, html.Div([
+                html.H2("Access Denied"),
+                html.P(f"You are currently simulating the role: {simulated_role}. This role does not have administrative access.")], 
+                style={'textAlign': 'center', 'marginTop': '100px'})
 
     props_data = _load_user_props(data_route)
     existing   = next((u for u in props_data.get("users", []) if u.get("properties").get("uuid") == user_uuid), None)
@@ -6411,3 +6467,43 @@ def save_permissions(n_clicks, values, ids):
 )
 def clear_save_status(n):
     return "", True
+
+"""
+    Role-based access control simulation callbacks
+"""
+@callback(
+    Output("simulate-role-dropdown", "options"),
+    Input("configure-users-roles-btn", "n_clicks")
+)
+def populate_simulation_roles(n_clicks):
+    if not n_clicks:
+        return []
+    try:
+        with open(ROLES_JSON_PATH, 'r') as f:
+            roles_data = json.load(f)
+            return [{"label": r["Role"], "value": r["Role"]} for r in roles_data]
+    except Exception:
+        return []
+
+@callback(
+    [Output("simulate-role-status", "children"),
+     Output("simulate-role-status", "style")],
+    [Input("simulate-role-btn", "n_clicks"),
+     Input("clear-simulation-btn", "n_clicks")],
+    [State("simulate-role-dropdown", "value")]
+)
+def handle_role_simulation(sim_clicks, clear_clicks, selected_role):
+    triggered_id = ctx.triggered_id
+    if triggered_id == "simulate-role-btn":
+        if not selected_role:
+            return "Please select a role.", {"color": "red"}
+        _save_simulated_role(selected_role)
+        return f"Simulating role: {selected_role}. Refresh pages to apply.", {"color": "green"}
+    elif triggered_id == "clear-simulation-btn":
+        _clear_simulated_role()
+        return "Simulation cleared. Refresh pages to apply.", {"color": "blue"}
+    
+    current_sim = _load_simulated_role()
+    if current_sim:
+        return f"Currently simulating: {current_sim}", {"color": "green"}
+    return "", {}

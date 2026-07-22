@@ -1,5 +1,6 @@
 import os
 import urllib.parse
+import json
 
 import pandas as pd
 from dash import Input, Output, html
@@ -62,6 +63,18 @@ def register_navigation_callbacks(app, pathname_prefix):
             user_level = url_params.get("user_level", [None])[0]
             data_route = url_params.get("route", ["default"])[0]
 
+            """
+                Role-based access control, load user role from file system
+            """
+            simulated_role_path = os.path.join(os.getcwd(), 'data', 'simulated_role.json')
+            simulated_role = None
+            if os.path.exists(simulated_role_path):
+                try:
+                    with open(simulated_role_path, 'r') as f:
+                        simulated_role = json.load(f).get("role")
+                except:
+                    pass
+
             path = os.getcwd()
             timestamp_path = os.path.join(path, f"data/{data_route}", "TimeStamp.csv")
             os.makedirs(os.path.dirname(timestamp_path), exist_ok=True)
@@ -79,7 +92,15 @@ def register_navigation_callbacks(app, pathname_prefix):
             query = _build_query(data_route,location, uuid, user_level)
             
             existing   = next((u for u in users.get("users", []) if u.get("properties").get("uuid") == uuid), None)
-            if existing and existing.get("properties").get("role").strip() == "reports_admin":
+
+            # use simulated role if simulating
+            if simulated_role:
+                # Use simulated role for access control
+                if simulated_role == "reports_admin":
+                    is_admin = True
+                else:
+                    is_admin = False
+            elif existing and existing.get("properties").get("role").strip() == "reports_admin":
                 is_admin = True
             elif not existing:
                 if uuid == DEMO_UUID:
