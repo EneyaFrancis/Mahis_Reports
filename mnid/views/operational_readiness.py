@@ -743,7 +743,8 @@ def _readiness_header(df: pd.DataFrame, scope_meta: dict | None,
         withBorder=True, radius="lg", shadow="xs", p="xl",
         style={"marginBottom": "20px", "borderColor": BORDER},
         children=[
-            html.Div(f"{profile['eyebrow']} · Operational Readiness", style={
+            # Keep this eyebrow independent of the Country Profile scope label.
+            html.Div("Operational Readiness", style={
                 "fontSize": "11px", "fontWeight": "700", "color": "#0F766E",
                 "letterSpacing": ".12em", "textTransform": "uppercase", "marginBottom": "10px",
             }),
