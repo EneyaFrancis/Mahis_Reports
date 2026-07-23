@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-07-21T20:30:21.452193",
-  "rows": 588518,
+  "generated_at": "2026-07-23T07:21:49.723586",
+  "rows": 588614,
   "indicators": 52,
   "grains": [
     "monthly"
@@ -8,7 +8,7 @@
   "data_source": "dhis2",
   "use_demo_data": false,
   "last_run_status": "ok",
-  "sync_run_id": "19a04ea5987b427ea1866b5222207cd3",
+  "sync_run_id": "ae34e634185544adb44638360e135b1d",
   "mapping_version": "2026-07-20",
   "period_start": "202501",
   "period_end": "202606",
