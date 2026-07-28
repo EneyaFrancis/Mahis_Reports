@@ -54,7 +54,27 @@ INDICATOR_GROUPS = {
         "mothers_checked_at_6_weeks", "babies_checked_at_6_weeks",
         "immediate_postpartum_family_planning", "hiv_positive_postnatal_mothers",
         "hiv_exposed_babies_on_art_prophylaxis", "babies_who_received_bcg",
-        "babies_who_received_polio_0",
+        "babies_who_received_polio_0", "pnc_baby_checked_within_48hrs",
+        "pnc_mother_checked_within_48hrs",
+    ),
+    # From the 2026-07 mapping workbook refresh - 9 of the 15 newly-mapped
+    # indicators (6 excluded: 3 pending data-team confirmation of ambiguous
+    # DHIS2 ID reuse, 1 needs hand-authored treatment this pipeline can't do,
+    # and 2 - labour_complications, hiv_positive_on_art_in_labour - were
+    # published once on 2026-07-28 and found to return ~100-105% of
+    # total_births, a data-element total across all category option combos
+    # rather than the specific numerator claimed; see the comment beside
+    # DHIS2_TO_MNID_ID in mnid_publish.py for detail). "Neonatal care" groups
+    # the ones the workbook explicitly calls out for a conditional neonatal-
+    # care-unit dashboard section (not yet built); the rest are general
+    # labour/delivery counts with no existing group that fits better.
+    "Neonatal care": (
+        "neonatal_admissions", "birth_asphyxia_among_newborn_admissions",
+        "neonatal_sepsis_among_newborn_admissions", "resuscitation_intervention_recorded",
+        "low_birthweight_newborns",
+    ),
+    "Labour and delivery (2026-07 additions)": (
+        "neonatal_complications_at_birth", "clients_referred_to_another_facility",
     ),
 }
 SELECTED_INDICATOR_IDS = tuple(

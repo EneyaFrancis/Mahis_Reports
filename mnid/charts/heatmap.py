@@ -34,6 +34,25 @@ from mnid.charts.geo_utils import (
 _LOGGER = logging.getLogger(__name__)
 
 
+_DHIS2_GEO_DISTRICT_ALIASES = {
+    'Kamuzu Central Hospital': 'Lilongwe',
+    'Mzuzu Central Hospital': 'Mzimba',
+    'Queen Elizabeth Central Hospital': 'Blantyre',
+    'Zomba Central Hospital': 'Zomba',
+    'Mzimba North': 'Mzimba',
+    'Mzimba South': 'Mzimba',
+}
+
+
+def _geo_district_name(value) -> str:
+    """Translate DHIS2 hierarchy labels to Malawi GeoJSON district names."""
+    district = str(value or '').strip()
+    if not district:
+        return ''
+    district = district.removesuffix('-DHO').replace('-', ' ').strip()
+    return _DHIS2_GEO_DISTRICT_ALIASES.get(district, district)
+
+
 def _mask(df: pd.DataFrame, cfg: dict) -> pd.Series:
     """Build boolean row mask from a filter config dict without calling create_count."""
     mask = pd.Series(True, index=df.index)
@@ -350,8 +369,25 @@ def _compute_heatmap_store_from_agg(
             resolved_grain = candidate
             break
 
+    # DHIS2 hierarchy names (for example, ``Balaka-DHO``) are not the same
+    # keys used by the district GeoJSON (``Balaka``). Normalize only this
+    # map-store copy so upstream DHIS2 filtering keeps its authoritative names.
+    if not base.empty and 'district' in base.columns:
+        base['district'] = base['district'].map(_geo_district_name)
+
     agg_facs  = sorted(base['facility_code'].dropna().astype(str).unique().tolist())
     agg_dists = sorted(base['district'].dropna().astype(str).unique().tolist())
+
+    # The aggregate is authoritative for each facility's reporting district.
+    # This also normalizes registry labels such as "Salima" to the DHIS2
+    # hierarchy label ("Salima-DHO") used by district filters in this view.
+    if {'facility_code', 'district'}.issubset(base.columns):
+        fac_districts = base[['facility_code', 'district']].dropna().drop_duplicates('facility_code')
+        for code, district in fac_districts.itertuples(index=False):
+            code = str(code).strip()
+            district = str(district).strip()
+            if code and district:
+                _FACILITY_DISTRICT[code] = district
 
     all_facilities = sorted(set(agg_facs) | set(_ALL_FACILITIES))
     all_districts  = sorted(set(agg_dists) | set(_ALL_DISTRICTS))

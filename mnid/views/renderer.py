@@ -27,8 +27,10 @@ from mnid.views.kpi_engine import (
     _load_mnid_report_config,
 )
 from mnid.core.data_utils import prepare_mnid_dataframe as _prepare_mnid_dataframe
+from mnid.core.data_source import get_mnid_data_source
 from mnid.dashboards import load_dashboard_module
-from mnid.views.executive_views import render_country_profile, render_operational_readiness, _profile_scope_name
+from mnid.views.executive_views import render_country_profile, _profile_scope_name
+from mnid.views.operational_readiness import render_operational_readiness
 from mnid.components.run_charts import (
     bucket_multi_series, bucket_time_series,
     _multi_run_chart, _run_chart, describe_grain_window,
@@ -297,6 +299,7 @@ def _build_executive_tab_view(
     if selected == 'operational-readiness' and facility_df is not None:
         rendered_view = render_operational_readiness(
             facility_df, supply_inds=supply_inds, wf_inds=wf_inds, dq_inds=dq_inds,
+            scope_meta=scope_meta, start_date=start_date, end_date=end_date,
         )
         if store_in_views:
             views[selected] = rendered_view
@@ -499,24 +502,31 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
                           facility_code, start_date, end_date,
                           scope_meta: dict | None = None,
                           initial_tab: dict | None = None):
-    
+
+    route = (scope_meta or {}).get('route', 'default')
+    source = get_mnid_data_source(route, source='dhis2' if route == 'dhis2' else 'mahis')
     if isinstance(filtered, str):
         source_path = Path(data_path)
         if not source_path.is_absolute():
             source_path = Path.cwd() / source_path
         if not source_path.exists():
-            return html.Div(
-                'The local MAHIS dataset is unavailable for this dashboard.',
-                style={'padding': '24px', 'color': '#64748B'},
+            if source.requires_raw_dataset:
+                return html.Div(
+                    'The local MAHIS dataset is unavailable for this dashboard.',
+                    style={'padding': '24px', 'color': '#64748B'},
+                )
+            # DHIS2 dashboards read indicator values from the published aggregate
+            # store. They do not require encounter-level MAHIS rows to render.
+            filtered = pd.DataFrame()
+            data_opd = pd.DataFrame()
+        else:
+            from data_storage import DataStorage as _DS
+            filtered = _DS.query_duckdb(
+                f"SELECT {_MNID_SQL_COLUMNS} FROM '{data_path}' WHERE {filtered}"
             )
-        from data_storage import DataStorage as _DS
-        filtered = _DS.query_duckdb(
-            f"SELECT {_MNID_SQL_COLUMNS} FROM '{data_path}' WHERE {filtered}"
-        )
-        data_opd = _DS.query_duckdb(
-            f"SELECT {_MNID_SQL_COLUMNS} FROM '{data_path}' WHERE {data_opd}"
-        )
-    route               = (scope_meta or {}).get('route', 'default')
+            data_opd = _DS.query_duckdb(
+                f"SELECT {_MNID_SQL_COLUMNS} FROM '{data_path}' WHERE {data_opd}"
+            )
     dataset_version     = (scope_meta or {}).get('dataset_version')
     selected_programs   = tuple(sorted((scope_meta or {}).get('mnid_categories') or []))
     selected_facilities = tuple(sorted((scope_meta or {}).get('selected_facilities') or []))

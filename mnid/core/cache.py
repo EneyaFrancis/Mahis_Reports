@@ -23,7 +23,7 @@ _EXECUTIVE_CACHE_DIR = os.environ.get('MNID_EXEC_CACHE_DIR') or os.path.join(
 _MNID_EXECUTIVE_DISK_CACHE = diskcache.Cache(_EXECUTIVE_CACHE_DIR, size_limit=512 * 1024 * 1024)
 _MNID_WARNED_MESSAGES: set = set()
 _COUNTRY_PROFILE_RENDER_VERSION = "country-profile-v7-complication-rates"
-_EXECUTIVE_RENDER_VERSION = "executive-v2-operational-readiness-traffic-lights"
+_EXECUTIVE_RENDER_VERSION = "executive-v3-operational-readiness-ui"
 
 
 _network_df_cache: dict = {}
