@@ -101,6 +101,39 @@ DHIS2_TO_MNID_ID = {
     'hiv_exposed_babies_on_art_prophylaxis': 'mnid_nb_core_hivartprophylaxis',
     'babies_who_received_bcg': 'mnid_nb_core_bcg',
     'babies_who_received_polio_0': 'mnid_nb_core_polio0',
+
+    # 9 of the 15 indicators newly mapped in the 2026-07 workbook refresh
+    # (mnid/dhis2/config/source/Data Mapping - MNH dashboard - DHIS2.xlsx).
+    # 6 more were mapped in that refresh but are deliberately NOT wired in
+    # here:
+    # - iKMC Initiated / KMC support recorded share one DHIS2 id
+    #   (zANGFtNoUEt) and Exposed babies on ART prophylaxis shares Live
+    #   Births' id (iBBnHx1Uf50) - all three need data-team confirmation of
+    #   which mapping is actually correct.
+    # - Data Completeness % sums 12 already-computed DHIS2 reporting-rate
+    #   values, which calculate_indicators() can only sum as raw counts -
+    #   meaningless without hand-authored treatment this pipeline doesn't do.
+    # - Labour Complications (RS3PtRniRns, no category-option-combo) and HIV
+    #   positive on ART in Labour (MoximPvXuj6) were published once (2026-07-28)
+    #   and found to return ~100-105% of total_births - a data element total
+    #   across ALL its category option combos (the 4 sibling "Obstetric
+    #   complication: X" indicators already use specific COCs on this same
+    #   base id: RS3PtRniRns.<coc>) rather than the specific numerator the
+    #   workbook's label claims, so the published values were removed from
+    #   the aggregate. Needs the correct COC (or a real per-status data
+    #   element for HIV-on-ART) from the data team before re-publishing.
+    # All 6 stay in indicators.json (for visibility) but are absent here and
+    # from sample_sync.py's INDICATOR_GROUPS, so none of them are ever
+    # requested from DHIS2 or published, regardless of their "enabled" flag.
+    'neonatal_admissions': 'mnid_nb_core_admissions',
+    'neonatal_complications_at_birth': 'mnid_nb_core_complicationsatbirth',
+    'resuscitation_intervention_recorded': 'mnid_nb_core_resuscitation',
+    'low_birthweight_newborns': 'mnid_nb_core_lowbirthweight',
+    'birth_asphyxia_among_newborn_admissions': 'mnid_nb_core_asphyxia',
+    'neonatal_sepsis_among_newborn_admissions': 'mnid_nb_core_sepsis',
+    'clients_referred_to_another_facility': 'mnid_lab_core_referred',
+    'pnc_baby_checked_within_48hrs': 'mnid_nb_core_babycheck48h',
+    'pnc_mother_checked_within_48hrs': 'mnid_pnc_core_mocheck48h',
 }
 
 # (label, category, target) for each MNID id above -- category drives which
@@ -171,6 +204,21 @@ MNID_META = {
     'mnid_nb_core_hivartprophylaxis': ('HIV exposed babies on ART prophylaxis', 'Newborn', 90),
     'mnid_nb_core_bcg': ('Babies who received BCG', 'Newborn', 90),
     'mnid_nb_core_polio0': ('Babies who received Polio 0', 'Newborn', 90),
+
+    # 2026-07 workbook refresh (9 wired ids, see DHIS2_TO_MNID_ID above) --
+    # plain event/complication counts get target=0 (monitor, no fixed
+    # threshold), same convention as the obstetric-complication and signal-
+    # function counts above; the two 48-hour PNC checks get target=80,
+    # matching their 7-day/6-week siblings immediately above.
+    'mnid_nb_core_admissions': ('Neonatal Admissions', 'Newborn', 0),
+    'mnid_nb_core_complicationsatbirth': ('Neonatal Complications at Birth', 'Newborn', 0),
+    'mnid_nb_core_resuscitation': ('Resuscitation intervention recorded', 'Newborn', 0),
+    'mnid_nb_core_lowbirthweight': ('Low birthweight newborns', 'Newborn', 0),
+    'mnid_nb_core_asphyxia': ('Birth asphyxia among newborn admissions', 'Newborn', 0),
+    'mnid_nb_core_sepsis': ('Neonatal sepsis among newborn admissions', 'Newborn', 0),
+    'mnid_lab_core_referred': ('Clients referred to another facility', 'Labour', 0),
+    'mnid_nb_core_babycheck48h': ('PNC baby checked within 48hrs', 'Newborn', 80),
+    'mnid_pnc_core_mocheck48h': ('PNC Mother checked within 48hrs', 'PNC', 80),
 }
 
 # Every one of the 25 indicators above is value_type='count' in DHIS2's own
@@ -243,6 +291,21 @@ PCT_DENOMINATOR = {
     'hiv_exposed_babies_on_art_prophylaxis': 'hiv_positive_postnatal_mothers',
     'babies_who_received_bcg': 'live_births',
     'babies_who_received_polio_0': 'live_births',
+
+    # 2026-07 workbook refresh -- the two 48-hour PNC checks follow their
+    # 7-day/6-week siblings above (rate over live_births). The two "among
+    # newborn admissions" indicators name their own denominator in the
+    # indicator label itself, so pairing them with the new
+    # neonatal_admissions count (rather than live_births) is what the name
+    # actually means, not an assumption. The other 7 new ids (Neonatal
+    # Admissions, Labour Complications, Neonatal Complications at Birth,
+    # Resuscitation intervention recorded, Low birthweight newborns, HIV
+    # positive on ART in Labour, Clients referred) have no workbook-stated
+    # rate relationship, so they stay pure counts like total_births.
+    'pnc_baby_checked_within_48hrs': 'live_births',
+    'pnc_mother_checked_within_48hrs': 'live_births',
+    'birth_asphyxia_among_newborn_admissions': 'neonatal_admissions',
+    'neonatal_sepsis_among_newborn_admissions': 'neonatal_admissions',
 }
 
 DHIS2_ROUTE = 'dhis2'
