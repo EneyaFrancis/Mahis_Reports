@@ -20,8 +20,7 @@ fabricated values.
 from __future__ import annotations
 
 import pandas as pd
-import plotly.graph_objects as go
-from dash import html, dcc, callback, dash_table, Input, Output, State
+from dash import html, dcc, callback, dash_table, Input, Output, State, ctx, no_update
 from dash.exceptions import PreventUpdate
 import dash_mantine_components as dmc
 
@@ -61,13 +60,6 @@ SIGNAL_DETAIL_LABELS = {
     "na": f"{STATUS_ICONS['na']} Not expected at this level",
     "unavailable": f"{STATUS_ICONS['na']} Not reported via this data source",
 }
-SIGNAL_AGGREGATE_LABELS = {
-    "green": f"{STATUS_ICONS['green']} On track (≥80% of facilities)",
-    "amber": f"{STATUS_ICONS['amber']} Needs attention (50-79%)",
-    "red": f"{STATUS_ICONS['red']} Critical (<50%)",
-    "na": f"{STATUS_ICONS['na']} No eligible facilities",
-    "unavailable": f"{STATUS_ICONS['na']} Not reported via this data source",
-}
 RATE_LABELS = {
     "green": f"{STATUS_ICONS['green']} On track",
     "amber": f"{STATUS_ICONS['amber']} Needs attention",
@@ -77,10 +69,9 @@ AWAITING_LABEL = f"{STATUS_ICONS['awaiting']} Not yet reported"
 EMONC_LABELS = {
     "CEmONC": f"{STATUS_ICONS['green']} CEmONC",
     "BEmONC": f"{STATUS_ICONS['amber']} BEmONC",
-    "BEmONC-1": f"{STATUS_ICONS['amber']} BEmONC-1",
     "Unclassified": f"{STATUS_ICONS['red']} Unclassified",
 }
-EMONC_TONES = {"CEmONC": "green", "BEmONC": "amber", "BEmONC-1": "amber", "Unclassified": "red"}
+EMONC_TONES = {"CEmONC": "green", "BEmONC": "amber", "Unclassified": "red"}
 
 # ---------------------------------------------------------------------------
 # The 9 WHO EmONC signal functions, already tracked as ordinary MNID coverage
@@ -244,19 +235,6 @@ def _tone_pill(tone: str, text: str) -> html.Span:
     })
 
 
-def _status_column_style(column_id: str, label_map: dict[str, str]) -> list[dict]:
-    """Color a status-style column's text by tone, keyed on the exact display
-    strings a given context uses (e.g. SIGNAL_AGGREGATE_LABELS) - the closest
-    a DataTable cell can get to the rounded status pills used elsewhere."""
-    return [
-        {
-            "if": {"filter_query": f'{{{column_id}}} = "{text}"', "column_id": column_id},
-            "color": STATUS_COLORS[tone][0], "fontWeight": "700",
-        }
-        for tone, text in label_map.items()
-    ]
-
-
 def _tone_column_style(column_id: str, tones: list[str]) -> list[dict]:
     """Color one column's text per row by an explicit tone list (row order must
     match the table's rows) - for columns whose text varies per row rather than
@@ -269,20 +247,17 @@ def _tone_column_style(column_id: str, tones: list[str]) -> list[dict]:
 
 def _data_table(
     columns: list[str], rows: list[list],
-    status_column: str | None = None, status_label_map: dict[str, str] | None = None,
     tone_column: str | None = None, tones: list[str] | None = None,
     classification_column: str | None = None,
     tooltips: list[dict] | None = None,
+    filterable: bool = False,
 ) -> dash_table.DataTable:
     conditional_style = [{"if": {"row_index": "odd"}, "backgroundColor": "#FAFCFE"}]
-    if status_column and status_label_map:
-        conditional_style += _status_column_style(status_column, status_label_map)
     if tone_column and tones:
         conditional_style += _tone_column_style(tone_column, tones)
     if classification_column:
-        # Unlike other status columns, 4 EmONC tiers share only 3 tones
-        # (BEmONC and BEmONC-1 are both "amber") - a plain {tone: text} map
-        # can't express that, so build the filter rules directly per tier.
+        # Built per EmONC tier (not a plain {tone: text} map) so it keeps
+        # working unchanged if a future tier ever shares a tone with another.
         conditional_style += [
             {
                 "if": {"filter_query": f'{{{classification_column}}} = "{label}"', "column_id": classification_column},
@@ -295,7 +270,7 @@ def _data_table(
         columns=[{"name": c, "id": c} for c in columns],
         page_size=15,
         sort_action="native",
-        filter_action="native",
+        filter_action="native" if filterable else "none",
         tooltip_data=tooltips or [],
         tooltip_delay=250,
         tooltip_duration=None,
@@ -313,6 +288,11 @@ def _data_table(
             "maxWidth": "320px", "whiteSpace": "normal",
         },
         style_data_conditional=conditional_style,
+        # dash_table's built-in filter-row inputs default to a pale pink
+        # background (its way of marking them editable) that reads as
+        # broken/unstyled next to the rest of this file's clean palette.
+        css=[{"selector": ".dash-filter input", "rule":
+              f"background-color: {SURFACE} !important; border: 1px solid {BORDER} !important; color: {TEXT} !important;"}],
     )
 
 
@@ -385,6 +365,44 @@ def _facility_label(code: str) -> str:
 
 def _facility_district(code: str) -> str:
     return FACILITY_DISTRICT.get(code, "")
+
+
+_FACILITY_TYPE_BY_CODE: dict[str, str] | None = None
+
+
+def _facility_type_by_code() -> dict[str, str]:
+    """Load data/geo/facilities_levels.json once into {Facility_CODE: TYPE}
+    (Central Hospital / District Hospital / Health Centre) - the same
+    reference file mnid.core.data_utils.resolve_facility_level() reads,
+    just keyed to the clinically-recognizable referral-level label instead
+    of the Primary/Secondary/Tertiary tier derived from it."""
+    global _FACILITY_TYPE_BY_CODE
+    if _FACILITY_TYPE_BY_CODE is not None:
+        return _FACILITY_TYPE_BY_CODE
+    import json
+    import os
+    path = os.path.join(os.getcwd(), "data", "geo", "facilities_levels.json")
+    try:
+        with open(path, encoding="utf-8") as f:
+            records = json.load(f)
+        _FACILITY_TYPE_BY_CODE = {
+            str(r.get("CODE")): r.get("TYPE") for r in records if r.get("CODE") and r.get("TYPE")
+        }
+    except Exception:
+        _FACILITY_TYPE_BY_CODE = {}
+    return _FACILITY_TYPE_BY_CODE
+
+
+def _median_iqr(values: list[float], pct: bool = False) -> str | None:
+    """'median [Q1-Q3]' formatted the same way as the source workbook -
+    None (not 0) when the group has no facilities so the table shows
+    "awaiting" rather than a fabricated zero."""
+    if not values:
+        return None
+    s = pd.Series(values, dtype="float64")
+    median, q1, q3 = s.median(), s.quantile(0.25), s.quantile(0.75)
+    unit = "%" if pct else ""
+    return f"{median:.0f}{unit} [{q1:.0f}-{q3:.0f}{unit}]"
 
 
 def _resolve_aggregate_indicator_id(agg_df: pd.DataFrame | None, indicator_id: str,
@@ -510,10 +528,11 @@ def _classify_emonc(numerators_by_sig: dict, code: str, level: str,
     "na" (not expected/equipped) for a comprehensive function still can't
     qualify as CEmONC - na is never treated as performed.
 
-    Gap analysis: a facility missing exactly one basic function is reported
-    as "BEmONC-1" with the missing function named, rather than a flat
-    "Unclassified" - the same convention EmONC assessment toolkits use to
-    flag near-misses worth a training/equipment follow-up.
+    Gap analysis: a facility missing exactly one basic function still reports
+    as "BEmONC" (not "Unclassified") but with the missing function named in
+    the second return value, so a single-gap near-miss stays visible without
+    splitting the tier list into a fourth "BEmONC-1" bucket the user found
+    more confusing than useful once they saw it in the live table.
 
     Functions this route can't report at all (unavailable_ids - e.g. neonatal
     resuscitation under the DHIS2 route, which has no mapping at all) are
@@ -542,83 +561,112 @@ def _classify_emonc(numerators_by_sig: dict, code: str, level: str,
     if not missing_basic:
         return "BEmONC", "", note
     if len(missing_basic) == 1:
-        return "BEmONC-1", missing_basic[0], note
+        return "BEmONC", missing_basic[0], note
     return "Unclassified", ", ".join(missing_basic), note
 
 
-_TONE_HEX = {"green": GREEN, "amber": AMBER, "red": RED, "na": MUTED, "awaiting": MUTED, "unavailable": MUTED}
+def _matrix_tone(pct: float | None) -> str:
+    if pct is None:
+        return "awaiting"
+    return "green" if pct >= 80 else "amber" if pct >= 50 else "red"
 
 
-def _bare_chart_layout(fig: go.Figure, height: int) -> go.Figure:
-    """Shared minimal chrome so charts read as part of the card, not a widget
-    bolted on - no toolbar, no axis clutter, transparent so the card's own
-    background shows through in both light and dark theme."""
-    fig.update_layout(
-        height=height, margin=dict(l=8, r=8, t=8, b=8),
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="inherit", color=TEXT, size=12),
-        showlegend=False,
-    )
-    return fig
+def _matrix_cell(pct: float | None, detail: str | None = None) -> html.Td:
+    """One traffic-light cell: a solid tone fill with white text, matching
+    the Facility Performance matrix on the Maternal dashboard
+    (mnid/charts/heatmap.py::_build_facility_performance_heatmap_fig) - a
+    solid, saturated fill scans faster across many rows than the pale-wash
+    pills used elsewhere in this file for single-value status text.
+    `detail` (e.g. "12 of 16 facilities performing") becomes the native
+    hover tooltip via the HTML title attribute - no extra JS/callback
+    needed for a hover to show the calculation behind the percentage."""
+    tone = _matrix_tone(pct)
+    common = {"textAlign": "center", "padding": "9px 10px", "fontSize": "12px"}
+    if pct is None:
+        return html.Td(STATUS_ICONS["awaiting"], title=detail, style={
+            **common, "color": MUTED, "background": BACKGROUND, "borderBottom": f"1px solid {BORDER}",
+        })
+    color, _ = STATUS_COLORS[tone]
+    return html.Td(f"{pct:.0f}%", title=detail, style={
+        **common, "fontWeight": "700",
+        "color": "#FFFFFF", "background": color, "borderBottom": f"1px solid {SURFACE}",
+    })
 
 
-def _emonc_breakdown_chart(classifications: dict[str, str]) -> dcc.Graph:
-    """Donut of CEmONC/BEmONC/BEmONC-1/Unclassified counts across the facilities
-    in scope - a part-to-whole glance, not a data table: no label rides the
-    slices (a number on every wedge is exactly the clutter that made the
-    first version illegible), identity and counts live in the legend, and the
-    exact count/percent surface on hover. The legend sits in its own row
-    below the donut so short and long labels ("CEmONC" vs "Unclassified")
-    wrap onto their own lines instead of colliding mid-word."""
-    order = ["CEmONC", "BEmONC", "BEmONC-1", "Unclassified"]
-    counts = {key: sum(1 for v in classifications.values() if v == key) for key in order}
-    present = [key for key in order if counts[key] > 0]
-    total = len(classifications)
-    fig = go.Figure(data=[go.Pie(
-        labels=[EMONC_LABELS[key].split(" ", 1)[1] for key in present],
-        values=[counts[key] for key in present],
-        hole=0.66, sort=False, direction="clockwise",
-        marker=dict(colors=[_TONE_HEX[EMONC_TONES[key]] for key in present], line=dict(color=SURFACE, width=2)),
-        textinfo="none",
-        hovertemplate="%{label}: %{value} facilities (%{percent})<extra></extra>",
-    )])
-    fig.update_layout(annotations=[dict(
-        text=f"<b>{total}</b><br><span style='font-size:10px'>facilit{'y' if total == 1 else 'ies'}</span>",
-        x=0.5, y=0.5, showarrow=False, font=dict(size=18, color=TEXT),
-    )])
-    _bare_chart_layout(fig, height=190)
-    fig.update_layout(
-        showlegend=True,
-        legend=dict(
-            orientation="h", x=0.5, xanchor="center", y=-0.05, yanchor="top",
-            font=dict(size=11), itemwidth=30,
-            traceorder="normal", tracegroupgap=4,
-        ),
-        margin=dict(l=8, r=8, t=8, b=64),
-    )
-    return dcc.Graph(figure=fig, config={"displayModeBar": False}, style={"height": "280px"})
+def _plain_cell(value: str | None, detail: str | None = None) -> html.Td:
+    """A plain, uncolored cell for figures with no target to traffic-light
+    against - facility counts and median [IQR] service-volume statistics.
+    Coloring "928 [546-2260] deliveries" green/amber/red would imply a
+    performance judgment the number doesn't carry."""
+    common = {"textAlign": "center", "padding": "9px 10px", "fontSize": "12px"}
+    if value in (None, ""):
+        return html.Td(STATUS_ICONS["awaiting"], title=detail, style={
+            **common, "color": MUTED, "borderBottom": f"1px solid {BORDER}",
+        })
+    return html.Td(value, title=detail, style={
+        **common, "fontWeight": "600",
+        "color": TEXT, "borderBottom": f"1px solid {BORDER}", "fontVariantNumeric": "tabular-nums",
+    })
 
 
-def _signal_function_bar_chart(chart_rows: list[dict]) -> dcc.Graph:
-    """Horizontal 100%-style bar of % eligible facilities performing each
-    signal function, colored to the same green/amber/red thresholds as the
-    table, with the 50%/80% cut lines drawn in so the bars are legible without
-    cross-referencing the legend text."""
-    labels = [r["label"] for r in chart_rows]
-    pcts = [r["pct"] for r in chart_rows]
-    colors = [_TONE_HEX[r["status"]] for r in chart_rows]
-    text = [f"{r['pct']:.0f}%" if r["status"] not in ("na", "unavailable") else "N/A" for r in chart_rows]
-    fig = go.Figure(data=[go.Bar(
-        x=pcts, y=labels, orientation="h", marker=dict(color=colors),
-        text=text, textposition="outside", cliponaxis=False,
-    )])
-    fig.add_vline(x=80, line=dict(dash="dot", color=GREEN, width=1), opacity=0.5)
-    fig.add_vline(x=50, line=dict(dash="dot", color=AMBER, width=1), opacity=0.5)
-    fig.update_xaxes(range=[0, 112], title=dict(text="% of eligible facilities performing", font=dict(size=10)),
-                      tickfont=dict(size=10))
-    fig.update_yaxes(autorange="reversed", tickfont=dict(size=11))
-    _bare_chart_layout(fig, height=max(220, 34 * len(chart_rows)))
-    return dcc.Graph(figure=fig, config={"displayModeBar": False})
+_DEFAULT_MATRIX_COLUMNS = [("CEmONC", "cemonc"), ("BEmONC", "bemonc")]
+
+
+def _matrix_table(rows: list[dict], columns: list[tuple[str, str]] | None = None,
+                   cell_fn=None, label_column: str = "Item") -> html.Div:
+    """An (label_column | col1 | col2 | ...) matrix - the standard shape for
+    every Operational Readiness comparison table. `columns` is a list of
+    (header label, row key) pairs - defaults to the CEmONC/BEmONC 2-column
+    shape used everywhere else; pass a 3-tuple list (e.g. CEmONC/BEmONC/Total)
+    where a reconciling total matters. `rows` is
+    [{"label", "category" (optional), <row key>: ..., <row key>_detail (optional
+    hover text): ..., ...}, ...]; a category divider row renders whenever
+    `category` changes from the row before it, mirroring the section headers
+    already used in the source workbook (Antenatal diagnostics, Delivery
+    care, Postpartum haemorrhage...). `cell_fn` defaults to the traffic-light
+    percentage cell; pass `_plain_cell` for counts/median-IQR rows that have
+    no target to color against. Value columns each get a fixed 20% share (so
+    they read as evenly spread regardless of how wide the parent card is);
+    `label_column` takes whatever's left - name it for what the rows actually
+    are (Signal Function, Cadre, Commodity, Facility Type...), never the bare
+    generic "Item".
+    """
+    columns = columns or _DEFAULT_MATRIX_COLUMNS
+    cell_fn = cell_fn or _matrix_cell
+    span = 1 + len(columns)
+    value_col_width = "20%"
+    item_col_width = f"{max(100 - 20 * len(columns), 30)}%"
+    header = html.Tr([
+        html.Th(label_column, style={
+            "textAlign": "left", "padding": "9px 10px", "fontSize": "10px", "fontWeight": "700",
+            "color": MUTED, "textTransform": "uppercase", "letterSpacing": ".05em", "width": item_col_width,
+            "background": BACKGROUND, "borderBottom": f"1px solid {BORDER}", "position": "sticky", "top": 0,
+        }),
+        *[html.Th(label, style={
+            "textAlign": "center", "padding": "9px 10px", "fontSize": "10px", "fontWeight": "700",
+            "color": MUTED, "textTransform": "uppercase", "letterSpacing": ".05em", "width": value_col_width,
+            "background": BACKGROUND, "borderBottom": f"1px solid {BORDER}", "position": "sticky", "top": 0,
+        }) for label, _ in columns],
+    ])
+    body = []
+    last_category = object()
+    for row in rows:
+        category = row.get("category")
+        if category is not None and category != last_category:
+            body.append(html.Tr([html.Td(category, colSpan=span, style={
+                "padding": "7px 10px", "fontSize": "10.5px", "fontWeight": "700", "color": TEXT,
+                "background": BACKGROUND, "borderBottom": f"1px solid {BORDER}", "borderTop": f"1px solid {BORDER}",
+            })]))
+        last_category = category
+        body.append(html.Tr([
+            html.Td(row["label"], style={
+                "padding": "9px 10px", "fontSize": "12px", "color": TEXT, "borderBottom": f"1px solid {BORDER}",
+            }),
+            *[cell_fn(row.get(key), row.get(f"{key}_detail")) for _, key in columns],
+        ]))
+    return html.Div(html.Table([html.Thead(header), html.Tbody(body)], style={
+        "width": "100%", "borderCollapse": "collapse", "background": SURFACE, "tableLayout": "fixed",
+    }), style={"overflowX": "auto"})
 
 
 def _signal_functions_detail(code: str, numerators_by_sig: dict, df: pd.DataFrame,
@@ -665,58 +713,56 @@ def _signal_functions_detail(code: str, numerators_by_sig: dict, df: pd.DataFram
 
 def _signal_functions_comparison(facility_codes: list[str], numerators_by_sig: dict,
                                   unavailable_ids: frozenset[str] = frozenset()) -> html.Div:
-    rows = []
-    tooltips = []
-    chart_rows = []
+    """Two service-area matrices (Maternal / Newborn), each showing what
+    fraction of the CEmONC-classified and BEmONC-classified facilities in
+    scope actually perform each signal function - the same "EmONC type"
+    cross-tab convention as the source workbook, without the per-facility
+    detail a national summary doesn't need.
+    """
+    classifications = {
+        code: _classify_emonc(numerators_by_sig, code, resolve_facility_level(code, _facility_label(code)), unavailable_ids)[0]
+        for code in facility_codes
+    }
+    cemonc_group = [c for c in facility_codes if classifications[c] == "CEmONC"]
+    bemonc_group = [c for c in facility_codes if classifications[c] == "BEmONC"]
+
+    def _group_pct(sf: dict, group: list[str], group_label: str) -> tuple[float | None, str | None]:
+        if sf["id"] in unavailable_ids or not group:
+            return None, None
+        performing = sum(1 for code in group if numerators_by_sig[sf["id"]].get(code, 0) > 0)
+        pct = round(performing / len(group) * 100, 1)
+        return pct, f"{performing} of {len(group)} {group_label}-classified facilities performing"
+
+    maternal_rows = []
     for sf in SIGNAL_FUNCTIONS:
-        if sf["id"] in unavailable_ids:
-            rows.append([sf["label"], "N/A", "N/A", "N/A", SIGNAL_AGGREGATE_LABELS["unavailable"]])
-            tooltips.append({})
-            chart_rows.append({"label": sf["label"], "pct": 0.0, "status": "unavailable"})
-            continue
-        eligible = [
-            code for code in facility_codes
-            if not (sf["comprehensive_only"] and resolve_facility_level(code, _facility_label(code)) == "Primary")
-        ]
-        performing = [code for code in eligible if numerators_by_sig[sf["id"]].get(code, 0) > 0]
-        n_eligible = len(eligible)
-        n_performing = len(performing)
-        pct = round(n_performing / n_eligible * 100, 1) if n_eligible else 0.0
-        status = "na" if n_eligible == 0 else ("green" if pct >= 80 else "amber" if pct >= 50 else "red")
-        rows.append([
-            sf["label"], n_eligible,
-            f"{pct:.0f}%" if n_eligible else "N/A",
-            f"{100 - pct:.0f}%" if n_eligible else "N/A",
-            SIGNAL_AGGREGATE_LABELS[status],
-        ])
-        tooltips.append({
-            "Performing (%)": {
-                "value": f"{n_performing} out of {n_eligible} eligible facilities",
-                "type": "text",
-            },
-            "Not performing (%)": {
-                "value": f"{n_eligible - n_performing} out of {n_eligible} eligible facilities",
-                "type": "text",
-            },
+        cemonc_pct, cemonc_detail = _group_pct(sf, cemonc_group, "CEmONC")
+        bemonc_pct, bemonc_detail = _group_pct(sf, bemonc_group, "BEmONC")
+        maternal_rows.append({
+            "label": sf["label"],
+            "cemonc": cemonc_pct, "cemonc_detail": cemonc_detail,
+            "bemonc": bemonc_pct, "bemonc_detail": bemonc_detail,
         })
-        chart_rows.append({"label": sf["label"], "pct": pct, "status": status})
-    footer_children = [
-        f"{SIGNAL_AGGREGATE_LABELS['green']} means at least 80% of eligible facilities perform the function; "
-        f"{SIGNAL_AGGREGATE_LABELS['amber']} means 50-79%; {SIGNAL_AGGREGATE_LABELS['red']} means under 50%. "
-        "Only facilities expected to perform the function (by facility level) count toward eligibility.",
+    newborn_rows = [{"label": label, "cemonc": None, "bemonc": None} for label in NEWBORN_SIGNAL_FUNCTIONS]
+
+    note_children = [
+        f"Share of {len(cemonc_group)} CEmONC- and {len(bemonc_group)} BEmONC-classified facilities in scope "
+        "performing each function in the reporting period.",
     ]
     if unavailable_ids:
         excluded_labels = [sf["label"] for sf in SIGNAL_FUNCTIONS if sf["id"] in unavailable_ids]
-        footer_children.append(html.Br())
-        footer_children.append(f"{', '.join(excluded_labels)}: not reported via this data source - excluded from EmONC classification rather than counted as not performed.")
-    return _card([
-        _section_title(f"Signal-Function Performance · {len(facility_codes)} facilities in scope"),
-        _signal_function_bar_chart(chart_rows),
-        _data_table(
-            ["Signal function", "Eligible facilities", "Performing (%)", "Not performing (%)", "Status"],
-            rows, status_column="Status", status_label_map=SIGNAL_AGGREGATE_LABELS, tooltips=tooltips,
-        ),
-        html.Div(footer_children, style={"fontSize": "10px", "color": MUTED, "marginTop": "8px"}),
+        note_children.append(html.Br())
+        note_children.append(f"{', '.join(excluded_labels)}: not reported via this data source.")
+
+    return html.Div([
+        _card([
+            _section_title("Maternal Signal Functions"),
+            _matrix_table(maternal_rows, label_column="Signal Function"),
+            html.Div(note_children, style={"fontSize": "10px", "color": MUTED, "marginTop": "8px"}),
+        ]),
+        _card([
+            _section_title("Newborn Signal Functions"),
+            _matrix_table(newborn_rows, label_column="Signal Function"),
+        ]),
     ])
 
 
@@ -735,6 +781,141 @@ def _build_signal_functions_tab(facility_codes: list[str], df: pd.DataFrame,
 # Overview
 # ---------------------------------------------------------------------------
 
+_FACILITY_TYPE_ORDER = ["Central Hospital", "District Hospital", "Health Centre"]
+
+
+_PROFILE_STATS_COLUMNS = [
+    ("CEmONC Facilities", "cemonc"), ("BEmONC Facilities", "bemonc"), ("All Facilities", "total"),
+]
+
+
+def _facility_profile_rows(all_codes: list[str], cemonc_group: list[str], bemonc_group: list[str]) -> list[dict]:
+    """Central/District Hospital vs Health Centre facility counts, Total and
+    per EmONC group - re-expresses the same referral-level tier that already
+    drives Primary/Secondary/Tertiary EmONC eligibility, under the
+    clinically-recognizable label the source workbook uses, rather than new
+    data. Total is every facility in scope, not just cemonc_group +
+    bemonc_group - CEmONC/BEmONC only cover facilities that qualify for one
+    of those tiers, so Total is what still accounts for Unclassified
+    facilities without breaking them out on their own."""
+    type_by_code = _facility_type_by_code()
+
+    def _count_and_detail(group: list[str], kind: str, group_label: str) -> tuple[str, str | None]:
+        n = sum(1 for c in group if type_by_code.get(c) == kind)
+        detail = f"{n} of {len(group)} {group_label} facilities" if group else None
+        return str(n), detail
+
+    rows = []
+    for kind in _FACILITY_TYPE_ORDER:
+        total_n, total_detail = _count_and_detail(all_codes, kind, "total")
+        cemonc_n, cemonc_detail = _count_and_detail(cemonc_group, kind, "CEmONC")
+        bemonc_n, bemonc_detail = _count_and_detail(bemonc_group, kind, "BEmONC")
+        rows.append({
+            "label": kind,
+            "total": total_n, "total_detail": total_detail,
+            "cemonc": cemonc_n, "cemonc_detail": cemonc_detail,
+            "bemonc": bemonc_n, "bemonc_detail": bemonc_detail,
+        })
+    return rows
+
+
+def _service_stats_rows(all_codes: list[str], cemonc_group: list[str], bemonc_group: list[str],
+                         births_by_facility: dict, caesareans_by_facility: dict,
+                         admissions_by_facility: dict, admissions_available: bool) -> list[dict]:
+    """Deliveries / caesareans / caesarean rate / neonatal admissions as
+    median [IQR] across facilities - Total (every facility in scope) plus
+    each EmONC group - for the current reporting period. The source
+    workbook's "Service-specific statistics" section, showing spread across
+    facilities rather than a single national sum (which the summary cards
+    above already give)."""
+    def _vals(mapping: dict, group: list[str]) -> list[float]:
+        return [mapping.get(c, 0) for c in group]
+
+    def _rates(group: list[str]) -> list[float]:
+        return [
+            caesareans_by_facility.get(c, 0) / births_by_facility[c] * 100
+            for c in group if births_by_facility.get(c)
+        ]
+
+    def _detail(group: list[str], group_label: str) -> str:
+        return f"Median across {len(group)} {group_label} facilities"
+
+    def _group_row(label: str, mapping: dict | None = None, rate: bool = False, available: bool = True) -> dict:
+        if not available:
+            return {"label": label, "total": None, "cemonc": None, "bemonc": None}
+        values_fn = _rates if rate else (lambda group: _vals(mapping, group))
+        kwargs = {"pct": True} if rate else {}
+        return {
+            "label": label,
+            "total": _median_iqr(values_fn(all_codes), **kwargs), "total_detail": _detail(all_codes, "total"),
+            "cemonc": _median_iqr(values_fn(cemonc_group), **kwargs), "cemonc_detail": _detail(cemonc_group, "CEmONC"),
+            "bemonc": _median_iqr(values_fn(bemonc_group), **kwargs), "bemonc_detail": _detail(bemonc_group, "BEmONC"),
+        }
+
+    return [
+        _group_row("Deliveries in period", births_by_facility),
+        _group_row("Caesarean deliveries in period", caesareans_by_facility),
+        _group_row("Caesarean delivery rate", rate=True),
+        _group_row("Neonatal unit admissions in period", admissions_by_facility, available=admissions_available),
+    ]
+
+
+_CLASSIFICATION_FILTER_OPTIONS = [{"label": "All classifications", "value": "All"}] + [
+    {"label": EMONC_LABELS[key], "value": key} for key in ("CEmONC", "BEmONC", "Unclassified")
+]
+
+
+def _facility_comparison_records(facility_codes: list[str], classifications: dict,
+                                  births_by_facility: dict, caesareans_by_facility: dict,
+                                  admissions_by_facility: dict, admissions_available: bool) -> list[dict]:
+    """One plain-dict record per facility, stashed in a dcc.Store so the
+    classification dropdown filter can re-slice and re-render just this
+    table client round-trip, without recomputing the whole Overview tab.
+    District is deliberately not a column here - the facility name is
+    already unique, and the district filter/scope band above already says
+    what's in scope, so repeating it on every row added nothing."""
+    return [
+        {
+            "facility": _facility_label(code),
+            "level": resolve_facility_level(code, _facility_label(code)),
+            "classification": classifications[code],
+            "deliveries": births_by_facility.get(code, 0),
+            "caesareans": caesareans_by_facility.get(code, 0),
+            "admissions": admissions_by_facility.get(code, 0) if admissions_available else None,
+        }
+        for code in facility_codes
+    ]
+
+
+def _facility_comparison_table(records: list[dict]) -> dash_table.DataTable:
+    """Facility Readiness Comparison rows plus a bold Total row summing
+    whatever's currently shown, so a classification-filtered view still
+    answers "how much, in total" without switching to a different table."""
+    rows = [
+        [
+            r["facility"], r["level"], EMONC_LABELS[r["classification"]],
+            r["deliveries"], r["caesareans"],
+            r["admissions"] if r["admissions"] is not None else AWAITING_LABEL,
+        ]
+        for r in records
+    ]
+    if records:
+        any_admissions = any(r["admissions"] is not None for r in records)
+        rows.append([
+            f"Total · {len(records)} facilities", "", "",
+            sum(r["deliveries"] for r in records),
+            sum(r["caesareans"] for r in records),
+            sum(r["admissions"] for r in records if r["admissions"] is not None) if any_admissions else AWAITING_LABEL,
+        ])
+    return _data_table(
+        ["Facility", "Facility level", "EmONC classification",
+         "Total deliveries", "Caesarean deliveries", "Neonatal unit admissions"],
+        rows,
+        classification_column="EmONC classification",
+        filterable=False,
+    )
+
+
 def _build_overview_tab(facility_codes: list[str], df: pd.DataFrame,
                          agg_df: pd.DataFrame | None, start_date, end_date) -> html.Div:
     numerators_by_sig = _signal_function_rows(facility_codes, df, agg_df, start_date, end_date)
@@ -746,8 +927,7 @@ def _build_overview_tab(facility_codes: list[str], df: pd.DataFrame,
     classifications = {code: result[0] for code, result in classification_results.items()}
     missing_by_facility = {code: result[1] for code, result in classification_results.items()}
     classification_note = next((result[2] for result in classification_results.values() if result[2]), "")
-    districts = {_facility_district(c) for c in facility_codes if _facility_district(c)}
-    bemonc = sum(1 for v in classifications.values() if v in ("BEmONC", "BEmONC-1"))
+    bemonc = sum(1 for v in classifications.values() if v == "BEmONC")
     cemonc = sum(1 for v in classifications.values() if v == "CEmONC")
 
     births_by_facility = _numerators_by_facility("mnid_lab_core_totalbirths", {}, df, agg_df, start_date, end_date)
@@ -773,8 +953,6 @@ def _build_overview_tab(facility_codes: list[str], df: pd.DataFrame,
     admissions = sum(admissions_by_facility.values())
 
     summary_cards = [
-        _summary_card("Facilities selected", str(len(facility_codes)), "In current scope", GREEN),
-        _summary_card("Districts represented", str(len(districts)), "Districts covered by selection", "#0284C7"),
         _summary_card("BEmONC facilities", str(bemonc), "Basic EmONC classification", AMBER),
         _summary_card("CEmONC facilities", str(cemonc), "Comprehensive EmONC classification", "#7C3AED"),
         _summary_card("Total deliveries", f"{total_births:,}", "Reported in selected period", GREEN),
@@ -813,76 +991,75 @@ def _build_overview_tab(facility_codes: list[str], df: pd.DataFrame,
         detail = _card(detail_children)
         return html.Div([summary, detail])
 
-    rows = [
-        [
-            _facility_district(code), _facility_label(code),
-            resolve_facility_level(code, _facility_label(code)), EMONC_LABELS[classifications[code]],
-            births_by_facility.get(code, 0),
-            caesareans_by_facility.get(code, 0),
-            admissions_by_facility.get(code, 0) if admissions_available else AWAITING_LABEL,
-        ]
-        for code in facility_codes
+    cemonc_group = [c for c in facility_codes if classifications[c] == "CEmONC"]
+    bemonc_group = [c for c in facility_codes if classifications[c] == "BEmONC"]
+
+    profile = html.Div([
+        _section_title("Facility Profile"),
+        _card([_matrix_table(
+            _facility_profile_rows(facility_codes, cemonc_group, bemonc_group),
+            columns=_PROFILE_STATS_COLUMNS, cell_fn=_plain_cell, label_column="Facility Type",
+        )]),
+    ])
+    stats = html.Div([
+        _section_title("Service Statistics · Median [IQR] Across Facilities"),
+        _card([_matrix_table(
+            _service_stats_rows(facility_codes, cemonc_group, bemonc_group, births_by_facility,
+                                 caesareans_by_facility, admissions_by_facility, admissions_available),
+            columns=_PROFILE_STATS_COLUMNS, cell_fn=_plain_cell, label_column="Indicator",
+        )]),
+    ])
+
+    records = _facility_comparison_records(
+        facility_codes, classifications, births_by_facility,
+        caesareans_by_facility, admissions_by_facility, admissions_available,
+    )
+    table_children = [
+        html.Div(
+            dcc.Dropdown(
+                id="oprd-classification-filter",
+                options=_CLASSIFICATION_FILTER_OPTIONS, value="All", clearable=False,
+                style={"width": "220px", "fontSize": "12px"},
+            ),
+            style={"display": "flex", "justifyContent": "flex-end", "marginBottom": "12px"},
+        ),
+        dcc.Store(id="oprd-facility-rows-store", data=records),
+        html.Div(id="oprd-facility-table-container", children=_facility_comparison_table(records)),
     ]
-    breakdown_children = [_emonc_breakdown_chart(classifications)]
     if classification_note:
-        breakdown_children.append(html.Div(classification_note, style={"fontSize": "10px", "color": MUTED, "marginTop": "8px"}))
-    breakdown = html.Div([
-        _section_title("EmONC Classification Breakdown"),
-        _card(breakdown_children),
-    ], style={"flex": "0 0 340px"})
+        table_children.append(html.Div(classification_note, style={"fontSize": "10px", "color": MUTED, "marginTop": "8px"}))
     table = html.Div([
         _section_title("Facility Readiness Comparison"),
-        _card([
-        _data_table(
-            ["District", "Facility", "Facility level", "EmONC classification",
-             "Total deliveries", "Caesarean deliveries", "Neonatal unit admissions"],
-            rows,
-            classification_column="EmONC classification",
-        ),
-        ]),
-    ], style={"flex": "1", "minWidth": "0"})
-    comparison = html.Div([breakdown, table], style={
-        "display": "flex", "gap": "16px", "flexWrap": "wrap", "alignItems": "flex-start",
-    })
-    return html.Div([summary, comparison])
+        _card(table_children),
+    ])
+    return html.Div([summary, profile, stats, table])
 
 
 # ---------------------------------------------------------------------------
 # People / Products & Commodities / Systems & Infrastructure -- awaiting data
 # ---------------------------------------------------------------------------
 
-def _awaiting_detail_table(items: list[str]) -> dash_table.DataTable:
+def _awaiting_detail_table(items: list[str], label_column: str = "Indicator") -> dash_table.DataTable:
     rows = [[label, AWAITING_LABEL] for label in items]
     tones = ["awaiting"] * len(items)
-    return _data_table(["Indicator", "Result"], rows, tone_column="Result", tones=tones)
+    return _data_table([label_column, "Result"], rows, tone_column="Result", tones=tones)
 
 
-def _awaiting_comparison_table(items: list[str], facility_codes: list[str]) -> dash_table.DataTable:
-    facility_count = len(facility_codes)
-    rows = [[label, facility_count, AWAITING_LABEL] for label in items]
-    tones = ["awaiting"] * len(items)
-    tooltips = [{"Available/reported": {
-        "value": f"0 out of {facility_count} facilities", "type": "text",
-    }} for _ in items]
-    return _data_table(["Indicator", "Facilities assessed, n", "Available/reported"], rows,
-                        tone_column="Available/reported", tones=tones, tooltips=tooltips)
-
-
-def _awaiting_domain_detail_table(domain_items: list[tuple[str, str]]) -> dash_table.DataTable:
+def _awaiting_domain_detail_table(domain_items: list[tuple[str, str]], label_column: str = "Indicator") -> dash_table.DataTable:
     rows = [[d, i, AWAITING_LABEL] for d, i in domain_items]
     tones = ["awaiting"] * len(domain_items)
-    return _data_table(["Domain", "Item", "Result"], rows, tone_column="Result", tones=tones)
+    return _data_table(["Domain", label_column, "Result"], rows, tone_column="Result", tones=tones)
 
 
-def _awaiting_domain_comparison_table(domain_items: list[tuple[str, str]], facility_codes: list[str]) -> dash_table.DataTable:
-    facility_count = len(facility_codes)
-    rows = [[d, i, facility_count, AWAITING_LABEL] for d, i in domain_items]
-    tones = ["awaiting"] * len(domain_items)
-    tooltips = [{"Available": {
-        "value": f"0 out of {facility_count} facilities", "type": "text",
-    }} for _ in domain_items]
-    return _data_table(["Domain", "Item", "Facilities assessed, n", "Available"], rows,
-                        tone_column="Available", tones=tones, tooltips=tooltips)
+def _awaiting_matrix_rows(items: list) -> list[dict]:
+    """Convert a flat item list or a list of (category, item) tuples into
+    CEmONC/BEmONC matrix rows with no real per-item data yet - every cell
+    renders as "awaiting" until People/Products/Systems get a real data
+    source, at which point only this function's output changes, not the
+    table it feeds."""
+    if items and isinstance(items[0], tuple):
+        return [{"label": label, "category": category, "cemonc": None, "bemonc": None} for category, label in items]
+    return [{"label": label, "cemonc": None, "bemonc": None} for label in items]
 
 
 def _real_indicator_rows(indicators: list[dict], df: pd.DataFrame,
@@ -920,12 +1097,12 @@ def _people_tab(facility_codes: list[str], wf_inds: list[dict] | None, df: pd.Da
     body = _scope_view(
         facility_codes,
         detail_fn=lambda code: html.Div([
-            _card([_section_title(f"Neonatal Care Unit Staffing · {_facility_label(code)}"), _awaiting_detail_table(CADRES_NEONATAL)]),
-            _card([_section_title(f"Maternity Staffing · {_facility_label(code)}"), _awaiting_detail_table(CADRES_MATERNITY)]),
+            _card([_section_title(f"Neonatal Care Unit Staffing · {_facility_label(code)}"), _awaiting_detail_table(CADRES_NEONATAL, label_column="Cadre")]),
+            _card([_section_title(f"Maternity Staffing · {_facility_label(code)}"), _awaiting_detail_table(CADRES_MATERNITY, label_column="Cadre")]),
         ]),
         comparison_fn=lambda codes: html.Div([
-            _card([_section_title("Neonatal Care Unit Staffing · Comparison"), _awaiting_comparison_table(CADRES_NEONATAL, codes)]),
-            _card([_section_title("Maternity Staffing · Comparison"), _awaiting_comparison_table(CADRES_MATERNITY, codes)]),
+            _card([_section_title("Neonatal Care Unit Staffing"), _matrix_table(_awaiting_matrix_rows(CADRES_NEONATAL), label_column="Cadre")]),
+            _card([_section_title("Maternity Staffing"), _matrix_table(_awaiting_matrix_rows(CADRES_MATERNITY), label_column="Cadre")]),
         ]),
     )
     return html.Div([real_card, body])
@@ -941,14 +1118,14 @@ def _products_tab(facility_codes: list[str], supply_inds: list[dict] | None, df:
     body = _scope_view(
         facility_codes,
         detail_fn=lambda code: html.Div([
-            _card([_section_title(f"Maternity Equipment · {_facility_label(code)}"), _awaiting_domain_detail_table(EQUIPMENT_MATERNITY)]),
-            _card([_section_title(f"Maternity Essential Medicines · {_facility_label(code)}"), _awaiting_domain_detail_table(TRACER_MEDICINES_MATERNITY)]),
-            _card([_section_title(f"Newborn Equipment · {_facility_label(code)}"), _awaiting_domain_detail_table(EQUIPMENT_NEWBORN)]),
-            _card([_section_title(f"Newborn Tracer Medicines · {_facility_label(code)}"), _awaiting_domain_detail_table(TRACER_MEDICINES_NEWBORN)]),
+            _card([_section_title(f"Maternity Equipment · {_facility_label(code)}"), _awaiting_domain_detail_table(EQUIPMENT_MATERNITY, label_column="Commodity")]),
+            _card([_section_title(f"Maternity Essential Medicines · {_facility_label(code)}"), _awaiting_domain_detail_table(TRACER_MEDICINES_MATERNITY, label_column="Commodity")]),
+            _card([_section_title(f"Newborn Equipment · {_facility_label(code)}"), _awaiting_domain_detail_table(EQUIPMENT_NEWBORN, label_column="Commodity")]),
+            _card([_section_title(f"Newborn Tracer Medicines · {_facility_label(code)}"), _awaiting_domain_detail_table(TRACER_MEDICINES_NEWBORN, label_column="Commodity")]),
         ]),
         comparison_fn=lambda codes: html.Div([
-            _card([_section_title("Maternity Equipment · Comparison"), _awaiting_domain_comparison_table(EQUIPMENT_MATERNITY, codes)]),
-            _card([_section_title("Newborn Equipment & Medicines · Comparison"), _awaiting_domain_comparison_table(EQUIPMENT_NEWBORN + TRACER_MEDICINES_NEWBORN, codes)]),
+            _card([_section_title("Maternity Equipment & Medicines"), _matrix_table(_awaiting_matrix_rows(EQUIPMENT_MATERNITY + TRACER_MEDICINES_MATERNITY), label_column="Commodity")]),
+            _card([_section_title("Newborn Equipment & Medicines"), _matrix_table(_awaiting_matrix_rows(EQUIPMENT_NEWBORN + TRACER_MEDICINES_NEWBORN), label_column="Commodity")]),
         ]),
     )
     return html.Div([real_card, body])
@@ -964,14 +1141,15 @@ def _systems_tab(facility_codes: list[str], dq_inds: list[dict] | None, df: pd.D
     body = _scope_view(
         facility_codes,
         detail_fn=lambda code: html.Div([
-            _card([_section_title(f"Maternity Unit Infrastructure · {_facility_label(code)}"), _awaiting_domain_detail_table(INFRASTRUCTURE_MATERNITY)]),
-            _card([_section_title(f"Neonatal Care Unit Infrastructure · {_facility_label(code)}"), _awaiting_domain_detail_table(INFRASTRUCTURE_NEONATAL)]),
+            _card([_section_title(f"Maternity Unit Infrastructure · {_facility_label(code)}"), _awaiting_domain_detail_table(INFRASTRUCTURE_MATERNITY, label_column="Infrastructure Indicator")]),
+            _card([_section_title(f"Neonatal Care Unit Infrastructure · {_facility_label(code)}"), _awaiting_domain_detail_table(INFRASTRUCTURE_NEONATAL, label_column="Infrastructure Indicator")]),
             _card([_section_title(f"Referral and Transport · {_facility_label(code)}"), _awaiting_detail_table(REFERRAL_TRANSPORT)]),
             _card([_section_title(f"Data and Quality-Improvement Systems · {_facility_label(code)}"), _awaiting_detail_table(DATA_QI_SYSTEMS)]),
         ]),
         comparison_fn=lambda codes: html.Div([
-            _card([_section_title("Infrastructure · Comparison"), _awaiting_domain_comparison_table(INFRASTRUCTURE_MATERNITY + INFRASTRUCTURE_NEONATAL, codes)]),
-            _card([_section_title("Referral, Transport & QI Systems · Comparison"), _awaiting_comparison_table(REFERRAL_TRANSPORT + DATA_QI_SYSTEMS, codes)]),
+            _card([_section_title("Maternity Infrastructure"), _matrix_table(_awaiting_matrix_rows(INFRASTRUCTURE_MATERNITY), label_column="Infrastructure Indicator")]),
+            _card([_section_title("Neonatal Care Unit Infrastructure"), _matrix_table(_awaiting_matrix_rows(INFRASTRUCTURE_NEONATAL), label_column="Infrastructure Indicator")]),
+            _card([_section_title("Referral, Transport & QI Systems"), _matrix_table(_awaiting_matrix_rows(REFERRAL_TRANSPORT + DATA_QI_SYSTEMS), label_column="Indicator")]),
         ]),
     )
     return html.Div([real_card, body])
@@ -1112,6 +1290,55 @@ def _oprd_sync_tab(tab_value, stored):
     return _render_tab_content(tab_value, stored)
 
 
+@callback(
+    Output("oprd-subtabs", "value"),
+    Output("oprd-active-subtab-store", "data"),
+    Input("oprd-subtabs", "value"),
+    Input("oprd-active-subtab-store", "data"),
+)
+def _oprd_sync_subtab(tab_value: str | None, stored_tab: str | None):
+    """Two-way sync between the visible tab and its session-store mirror,
+    written as ONE callback with both properties as both Input and Output -
+    Dash's documented "circular callback" pattern (two separate callbacks
+    each outputting the other's Input raises "Dependency Cycle Found" at
+    startup, which is exactly what tripped here originally).
+
+    `ctx.triggered_id` tells the two directions apart:
+    - user actually changed the tab -> persist that value to the store,
+      leave the tab's own value alone (no_update breaks the loop: the store
+      write below won't re-enter the "restore" branch because tab_value
+      already matches by the time it re-fires).
+    - page/component load (triggered_id is None) or the store itself
+      changed -> restore the stored tab if it's valid and differs from the
+      hardcoded default_tab this component mounted with.
+    """
+    valid_tabs = {value for value, _ in _TABS}
+    if ctx.triggered_id == "oprd-subtabs":
+        if not tab_value:
+            raise PreventUpdate
+        return no_update, tab_value
+    if stored_tab and stored_tab in valid_tabs and stored_tab != tab_value:
+        return stored_tab, no_update
+    raise PreventUpdate
+
+
+@callback(
+    Output("oprd-facility-table-container", "children"),
+    Input("oprd-classification-filter", "value"),
+    State("oprd-facility-rows-store", "data"),
+    prevent_initial_call=True,
+)
+def _oprd_filter_facility_table(selected: str, records: list[dict] | None):
+    """Re-slice the already-computed facility records client round-trip
+    (dcc.Store) rather than recomputing the Overview tab - the same pattern
+    mnid/views/callbacks.py::update_performance_heatmap uses for the Maternal
+    dashboard's district/indicator filters."""
+    if not records:
+        raise PreventUpdate
+    filtered = records if not selected or selected == "All" else [r for r in records if r["classification"] == selected]
+    return _facility_comparison_table(filtered)
+
+
 def render_operational_readiness(
     df: pd.DataFrame,
     supply_inds: list[dict] | None = None,
@@ -1139,6 +1366,16 @@ def render_operational_readiness(
 
     return html.Div(className="mnid-executive-page", children=[
         dcc.Store(id="oprd-store", data=store_data),
+        # Session-scoped (survives a dashboard-container rebuild within the
+        # same browser tab, same pattern as pages/home.py's
+        # mnid-active-tab-store) - without this, the periodic
+        # dashboard-interval-update-today tick indirectly forces
+        # update_dashboard to rebuild dashboard-container's children (see
+        # pages/home.py's own comments on that spurious refire), and since
+        # this component always mounts fresh with value=default_tab, whatever
+        # sub-tab (e.g. People) the user had open would silently reset to
+        # Overview on every rebuild - this restores it instead.
+        dcc.Store(id="oprd-active-subtab-store", storage_type="session"),
         *_readiness_header(df, scope_meta, facility_codes, start_date, end_date),
         html.Div([
             dcc.Tabs(
