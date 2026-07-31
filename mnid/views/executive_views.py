@@ -36,8 +36,8 @@ NEONATAL_ORANGE = "#D97706"
 STILLBIRTH_BLUE = "#0284C7"
 HERO_NAVY = "#182136"
 
-def _section_header(title: str) -> html.Div:
-    return html.Div([
+def _section_header(title: str, right=None) -> html.Div:
+    left = html.Div([
         html.Span(style={
             "width": "3px", "height": "12px", "background": "#16a34a",
             "borderRadius": "2px", "flexShrink": "0", "display": "inline-block",
@@ -46,7 +46,16 @@ def _section_header(title: str) -> html.Div:
             "fontSize": "11px", "fontWeight": "700", "color": "#64748b",
             "textTransform": "uppercase", "letterSpacing": ".09em",
         }),
-    ], style={"display": "flex", "alignItems": "center", "gap": "7px", "marginBottom": "12px", "marginTop": "8px"})
+    ], style={"display": "flex", "alignItems": "center", "gap": "7px"})
+    if right is None:
+        return html.Div([left], style={
+            "display": "flex", "alignItems": "center",
+            "marginBottom": "12px", "marginTop": "8px",
+        })
+    return html.Div([left, right], style={
+        "display": "flex", "alignItems": "center", "justifyContent": "space-between",
+        "gap": "12px", "flexWrap": "wrap", "marginBottom": "12px", "marginTop": "8px",
+    })
 
 
 def _responsive_grid(children: list, min_width: str = "220px", gap: str = "16px", margin_bottom: str = "20px") -> html.Div:
@@ -498,13 +507,16 @@ def _agg_monthly_series(
     facility_codes: list[str] | None = None,
     districts: list[str] | None = None,
     value_field: str = "numerator",
+    include_counts: bool = False,
 ) -> pd.DataFrame:
     """DHIS2-aggregate equivalent of _monthly_series -- same ['month', 'value'] shape.
 
     value_field='numerator' for count trend charts (Total Births, mortality,
     stillbirths); 'pct' for indicators that are already a rate against their
     PCT_DENOMINATOR pair (the mapped complication charts) -- see
-    mnid/dhis2/mnid_publish.py::PCT_DENOMINATOR.
+    mnid/dhis2/mnid_publish.py::PCT_DENOMINATOR. When include_counts=True (only
+    meaningful for value_field='pct'), also carries 'numerator'/'denominator'
+    for the run-chart hover's "Clients: N / D" line.
     """
     series = _agg_time_series(
         agg_df, mnid_id, grain='monthly',
@@ -512,9 +524,11 @@ def _agg_monthly_series(
         start_date=start_date, end_date=end_date,
     )
     if series.empty:
-        return pd.DataFrame(columns=["month", "value"])
+        cols = ["month", "value", "numerator", "denominator"] if include_counts else ["month", "value"]
+        return pd.DataFrame(columns=cols)
     out = series.rename(columns={"period_start": "month", value_field: "value"})
-    return out[["month", "value"]]
+    cols = ["month", "value", "numerator", "denominator"] if include_counts else ["month", "value"]
+    return out[cols]
 
 
 def _agg_monthly_multiseries(
@@ -543,13 +557,15 @@ def _monthly_rate_series(
     denominator_mask: pd.Series,
     unique_col: str = "person_id",
     scale: float = 100.0,
+    include_counts: bool = False,
 ) -> pd.DataFrame:
+    cols = ["month", "value", "numerator", "denominator"] if include_counts else ["month", "value"]
     if df is None or df.empty or "Date" not in df.columns or unique_col not in df.columns:
-        return pd.DataFrame(columns=["month", "value"])
+        return pd.DataFrame(columns=cols)
     numerator = _monthly_series(df, numerator_mask, unique_col)
     denominator = _monthly_series(df, denominator_mask, unique_col)
     if denominator.empty:
-        return pd.DataFrame(columns=["month", "value"])
+        return pd.DataFrame(columns=cols)
     merged = denominator.rename(columns={"value": "denominator"}).merge(
         numerator.rename(columns={"value": "numerator"}),
         on="month",
@@ -561,7 +577,7 @@ def _monthly_rate_series(
         lambda row: round((row["numerator"] / row["denominator"]) * scale, 1) if row["denominator"] > 0 else 0.0,
         axis=1,
     )
-    return merged[["month", "value"]]
+    return merged[cols]
 
 
 def _delta_percent(current: float, previous: float) -> float:
@@ -1027,11 +1043,11 @@ def render_country_profile(
         if use_dhis2:
             mnid_id = _AGG_MATERNAL_COMPLICATION_IDS.get(title)
             series_df = (
-                _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct")
-                if mnid_id else pd.DataFrame(columns=["month", "value"])
+                _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct", include_counts=True)
+                if mnid_id else pd.DataFrame(columns=["month", "value", "numerator", "denominator"])
             )
         else:
-            series_df = _monthly_rate_series(df, mask, total_birth_denominator_mask, "person_id")
+            series_df = _monthly_rate_series(df, mask, total_birth_denominator_mask, "person_id", include_counts=True)
         maternal_complication_cards.append(_trend_chart_payload(
             chart_key,
             title,
@@ -1046,7 +1062,7 @@ def render_country_profile(
         chart_key = _chart_key_slug(title)
         series_df = (
             pd.DataFrame(columns=["month", "value"]) if use_dhis2
-            else _monthly_rate_series(df, mask, live_birth_denominator_mask, "person_id")
+            else _monthly_rate_series(df, mask, live_birth_denominator_mask, "person_id", include_counts=True)
         )
         neonatal_complication_cards.append(_trend_chart_payload(
             chart_key,
@@ -1182,7 +1198,27 @@ def render_country_profile(
             _responsive_grid(summary_cards, min_width="200px", gap="14px"),
             _section_header("Mortality Snapshot · Immediate Attention Required"),
             _responsive_grid([_mortality_card(*spec) for spec in mortality_specs], min_width="260px", gap="14px"),
-            _section_header("Mortality Trends · 12-Month Run Charts"),
+            _section_header(
+                "Mortality Trends · 12-Month Run Charts",
+                right=html.Div([
+                    html.Span("Measure", style={
+                        "fontSize": "10px", "fontWeight": "700", "color": "#94a3b8",
+                        "textTransform": "uppercase", "letterSpacing": ".06em",
+                    }),
+                    html.Button(
+                        id="mnid-cp-measure-toggle",
+                        className="mnid-trend-toggle is-line",
+                        n_clicks=0,
+                        type="button",
+                        title="Toggle between median and moving average",
+                        children=[
+                            html.Span("Median", id="mnid-cp-measure-toggle-text", className="mnid-trend-toggle-text"),
+                            html.Span(className="mnid-trend-toggle-thumb"),
+                        ],
+                    ),
+                    dcc.Store(id="mnid-cp-measure-store", data="median"),
+                ], style={"display": "flex", "alignItems": "center", "gap": "8px"}),
+            ),
             _two_column_chart_grid([
                 total_births_chart,
                 maternal_mortality_chart,
