@@ -120,10 +120,11 @@ def _moving_average_window(length: int, grain: str | None = None) -> int:
     return max(1, min(3, length))
 
 
-def _moving_average_values(values, grain: str | None = None):
+def _moving_average_values(values, grain: str | None = None, method: str = 'mean'):
     numeric = pd.Series(values, dtype='float64')
     window = _moving_average_window(len(numeric), grain)
-    smoothed = numeric.rolling(window=window, min_periods=1).mean()
+    rolling = numeric.rolling(window=window, min_periods=1)
+    smoothed = rolling.median() if method == 'median' else rolling.mean()
     return [None if pd.isna(value) else float(value) for value in smoothed.tolist()], window
 
 
