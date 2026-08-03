@@ -1524,6 +1524,9 @@ def _resolve_filter_cascade(level, districts, moh_level, active_report, urlparam
 
     user_level = scope['level']
     user_districts = scope.get('districts') or []
+    user_facilities = scope.get('facilities') or []
+    if isinstance(user_facilities, str):
+        user_facilities = [user_facilities]
     requested_level = _normalize_level(level) if level else user_level
 
     if user_level == 'national':
@@ -1534,12 +1537,31 @@ def _resolve_filter_cascade(level, districts, moh_level, active_report, urlparam
         effective_level = 'facility'
     level_title = _title_level(effective_level)
 
-    show_district_filter = effective_level == "national"
-    district_group_style = {} if show_district_filter else {"display": "none"}
-    district_disabled = not show_district_filter
-    district_note = ""
-    if not show_district_filter:
-        districts = []
+    # A non-national user's own scope is fixed to their account, not a
+    # choice -- show District (and Facility, for a facility-level user)
+    # populated with that fixed value instead of hiding them, but lock them
+    # from being changed. Level has nothing above their own ceiling to pick
+    # either, so it's locked too. A national user keeps the existing
+    # editable behaviour.
+    level_disabled = user_level != 'national'
+    facility_value = None
+    if user_level == 'national':
+        show_district_filter = effective_level == "national"
+        district_group_style = {} if show_district_filter else {"display": "none"}
+        district_disabled = not show_district_filter
+        district_note = ""
+        if not show_district_filter:
+            districts = []
+        facility_disabled = False
+    else:
+        show_district_filter = True
+        district_group_style = {}
+        district_disabled = True
+        district_note = ""
+        districts = list(user_districts)
+        facility_disabled = user_level == 'facility'
+        if user_level == 'facility':
+            facility_value = list(user_facilities)
 
     facilities_path = os.path.join(path, f'data/{data_route}', 'dcc_dropdown_json', 'facilities_dropdowns.json')
     with open(facilities_path, 'r') as f:
@@ -1563,9 +1585,7 @@ def _resolve_filter_cascade(level, districts, moh_level, active_report, urlparam
         ))
     else:
         all_districts = sorted(set(user_districts))
-        all_facilities = scope.get('facilities') or []
-    if isinstance(all_facilities, str):
-        all_facilities = [all_facilities]
+        all_facilities = list(user_facilities)
 
     # Narrow the Health Facility dropdown by the selected Facility Level,
     # scoped to Maternal Health only (where that filter is shown). Uses the
@@ -1588,6 +1608,7 @@ def _resolve_filter_cascade(level, districts, moh_level, active_report, urlparam
 
     return {
         'level_title':          level_title,
+        'level_disabled':       level_disabled,
         'show_district_filter': show_district_filter,
         'district_group_style': district_group_style,
         'district_disabled':    district_disabled,
@@ -1595,6 +1616,8 @@ def _resolve_filter_cascade(level, districts, moh_level, active_report, urlparam
         'districts':            districts,
         'all_districts':        all_districts,
         'all_facilities':       all_facilities,
+        'facility_disabled':    facility_disabled,
+        'facility_value':       facility_value,
         'effective_level':      effective_level,
         'requested_level':      requested_level,
         'scope':                scope,
@@ -1610,12 +1633,15 @@ def _resolve_filter_cascade(level, districts, moh_level, active_report, urlparam
     Output('dashboard-district-filter', 'disabled'),
     Output('dashboard-district-note', 'children'),
     Output('dashboard-facility-filter', 'options'),
+    Output('dashboard-facility-filter', 'value', allow_duplicate=True),
+    Output('dashboard-facility-filter', 'disabled'),
+    Output('dashboard-level-filter', 'disabled'),
     Input('dashboard-level-filter', 'value'),
     Input('dashboard-district-filter', 'value'),
     Input('dashboard-moh-level-filter', 'value'),
-    State('url-params-store', 'data'),
+    Input('url-params-store', 'data'),
     State('active-button-store', 'data'),
-    prevent_initial_call=False,
+    prevent_initial_call=True,
 )
 def sync_filter_cascade(level, districts, moh_level, urlparams, active_report):
     # Lives independently of Apply Filters -- picking a district (or changing
@@ -1623,10 +1649,15 @@ def sync_filter_cascade(level, districts, moh_level, urlparams, active_report):
     # selectable, otherwise there's nothing to pick before Apply is even
     # clickable. This never touches dashboard-container -- the actual
     # dashboard content stays gated behind Apply Filters in update_dashboard.
+    # url-params-store is an Input (not just State) so this also fires once,
+    # correctly, right after page load -- otherwise a non-national user's
+    # District/Facility fields would show editable and unlocked until they
+    # happened to touch a dropdown themselves.
     data_route = (urlparams or {}).get('route', ["default"])[0]
     resolved = _resolve_filter_cascade(level, districts, moh_level, active_report, urlparams, data_route)
     if resolved is None:
         raise PreventUpdate
+    facility_value = resolved['facility_value']
     return (
         resolved['district_group_style'],
         [{'label': d, 'value': d} for d in resolved['all_districts']],
@@ -1634,6 +1665,9 @@ def sync_filter_cascade(level, districts, moh_level, urlparams, active_report):
         resolved['district_disabled'],
         resolved['district_note'],
         [{'label': f, 'value': f} for f in resolved['all_facilities']],
+        facility_value if facility_value is not None else no_update,
+        resolved['facility_disabled'],
+        resolved['level_disabled'],
     )
 
 
