@@ -1,6 +1,6 @@
 {
     "schema_version": "1.0",
-    "mapping_version": "2026-07-27",
+    "mapping_version": "2026-07-20",
     "source": {
         "name": "Malawi HMIS DHIS2",
         "base_url": "https://dhis2.health.gov.mw",
@@ -71,7 +71,7 @@
                 "comments": [
                     "Add to neonatal care dashboard, to only display for facilities that have neonatal care units and Sick neonate dataset assigned"
                 ],
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Neonatal care"
             }
         },
@@ -126,7 +126,7 @@
                     4,
                     40,
                     122,
-                    155
+                    156
                 ],
                 "original_indicator_name": "Live Births",
                 "original_mapping": "iBBnHx1Uf50, EeywK6AHQdK, jz793Wzon1W, q7NoDcfaciO, kaYz6eqxqQH",
@@ -264,7 +264,7 @@
                 "workbook_rows": [
                     8,
                     58,
-                    175
+                    176
                 ],
                 "original_indicator_name": "Maternal Deaths",
                 "original_mapping": "WjHvEHMCyKo",
@@ -321,7 +321,7 @@
                 "workbook_rows": [
                     9,
                     66,
-                    203
+                    204
                 ],
                 "original_indicator_name": "Neonatal Deaths",
                 "original_mapping": "jz793Wzon1W, bZDmsHkagGA, XO2ACv2K1aW, MnmCsf59HyU",
@@ -400,7 +400,7 @@
                 "original_mapping": "(Maternal Deaths/Live births) X 100,000",
                 "reporting_source": null,
                 "comments": null,
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Country profile"
             }
         },
@@ -426,7 +426,7 @@
                 "original_mapping": "(Neonatal Deaths/Live births) X 1,000",
                 "reporting_source": null,
                 "comments": null,
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Country profile"
             }
         },
@@ -452,7 +452,7 @@
                 "original_mapping": "(Stillbirths/Live births) X 1,000",
                 "reporting_source": null,
                 "comments": null,
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Country profile"
             }
         },
@@ -478,7 +478,7 @@
                 "original_mapping": "(Fress Stillbirth /stillbirths) x 100",
                 "reporting_source": null,
                 "comments": null,
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": null
             }
         },
@@ -504,7 +504,7 @@
                 "original_mapping": "(Macerated Stillbirth /stillbirths) x 100",
                 "reporting_source": null,
                 "comments": null,
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": null
             }
         },
@@ -606,7 +606,7 @@
                 "comments": [
                     "Key datasets for reporting rate where the MNH indicators are being drawn from. It should be able to pull for health centres, district and central hospitals. In DHIS2 these are already calculated indicators, included their IDs on the same"
                 ],
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Country/facility profile"
             }
         },
@@ -1342,7 +1342,7 @@
                     "New addition",
                     "Already captured"
                 ],
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Labour and delivery"
             }
         },
@@ -1807,8 +1807,8 @@
                     54,
                     69,
                     136,
-                    206,
-                    247
+                    212,
+                    253
                 ],
                 "original_indicator_name": "Birth weight recorded",
                 "original_mapping": null,
@@ -1835,7 +1835,7 @@
             "source_reference": {
                 "workbook_rows": [
                     55,
-                    172
+                    173
                 ],
                 "original_indicator_name": "PNC Visits",
                 "original_mapping": null,
@@ -1862,7 +1862,7 @@
             "source_reference": {
                 "workbook_rows": [
                     56,
-                    173
+                    174
                 ],
                 "original_indicator_name": "Mother Complications",
                 "original_mapping": null,
@@ -1892,7 +1892,7 @@
             "source_reference": {
                 "workbook_rows": [
                     57,
-                    174
+                    175
                 ],
                 "original_indicator_name": "Newborn Complications",
                 "original_mapping": null,
@@ -1922,7 +1922,7 @@
             "source_reference": {
                 "workbook_rows": [
                     59,
-                    176
+                    177
                 ],
                 "original_indicator_name": "Newborn Deaths",
                 "original_mapping": null,
@@ -1969,7 +1969,7 @@
             "source_reference": {
                 "workbook_rows": [
                     60,
-                    177
+                    178
                 ],
                 "original_indicator_name": "Early initiation of breastfeeding within 1 hour of birth",
                 "original_mapping": "(iBBnHx1Uf50, EeywK6AHQdK, jz793Wzon1W, q7NoDcfaciO, kaYz6eqxqQH) - (bjLZY1FqdDJ)",
@@ -1998,7 +1998,7 @@
             "source_reference": {
                 "workbook_rows": [
                     61,
-                    178
+                    179
                 ],
                 "original_indicator_name": "Birth weight assessed",
                 "original_mapping": null,
@@ -2025,7 +2025,7 @@
             "source_reference": {
                 "workbook_rows": [
                     62,
-                    179
+                    180
                 ],
                 "original_indicator_name": "Blood pressure measured during PNC",
                 "original_mapping": null,
@@ -2055,7 +2055,7 @@
             "source_reference": {
                 "workbook_rows": [
                     63,
-                    180
+                    181
                 ],
                 "original_indicator_name": "Temperature of mother measured during PNC",
                 "original_mapping": null,
@@ -2093,7 +2093,7 @@
             "source_reference": {
                 "workbook_rows": [
                     64,
-                    181
+                    182
                 ],
                 "original_indicator_name": "Vitamin K at birth",
                 "original_mapping": "zAcW94iEdXU",
@@ -2122,7 +2122,7 @@
             "source_reference": {
                 "workbook_rows": [
                     65,
-                    202
+                    203
                 ],
                 "original_indicator_name": "Outborn babies",
                 "original_mapping": null,
@@ -2181,7 +2181,7 @@
             "source_reference": {
                 "workbook_rows": [
                     67,
-                    204
+                    205
                 ],
                 "original_indicator_name": "Neonatal Complications at Birth",
                 "original_mapping": "vcEWpcFjEuU, UXTZkim1Npv, bPvw8ZdBgRe, gkgM1TgE5oF, Z9Q4qIjoePS",
@@ -2190,7 +2190,7 @@
                     "Already captured",
                     "New addition"
                 ],
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Labour and delivery"
             }
         },
@@ -2219,7 +2219,7 @@
             "source_reference": {
                 "workbook_rows": [
                     68,
-                    205
+                    211
                 ],
                 "original_indicator_name": "iKMC Initiated",
                 "original_mapping": "zANGFtNoUEt",
@@ -2227,7 +2227,7 @@
                 "comments": [
                     "Consider having the indicator renamed to newborns initiated on KMC. This will be a proxy for immediate KMC as some LBW and premature babies are immediately initiated on KMC soon after delivery. To move the indicator to iKMC when its fully rolled out and integrated with MAHIS"
                 ],
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Labour and delivery"
             }
         },
@@ -2256,7 +2256,7 @@
             "source_reference": {
                 "workbook_rows": [
                     70,
-                    207
+                    213
                 ],
                 "original_indicator_name": "Resuscitation intervention recorded",
                 "original_mapping": "zE0WLBSHx1e",
@@ -2265,7 +2265,7 @@
                     "Already captured below",
                     "New addition"
                 ],
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Labour and delivery"
             }
         },
@@ -2286,8 +2286,8 @@
             "source_reference": {
                 "workbook_rows": [
                     71,
-                    208,
-                    238
+                    214,
+                    244
                 ],
                 "original_indicator_name": "Thermal care recorded",
                 "original_mapping": null,
@@ -2322,7 +2322,7 @@
             "source_reference": {
                 "workbook_rows": [
                     72,
-                    209
+                    215
                 ],
                 "original_indicator_name": "KMC support recorded",
                 "original_mapping": "zANGFtNoUEt",
@@ -2331,7 +2331,7 @@
                     "Already captured below",
                     "New addition"
                 ],
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Labour and delivery"
             }
         },
@@ -2360,7 +2360,7 @@
             "source_reference": {
                 "workbook_rows": [
                     73,
-                    210
+                    216
                 ],
                 "original_indicator_name": "Low birthweight newborns",
                 "original_mapping": "gkgM1TgE5oF",
@@ -2369,7 +2369,7 @@
                     "Already captured below",
                     "New addition"
                 ],
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Labour and delivery"
             }
         },
@@ -2398,7 +2398,7 @@
             "source_reference": {
                 "workbook_rows": [
                     74,
-                    211
+                    217
                 ],
                 "original_indicator_name": "Birth asphyxia among newborn admissions",
                 "original_mapping": "ei0CdL9nXv0",
@@ -2407,7 +2407,7 @@
                     "Already captured below",
                     "Add to neonatal care dashboard, to be applicable to facilities that have neonatal care units"
                 ],
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Neonatal care"
             }
         },
@@ -2436,7 +2436,7 @@
             "source_reference": {
                 "workbook_rows": [
                     75,
-                    212
+                    218
                 ],
                 "original_indicator_name": "Neonatal sepsis among newborn admissions",
                 "original_mapping": "gtmLmWfmPvp",
@@ -2445,7 +2445,7 @@
                     "Already captured below",
                     "Add to neonatal care dashboard, to be applicable to facilities that have neonatal care units"
                 ],
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Neonatal care"
             }
         },
@@ -2466,8 +2466,8 @@
             "source_reference": {
                 "workbook_rows": [
                     76,
-                    213,
-                    226
+                    219,
+                    232
                 ],
                 "original_indicator_name": "Pulse oximeter used at admission",
                 "original_mapping": null,
@@ -2494,7 +2494,7 @@
             "source_reference": {
                 "workbook_rows": [
                     77,
-                    214
+                    220
                 ],
                 "original_indicator_name": "Babies who had bilirubin measured",
                 "original_mapping": null,
@@ -2521,7 +2521,7 @@
             "source_reference": {
                 "workbook_rows": [
                     78,
-                    215
+                    221
                 ],
                 "original_indicator_name": "Babies with jaundice who had bilirubin measured",
                 "original_mapping": null,
@@ -2548,7 +2548,7 @@
             "source_reference": {
                 "workbook_rows": [
                     79,
-                    216
+                    222
                 ],
                 "original_indicator_name": "Babies with jaundice receiving phototherapy",
                 "original_mapping": null,
@@ -2575,7 +2575,7 @@
             "source_reference": {
                 "workbook_rows": [
                     80,
-                    217
+                    223
                 ],
                 "original_indicator_name": "Babies breastfed within 1 hour",
                 "original_mapping": null,
@@ -2605,7 +2605,7 @@
             "source_reference": {
                 "workbook_rows": [
                     81,
-                    218
+                    224
                 ],
                 "original_indicator_name": "Eligible babies who received neonatal resuscitation",
                 "original_mapping": null,
@@ -2634,7 +2634,7 @@
             "source_reference": {
                 "workbook_rows": [
                     82,
-                    219
+                    225
                 ],
                 "original_indicator_name": "Eligible preterm and low birth-weight babies who receive iKMC",
                 "original_mapping": null,
@@ -2661,7 +2661,7 @@
             "source_reference": {
                 "workbook_rows": [
                     83,
-                    220
+                    226
                 ],
                 "original_indicator_name": "Babies between 1000-1499g who receive prophylactic CPAP",
                 "original_mapping": null,
@@ -2688,7 +2688,7 @@
             "source_reference": {
                 "workbook_rows": [
                     84,
-                    221
+                    227
                 ],
                 "original_indicator_name": "Babies with clinical jaundice who receive phototherapy",
                 "original_mapping": null,
@@ -2715,7 +2715,7 @@
             "source_reference": {
                 "workbook_rows": [
                     85,
-                    222
+                    228
                 ],
                 "original_indicator_name": "Babies with suspected sepsis who receive parenteral antibiotics",
                 "original_mapping": null,
@@ -2742,7 +2742,7 @@
             "source_reference": {
                 "workbook_rows": [
                     86,
-                    223
+                    229
                 ],
                 "original_indicator_name": "Babies not hypothermic on admission",
                 "original_mapping": null,
@@ -2769,7 +2769,7 @@
             "source_reference": {
                 "workbook_rows": [
                     87,
-                    224
+                    230
                 ],
                 "original_indicator_name": "Babies not hypothermic at any time in the neonatal unit",
                 "original_mapping": null,
@@ -2796,7 +2796,7 @@
             "source_reference": {
                 "workbook_rows": [
                     88,
-                    225
+                    231
                 ],
                 "original_indicator_name": "Babies between 1500-1999g who receive prophylactic CPAP",
                 "original_mapping": null,
@@ -3653,7 +3653,7 @@
                 "reporting_source": "Maternity report",
                 "comments": null,
                 "mapped": "Yes",
-                "dashboard_item": null
+                "dashboard_item": "Labour and delivery"
             }
         },
         {
@@ -3687,7 +3687,7 @@
                 "reporting_source": "Maternity report",
                 "comments": null,
                 "mapped": "Yes",
-                "dashboard_item": null
+                "dashboard_item": "Labour and delivery"
             }
         },
         {
@@ -3721,7 +3721,7 @@
                 "reporting_source": "Maternity report",
                 "comments": null,
                 "mapped": "Yes",
-                "dashboard_item": null
+                "dashboard_item": "Labour and delivery"
             }
         },
         {
@@ -3755,7 +3755,43 @@
                 "reporting_source": "Maternity report",
                 "comments": null,
                 "mapped": "Yes",
-                "dashboard_item": null
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "obstetric_complication_ruptured_uterus",
+            "name": "Obstetric complication: Ruptured uterus",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element_operand",
+                        "dx": "RS3PtRniRns.VrBgkdWJor3",
+                        "data_element_id": "RS3PtRniRns",
+                        "category_option_combo_id": "VrBgkdWJor3"
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    151
+                ],
+                "original_indicator_name": "Obstetric complication: Ruptured uterus",
+                "original_mapping": "RS3PtRniRns.VrBgkdWJor3",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "New addition"
+                ],
+                "mapped": null,
+                "dashboard_item": "Labour and delivery"
             }
         },
         {
@@ -3782,7 +3818,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    151
+                    152
                 ],
                 "original_indicator_name": "HIV positive on ART in Labour",
                 "original_mapping": "MoximPvXuj6",
@@ -3790,7 +3826,7 @@
                 "comments": [
                     "New addition"
                 ],
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Labour and delivery"
             }
         },
@@ -3818,7 +3854,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    152
+                    153
                 ],
                 "original_indicator_name": "Exposed babies on ART prophylaxis",
                 "original_mapping": "iBBnHx1Uf50",
@@ -3826,7 +3862,7 @@
                 "comments": [
                     "New addition"
                 ],
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Labour and delivery"
             }
         },
@@ -3846,7 +3882,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    153
+                    154
                 ],
                 "original_indicator_name": "Fresh stillbirth rate",
                 "original_mapping": null,
@@ -3874,7 +3910,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    154
+                    155
                 ],
                 "original_indicator_name": "Macerated stillbirth rate",
                 "original_mapping": null,
@@ -3902,7 +3938,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    156
+                    157
                 ],
                 "original_indicator_name": "Neonatal death rate",
                 "original_mapping": null,
@@ -3938,7 +3974,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    157
+                    158
                 ],
                 "original_indicator_name": "Clients referred to another facility",
                 "original_mapping": "l2GWTPGK4QP",
@@ -3946,7 +3982,7 @@
                 "comments": [
                     "New addition"
                 ],
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Labour and delivery"
             }
         },
@@ -3966,7 +4002,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    158
+                    159
                 ],
                 "original_indicator_name": "Referral due to PPH",
                 "original_mapping": null,
@@ -3992,7 +4028,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    159
+                    160
                 ],
                 "original_indicator_name": "Referral due to Eclampsia",
                 "original_mapping": null,
@@ -4018,7 +4054,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    160
+                    161
                 ],
                 "original_indicator_name": "Referral due to Obstructed labour",
                 "original_mapping": null,
@@ -4044,7 +4080,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    161
+                    162
                 ],
                 "original_indicator_name": "Referral due to Sepsis",
                 "original_mapping": null,
@@ -4070,7 +4106,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    162
+                    163
                 ],
                 "original_indicator_name": "Maternal Mortality Ratio (MMR)",
                 "original_mapping": null,
@@ -4104,7 +4140,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    163
+                    164
                 ],
                 "original_indicator_name": "Signal: Parenteral antibiotics",
                 "original_mapping": "gXjGJoC7gDs",
@@ -4138,7 +4174,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    164
+                    165
                 ],
                 "original_indicator_name": "Signal: Anticonvulsants (MgSO4)",
                 "original_mapping": "n7XnfWv0tHo",
@@ -4172,7 +4208,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    165
+                    166
                 ],
                 "original_indicator_name": "Signal: Oxytocics",
                 "original_mapping": "FhNg0SdUMe8",
@@ -4206,7 +4242,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    166
+                    167
                 ],
                 "original_indicator_name": "Signal: Manual placenta removal",
                 "original_mapping": "BbmxEK5AYaL",
@@ -4246,7 +4282,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    167
+                    168
                 ],
                 "original_indicator_name": "Signal: MVA / retained products",
                 "original_mapping": "VT6P1wfvaZp, E2TanFi22H5",
@@ -4280,7 +4316,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    168
+                    169
                 ],
                 "original_indicator_name": "Signal: Assisted vaginal delivery",
                 "original_mapping": "LLrXje6xH8D",
@@ -4306,7 +4342,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    169
+                    170
                 ],
                 "original_indicator_name": "Signal: Neonatal resuscitation",
                 "original_mapping": null,
@@ -4342,7 +4378,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    170
+                    171
                 ],
                 "original_indicator_name": "Signal: Caesarean section",
                 "original_mapping": "FYDa4NcJNrq",
@@ -4376,7 +4412,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    171
+                    172
                 ],
                 "original_indicator_name": "Signal: Blood transfusion",
                 "original_mapping": "vyIPU3KOFF6",
@@ -4402,7 +4438,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    182
+                    183
                 ],
                 "original_indicator_name": "Mothers admitted to postnatal ward",
                 "original_mapping": null,
@@ -4428,7 +4464,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    183
+                    184
                 ],
                 "original_indicator_name": "Babies admitted to postnatal ward",
                 "original_mapping": null,
@@ -4492,7 +4528,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    184
+                    185
                 ],
                 "original_indicator_name": "Mothers with postnatal complications",
                 "original_mapping": "fVzGijnVOrs, UcgSdalWMGa, sjpjF9WcIf2, blfZXfjQ5vZ, B0C73VHIXsm, h94ppnq7695",
@@ -4574,7 +4610,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    185
+                    186
                 ],
                 "original_indicator_name": "Babies with postnatal complications",
                 "original_mapping": "PsSIGk4JCAp, OYc0KJJSavh, DaNydZHxar3, D6PpsB5P3fL, L3XKOQoukVq, wtuN1m0Kjn5, uojP8TYbL7X, TKceP6JwglP, kFgT8mdcQjA",
@@ -4600,7 +4636,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    186
+                    187
                 ],
                 "original_indicator_name": "LBW babies receiving KMC",
                 "original_mapping": null,
@@ -4634,7 +4670,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    187
+                    188
                 ],
                 "original_indicator_name": "PNC baby checked within 48hrs",
                 "original_mapping": "f0IVxnte0OO",
@@ -4642,7 +4678,7 @@
                 "comments": [
                     "New addition"
                 ],
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Postnatal care"
             }
         },
@@ -4670,7 +4706,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    188
+                    189
                 ],
                 "original_indicator_name": "PNC Mother checked within 48hrs",
                 "original_mapping": "JSN2CbjKFt9",
@@ -4678,7 +4714,7 @@
                 "comments": [
                     "New addition"
                 ],
-                "mapped": null,
+                "mapped": "Yes",
                 "dashboard_item": "Postnatal care"
             }
         },
@@ -4706,7 +4742,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    189
+                    190
                 ],
                 "original_indicator_name": "Mothers checked within 7 days",
                 "original_mapping": "IDxBzSLUZVn",
@@ -4742,7 +4778,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    190
+                    191
                 ],
                 "original_indicator_name": "Babies checked within 7 days",
                 "original_mapping": "jgDt2dm1QOS",
@@ -4778,7 +4814,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    191
+                    192
                 ],
                 "original_indicator_name": "Mothers checked at 6 weeks",
                 "original_mapping": "cLuLPg1YMSq",
@@ -4812,7 +4848,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    192
+                    193
                 ],
                 "original_indicator_name": "Babies checked at 6 weeks",
                 "original_mapping": "nJZsvYHkXQz",
@@ -4852,7 +4888,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    193
+                    194
                 ],
                 "original_indicator_name": "Immediate postpartum family planning",
                 "original_mapping": "oZECAevnT9d, baBLHbjm5MP",
@@ -4888,7 +4924,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    194
+                    195
                 ],
                 "original_indicator_name": "HIV positive postnatal mothers",
                 "original_mapping": "elif3HHWci7",
@@ -4914,7 +4950,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    195
+                    196
                 ],
                 "original_indicator_name": "HIV exposed babies",
                 "original_mapping": null,
@@ -4948,7 +4984,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    196
+                    197
                 ],
                 "original_indicator_name": "HIV exposed babies on ART prophylaxis",
                 "original_mapping": "OmHmawnO5Ng",
@@ -4982,7 +5018,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    197
+                    198
                 ],
                 "original_indicator_name": "Babies who received BCG",
                 "original_mapping": "kLmi0DXLHky",
@@ -5016,7 +5052,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    198
+                    199
                 ],
                 "original_indicator_name": "Babies who received Polio 0",
                 "original_mapping": "AzGc4TyeFKI",
@@ -5042,7 +5078,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    199
+                    200
                 ],
                 "original_indicator_name": "Underweight babies",
                 "original_mapping": null,
@@ -5068,7 +5104,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    200
+                    201
                 ],
                 "original_indicator_name": "Underweight babies (percentage)",
                 "original_mapping": null,
@@ -5094,11 +5130,181 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    201
+                    202
                 ],
                 "original_indicator_name": "Exclusive breastfeeding counselling",
                 "original_mapping": null,
                 "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "rhd_mat_newborn_complications_asphyxia",
+            "name": "RHD MAT Newborn Complications Asphyxia",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "vcEWpcFjEuU",
+                        "data_element_id": "vcEWpcFjEuU",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    206
+                ],
+                "original_indicator_name": "RHD MAT Newborn Complications Asphyxia",
+                "original_mapping": "vcEWpcFjEuU",
+                "reporting_source": "MAT Report",
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "rhd_mat_newborn_complications_prematurity",
+            "name": "RHD MAT Newborn Complications Prematurity",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "UXTZkim1Npv",
+                        "data_element_id": "UXTZkim1Npv",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    207
+                ],
+                "original_indicator_name": "RHD MAT Newborn Complications Prematurity",
+                "original_mapping": "UXTZkim1Npv",
+                "reporting_source": "MAT Report",
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "rhd_mat_newborn_complications_sepsis",
+            "name": "RHD MAT Newborn Complications Sepsis",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "bPvw8ZdBgRe",
+                        "data_element_id": "bPvw8ZdBgRe",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    208
+                ],
+                "original_indicator_name": "RHD MAT Newborn Complications Sepsis",
+                "original_mapping": "bPvw8ZdBgRe",
+                "reporting_source": "MAT Report",
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "rhd_mat_newborn_complications_weight_2500g",
+            "name": "RHD MAT Newborn Complications Weight < 2500g",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "gkgM1TgE5oF",
+                        "data_element_id": "gkgM1TgE5oF",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    209
+                ],
+                "original_indicator_name": "RHD MAT Newborn Complications Weight < 2500g",
+                "original_mapping": "gkgM1TgE5oF",
+                "reporting_source": "MAT Report",
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "rhd_mat_newborn_complications_othe",
+            "name": "RHD MAT Newborn Complications Othe",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "Z9Q4qIjoePS",
+                        "data_element_id": "Z9Q4qIjoePS",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    210
+                ],
+                "original_indicator_name": "RHD MAT Newborn Complications Othe",
+                "original_mapping": "Z9Q4qIjoePS",
+                "reporting_source": "MAT Report",
                 "comments": null,
                 "mapped": null,
                 "dashboard_item": null
@@ -5120,7 +5326,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    227
+                    233
                 ],
                 "original_indicator_name": "Temperature taken at admission",
                 "original_mapping": null,
@@ -5146,7 +5352,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    228
+                    234
                 ],
                 "original_indicator_name": "Weight taken at birth",
                 "original_mapping": null,
@@ -5172,7 +5378,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    229
+                    235
                 ],
                 "original_indicator_name": "Glucose monitored at admission",
                 "original_mapping": null,
@@ -5198,7 +5404,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    230
+                    236
                 ],
                 "original_indicator_name": "CPAP for eligible babies",
                 "original_mapping": null,
@@ -5224,7 +5430,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    231
+                    237
                 ],
                 "original_indicator_name": "CPAP for babies 1000-1499g (prophylactic)",
                 "original_mapping": null,
@@ -5250,7 +5456,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    232
+                    238
                 ],
                 "original_indicator_name": "CPAP 1500-1999g (with symptoms)",
                 "original_mapping": null,
@@ -5276,7 +5482,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    233
+                    239
                 ],
                 "original_indicator_name": "Time: Birth to CPAP initiation (1000-1999g)",
                 "original_mapping": null,
@@ -5302,7 +5508,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    234
+                    240
                 ],
                 "original_indicator_name": "KMC 1000-1999g",
                 "original_mapping": null,
@@ -5328,7 +5534,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    235
+                    241
                 ],
                 "original_indicator_name": "KMC 2000-2499g",
                 "original_mapping": null,
@@ -5354,7 +5560,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    236
+                    242
                 ],
                 "original_indicator_name": "Time: Birth to KMC initiation (1000-2500g)",
                 "original_mapping": null,
@@ -5380,7 +5586,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    237
+                    243
                 ],
                 "original_indicator_name": "Not hypothermic at admission",
                 "original_mapping": null,
@@ -5406,7 +5612,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    239
+                    245
                 ],
                 "original_indicator_name": "Phototherapy for clinical jaundice",
                 "original_mapping": null,
@@ -5432,7 +5638,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    240
+                    246
                 ],
                 "original_indicator_name": "Bilirubin measured in babies with jaundice",
                 "original_mapping": null,
@@ -5458,7 +5664,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    241
+                    247
                 ],
                 "original_indicator_name": "Exchange Transfusion",
                 "original_mapping": null,
@@ -5484,7 +5690,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    242
+                    248
                 ],
                 "original_indicator_name": "Neonatal sepsis among admissions",
                 "original_mapping": null,
@@ -5512,7 +5718,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    243
+                    249
                 ],
                 "original_indicator_name": "Antibiotics for clinical sepsis",
                 "original_mapping": null,
@@ -5538,7 +5744,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    244
+                    250
                 ],
                 "original_indicator_name": "Blood culture done for babies on antibiotics",
                 "original_mapping": null,
@@ -5564,7 +5770,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    245
+                    251
                 ],
                 "original_indicator_name": "Birth asphyxia among admissions",
                 "original_mapping": null,
@@ -5592,7 +5798,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    246
+                    252
                 ],
                 "original_indicator_name": "Eligible babies receiving bag-mask ventilation",
                 "original_mapping": null,
@@ -5620,7 +5826,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    248
+                    254
                 ],
                 "original_indicator_name": "Low birthweight rate (<2500g)",
                 "original_mapping": null,
@@ -5646,7 +5852,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    249
+                    255
                 ],
                 "original_indicator_name": "Data completeness (birth weight proxy)",
                 "original_mapping": null,
@@ -5672,7 +5878,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    250
+                    256
                 ],
                 "original_indicator_name": "Device / supply availability",
                 "original_mapping": null,
@@ -5698,7 +5904,7 @@
             },
             "source_reference": {
                 "workbook_rows": [
-                    251
+                    257
                 ],
                 "original_indicator_name": "Nurse ratios and training",
                 "original_mapping": null,
