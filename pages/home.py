@@ -741,7 +741,7 @@ layout = html.Div(
                 "top":             "0",
                 "left":            "0",
                 "bottom":          "0",
-                "width":           "280px",
+                "width":           "340px",
                 "background":      "#ffffff",
                 "boxShadow":       "4px 0 16px rgba(0,0,0,0.15)",
                 "zIndex":          "1200",
@@ -827,7 +827,10 @@ layout = html.Div(
                                 className="modern-dropdown",
                             ),
                         ]),
-                        # Custom Date Range
+                        # Custom Date Range. The drawer is wide enough
+                        # (340px) for a single-month calendar to render
+                        # inline, anchored to the field, without needing a
+                        # portal or clipping.
                         html.Div(className="filter-group", children=[
                             html.Label("Custom Date Range", className="filter-label"),
                             dcc.DatePickerRange(
@@ -839,6 +842,7 @@ layout = html.Div(
                                 end_date=_default_date_window()[1],
                                 display_format='YYYY-MM-DD',
                                 className="modern-datepicker",
+                                number_of_months_shown=1,
                             ),
                         ]),
                         # Hidden overview filter (kept for callbacks)
@@ -1179,7 +1183,7 @@ def _toggle_filter_drawer(n_toggle, n_close, n_backdrop, _n_float, n_apply, is_o
     new_open = False if triggered_id == "dashboard-btn-generate" else not is_open
     drawer_style = {
         "position": "fixed", "top": "0", "left": "0", "bottom": "0",
-        "width": "280px", "background": "#ffffff",
+        "width": "340px", "background": "#ffffff",
         "boxShadow": "4px 0 16px rgba(0,0,0,0.15)", "zIndex": "1200",
         "overflowY": "auto", "display": "flex", "flexDirection": "column",
         "transform": "translateX(0)" if new_open else "translateX(-100%)",
@@ -1960,21 +1964,10 @@ def reset_ui_controls(n_clicks):
     prevent_initial_call=True
 )
 def change_style(generate, reset):
-    # Returns bold items on generate to indicate active filters
-    ctx = callback_context
-    triggered_id = ctx.triggered[0]['prop_id'] if ctx.triggered else None
-    if triggered_id == "dashboard-btn-generate.n_clicks":
-        style_active = {
-                    # "display": "flex",
-                    "alignItems": "center",
-                    "gap": "5px",
-                    "border": "3px solid green",
-                    "borderRadius": "8px"
-                    }
-        return style_active, style_active, style_active, style_active, style_active, style_active, style_active, style_active
-    else:
-        style_default = {}
-        return style_default, style_default, style_default, style_default, style_default, style_default, style_default, style_default
+    # Green "applied" border on Apply Filters disabled for now, per request --
+    # left the callback in place in case it's wanted back later.
+    style_default = {}
+    return style_default, style_default, style_default, style_default, style_default, style_default, style_default, style_default
 
 
 @callback(
