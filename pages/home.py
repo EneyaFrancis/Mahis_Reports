@@ -1964,8 +1964,16 @@ def sync_picker_with_logic(period_type, n, current_active, urlparams):
     ctx = callback_context
     triggered_id = ctx.triggered[0]['prop_id'] if ctx.triggered else ""
     data_route = (urlparams or {}).get('route', ["default"])[0]
-    source = get_mnid_data_source(data_route)
-    date_route = source.route if current_active == 'Maternal Health' else data_route
+    # Anchor relative periods ("Today" etc.) to DHIS2's own last-reported
+    # date only while actually viewing an MNID/DHIS2-backed report -- e.g.
+    # "Today" would otherwise land on the real calendar date, which DHIS2
+    # (monthly grain, synced up to some past month) has no data for.
+    # _is_dhis2_mnid_report already encodes exactly this policy (config
+    # says dhis2 AND the active report is actually an MNID one) -- reusing
+    # it here instead of the old direct 'Maternal Health' string match,
+    # which silently fell through to plain MAHIS-anchored dates (today's
+    # calendar date) for anything that didn't match that exact string.
+    date_route = 'dhis2' if _is_dhis2_mnid_report([current_active], load_dashboard_menu()) else data_route
     default_start, default_end = _default_date_window(date_route)
     anchor = default_end
 

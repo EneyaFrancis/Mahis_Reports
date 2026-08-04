@@ -116,6 +116,17 @@ def load_aggregate(route: str = _DEFAULT_ROUTE, output_dir: str | None = None) -
     try:
         agg_df = pd.read_parquet(str(path))
         agg_df['period_start'] = pd.to_datetime(agg_df['period_start'])
+        if route == 'dhis2':
+            # The published DHIS2 aggregate has data for far more
+            # facility_codes nationwide than have a name in the curated
+            # crosswalk (data/geo/facilities_dhis2.json) -- by policy, every
+            # DHIS2-route view (badges, totals, filtering) is capped to that
+            # known/named set, rather than mixing named and unnamed
+            # facilities in the same "X Facilities" numbers.
+            from mnid.core.dhis2_facilities import dhis2_known_facility_codes
+            known_codes = dhis2_known_facility_codes()
+            if known_codes:
+                agg_df = agg_df[agg_df['facility_code'].isin(known_codes)].reset_index(drop=True)
         _AGG_DF_BY_ROUTE[route] = agg_df
         _LOADED_ROUTES.add(route)
         _trim_route_cache()

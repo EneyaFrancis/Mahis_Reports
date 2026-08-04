@@ -74,3 +74,12 @@ def dhis2_facility_codes_for_names(names: list[str] | None) -> list[str]:
     reads as "not covered yet" rather than raising."""
     mapping = dhis2_name_to_code()
     return [mapping[name] for name in (names or []) if name in mapping]
+
+
+def dhis2_known_facility_codes() -> set[str]:
+    """Every facility_code this crosswalk has a name for. The published
+    DHIS2 aggregate has data for far more facility_codes than this covers
+    (nationwide, unnamed) -- by policy, MNID's DHIS2-route views are capped
+    to this known set everywhere (badges, totals, filtering) rather than
+    mixing named and unnamed facilities in the same numbers."""
+    return {rec['CODE'] for rec in _load() if rec.get('CODE')}
