@@ -355,16 +355,30 @@ def _source_facility_universe(df: pd.DataFrame, scope_meta: dict | None) -> list
 
     selected = {str(value).strip() for value in (scope_meta or {}).get("selected_facilities") or [] if value}
     if selected:
-        facilities = [code for code in facilities if code in selected or _facility_label(code) in selected]
+        # FACILITY_NAMES is MAHIS-keyed and never matches a DHIS2 facility_code
+        # -- resolve the selected names through the DHIS2 crosswalk instead so
+        # a picked facility actually narrows this list, rather than always
+        # coming up empty.
+        from mnid.core.dhis2_facilities import dhis2_facility_codes_for_names
+        selected_codes = set(dhis2_facility_codes_for_names(list(selected))) | selected
+        facilities = [code for code in facilities if code in selected_codes or _facility_label(code) in selected]
     return facilities
 
 
 def _facility_label(code: str) -> str:
-    return FACILITY_NAMES.get(code, code)
+    name = FACILITY_NAMES.get(code)
+    if name:
+        return name
+    from mnid.core.dhis2_facilities import dhis2_code_to_name
+    return dhis2_code_to_name().get(code, code)
 
 
 def _facility_district(code: str) -> str:
-    return FACILITY_DISTRICT.get(code, "")
+    district = FACILITY_DISTRICT.get(code)
+    if district:
+        return district
+    from mnid.core.dhis2_facilities import dhis2_code_to_district
+    return dhis2_code_to_district().get(code, "")
 
 
 _FACILITY_TYPE_BY_CODE: dict[str, str] | None = None

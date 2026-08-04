@@ -180,6 +180,16 @@ def _resolve_scope_filters(df: pd.DataFrame, scope_meta: dict | None = None) -> 
 
         selected_facility_codes = list(dict.fromkeys(selected_facility_codes))
 
+    if not selected_facility_codes and selected_facilities:
+        # DHIS2-route views pass an empty/no-Facility_CODE df here (DHIS2
+        # doesn't need raw MAHIS rows), so the MAHIS-based resolution above
+        # never runs -- fall back to the DHIS2 facility-name crosswalk so a
+        # selected facility still resolves to a facility_code the aggregate
+        # actually uses. Silently empty for names not yet in that crosswalk,
+        # same as the MAHIS path above.
+        from mnid.core.dhis2_facilities import dhis2_facility_codes_for_names
+        selected_facility_codes = dhis2_facility_codes_for_names(selected_facilities)
+
     return selected_facilities, selected_facility_codes, selected_districts
 
 
