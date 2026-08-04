@@ -1567,26 +1567,53 @@ def _resolve_filter_cascade(level, districts, moh_level, active_report, urlparam
         if user_level == 'facility':
             facility_value = list(user_facilities)
 
-    facilities_path = os.path.join(path, f'data/{data_route}', 'dcc_dropdown_json', 'facilities_dropdowns.json')
-    with open(facilities_path, 'r') as f:
-        facilities_dict = json.load(f)
+    # DHIS2-route deployments source District/Facility options from the
+    # DHIS2 facility crosswalk instead of facilities_dropdowns.json (a MAHIS
+    # facility-code list DHIS2 has no relationship to) -- that keeps what's
+    # offered here limited to what DHIS2 can actually resolve, rather than
+    # letting users pick a MAHIS-only facility that can never match.
+    is_dhis2_route = get_mnid_data_source(data_route).source == 'dhis2'
+    if is_dhis2_route:
+        from mnid.core.dhis2_facilities import dhis2_districts, dhis2_facilities_by_district
+        facilities_dict = None
+    else:
+        facilities_path = os.path.join(path, f'data/{data_route}', 'dcc_dropdown_json', 'facilities_dropdowns.json')
+        with open(facilities_path, 'r') as f:
+            facilities_dict = json.load(f)
 
     if requested_level == "national":
-        all_districts = sorted(facilities_dict.keys())
-        all_facilities = sorted(set(
-            facility
-            for district in districts
-            if district in all_districts
-            for facility in facilities_dict.get(district, [])
-        ))
+        if is_dhis2_route:
+            all_districts = dhis2_districts()
+            all_facilities = sorted(set(
+                facility
+                for district in districts
+                if district in all_districts
+                for facility in dhis2_facilities_by_district(district)
+            ))
+        else:
+            all_districts = sorted(facilities_dict.keys())
+            all_facilities = sorted(set(
+                facility
+                for district in districts
+                if district in all_districts
+                for facility in facilities_dict.get(district, [])
+            ))
     elif requested_level == "district":
         all_districts = sorted(set(user_districts))
-        all_facilities = sorted(set(
-            facility
-            for district in user_districts
-            if district in all_districts
-            for facility in facilities_dict.get(district, [])
-        ))
+        if is_dhis2_route:
+            all_facilities = sorted(set(
+                facility
+                for district in user_districts
+                if district in all_districts
+                for facility in dhis2_facilities_by_district(district)
+            ))
+        else:
+            all_facilities = sorted(set(
+                facility
+                for district in user_districts
+                if district in all_districts
+                for facility in facilities_dict.get(district, [])
+            ))
     else:
         all_districts = sorted(set(user_districts))
         all_facilities = list(user_facilities)
