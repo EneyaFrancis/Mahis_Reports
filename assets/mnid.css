@@ -1097,6 +1097,7 @@ html { scroll-behavior: smooth; }
   padding: 4px 0;
 }
 .mnid-chart-card {
+  position: relative;
   background: #fff;
   border: 1px solid #E2E8F0;
   border-radius: 12px;
@@ -1104,6 +1105,16 @@ html { scroll-behavior: smooth; }
   overflow: visible;
   box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   transition: box-shadow 0.15s, transform 0.15s;
+}
+
+/* ── MNID capture modebar button ────────────────────────────────────── */
+.mnid-capture-modebar-btn svg {
+  display: block;
+  margin: 0 auto;
+  color: inherit;
+}
+.mnid-capture-modebar-btn:hover svg {
+  color: #17a2b8;
 }
 .mnid-chart-card:hover {
   box-shadow: 0 4px 16px rgba(0,0,0,0.07);
