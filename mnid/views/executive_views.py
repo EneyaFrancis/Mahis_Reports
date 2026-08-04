@@ -933,8 +933,31 @@ def render_country_profile(
     updated_label = end.strftime("%d %b %Y, %H:%M") if end is not None else "Unavailable"
 
     scope_items = _hierarchy_scope(df, scope_meta, period_label)
-    facilities_reporting = int(df["Facility_CODE"].dropna().astype(str).nunique()) if "Facility_CODE" in df.columns else 0
-    districts_covered = int(df["District"].dropna().astype(str).nunique()) if "District" in df.columns else 0
+    if use_dhis2:
+        # df/facility_df are empty on the DHIS2 route (no raw MAHIS rows are
+        # loaded) -- counting unique Facility_CODE/District from it always
+        # gave 0 regardless of selection. Use the already-resolved scope
+        # instead: the selected district/facility count when something's
+        # picked, otherwise how many actually report in the aggregate.
+        districts_covered = (
+            len(districts) if districts
+            else int(agg_df['district'].dropna().astype(str).nunique()) if agg_df is not None and 'district' in agg_df.columns else 0
+        )
+        if facility_codes:
+            facilities_reporting = len(facility_codes)
+        else:
+            # No specific facility picked -- count unique facility_code
+            # within the selected district(s), not the whole aggregate.
+            _fac_scope = agg_df
+            if districts and _fac_scope is not None and 'district' in _fac_scope.columns:
+                _fac_scope = _fac_scope[_fac_scope['district'].astype(str).isin(districts)]
+            facilities_reporting = (
+                int(_fac_scope['facility_code'].dropna().astype(str).nunique())
+                if _fac_scope is not None and 'facility_code' in _fac_scope.columns else 0
+            )
+    else:
+        facilities_reporting = int(df["Facility_CODE"].dropna().astype(str).nunique()) if "Facility_CODE" in df.columns else 0
+        districts_covered = int(df["District"].dropna().astype(str).nunique()) if "District" in df.columns else 0
 
     _fmt_count = lambda v: f"{v:,}" if v is not None else "N/A"
     summary_cards = [

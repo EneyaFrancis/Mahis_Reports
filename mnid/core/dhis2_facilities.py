@@ -32,6 +32,13 @@ def _load() -> list[dict]:
     return _records_cache
 
 
+def _facility_name(rec: dict) -> str:
+    # A few records are missing "NAME" outright (a source-data gap, not a
+    # code bug) but still carry "COMMON NAME" -- fall back to that instead
+    # of silently dropping the facility from every lookup below.
+    return str(rec.get('NAME') or rec.get('COMMON NAME') or '').strip()
+
+
 def dhis2_facility_records() -> list[dict]:
     """Raw records: CODE, NAME, DISTRICT, FACILITY LEVEL, DHIS2 ID, ..."""
     return _load()
@@ -45,15 +52,15 @@ def dhis2_facilities_by_district(district: str | None = None) -> list[str]:
     records = _load()
     if district:
         records = [rec for rec in records if rec.get('DISTRICT') == district]
-    return sorted({rec['NAME'] for rec in records if rec.get('NAME')})
+    return sorted({_facility_name(rec) for rec in records if _facility_name(rec)})
 
 
 def dhis2_name_to_code() -> dict[str, str]:
-    return {rec['NAME']: rec['CODE'] for rec in _load() if rec.get('NAME') and rec.get('CODE')}
+    return {_facility_name(rec): rec['CODE'] for rec in _load() if _facility_name(rec) and rec.get('CODE')}
 
 
 def dhis2_code_to_name() -> dict[str, str]:
-    return {rec['CODE']: rec['NAME'] for rec in _load() if rec.get('NAME') and rec.get('CODE')}
+    return {rec['CODE']: _facility_name(rec) for rec in _load() if _facility_name(rec) and rec.get('CODE')}
 
 
 def dhis2_code_to_district() -> dict[str, str]:

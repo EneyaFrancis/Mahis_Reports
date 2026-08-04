@@ -1685,6 +1685,13 @@ def sync_filter_cascade(level, districts, moh_level, urlparams, active_report):
     # District/Facility fields would show editable and unlocked until they
     # happened to touch a dropdown themselves.
     data_route = (urlparams or {}).get('route', ["default"])[0]
+    if not districts:
+        # Lets a URL land pre-scoped to a district, e.g.
+        # ...&district=Lilongwe -- only seeds when nothing's selected yet
+        # (initial load), never overrides a district the user already picked.
+        url_district = (urlparams or {}).get('district')
+        if url_district:
+            districts = list(url_district)
     resolved = _resolve_filter_cascade(level, districts, moh_level, active_report, urlparams, data_route)
     if resolved is None:
         raise PreventUpdate
@@ -1743,6 +1750,15 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams,
 
         data_route = (urlparams or {}).get('route', ["default"])[0]
         dataset_version = _dataset_version_token(data_route)
+
+        if not districts:
+            # Same URL-seeded district as sync_filter_cascade, applied here
+            # too so the very first render (URL/initial load, before the
+            # user has clicked Apply Filters even once) already lands
+            # district-scoped instead of waiting on a second interaction.
+            url_district = (urlparams or {}).get('district')
+            if url_district:
+                districts = list(url_district)
 
         # Determine which report to show. scrolling-menu's buttons are fully
         # regenerated on every update_menu re-run (e.g. the periodic
