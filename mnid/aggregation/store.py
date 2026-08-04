@@ -126,7 +126,25 @@ def load_aggregate(route: str = _DEFAULT_ROUTE, output_dir: str | None = None) -
             from mnid.core.dhis2_facilities import dhis2_known_facility_codes
             known_codes = dhis2_known_facility_codes()
             if known_codes:
-                agg_df = agg_df[agg_df['facility_code'].isin(known_codes)].reset_index(drop=True)
+                capped = agg_df[agg_df['facility_code'].isin(known_codes)].reset_index(drop=True)
+                if capped.empty and not agg_df.empty:
+                    # Every published row failed to match the curated crosswalk
+                    # (e.g. mnid_publish.py couldn't resolve local_facility_code
+                    # for any org unit in this sync) -- capping would silently
+                    # zero out a real, non-empty aggregate, which every caller
+                    # then reads as "no DHIS2 data" and falls back to MAHIS/demo
+                    # data instead. That's worse than showing uncapped rows
+                    # under whatever facility_code DHIS2 gave them, so skip the
+                    # cap here and surface it loudly instead of hiding it.
+                    _LOG.warning(
+                        'DHIS2 facility-code cap would remove all %d rows (0/%d known '
+                        'codes matched) -- skipping cap for route=%s so real data isn\'t '
+                        'masked by an empty-looking aggregate. Check mnid_publish.py\'s '
+                        'facility_code resolution and organisation_units.json coverage.',
+                        len(agg_df), len(known_codes), route,
+                    )
+                else:
+                    agg_df = capped
         _AGG_DF_BY_ROUTE[route] = agg_df
         _LOADED_ROUTES.add(route)
         _trim_route_cache()
