@@ -235,6 +235,12 @@ def _grain_tick_angle(grain: str) -> int:
     }.get(str(grain or "monthly").lower(), -28)
 
 
+def _is_percentage_axis(y_title: str) -> bool:
+    """Return whether a run chart represents a percentage rather than a count."""
+    normalized = str(y_title or "").strip().lower()
+    return "%" in normalized or "percent" in normalized
+
+
 def _serialize_trend_series(series_df: pd.DataFrame) -> list[dict]:
     if series_df is None or series_df.empty:
         return []
@@ -293,6 +299,7 @@ def _run_chart(
     smooth_grain = grain if grain in {"weekly", "monthly", "quarterly", "yearly"} else "monthly"
     smoothed, _ = _moving_average_values(plot_series["value"].tolist(), smooth_grain, method=measure)
     measure_label = "Median" if measure == "median" else "Moving avg"
+    value_format = ".1f" if _is_percentage_axis(y_title) else ",.0f"
     has_counts = "numerator" in plot_series.columns and "denominator" in plot_series.columns
     if has_counts:
         customdata = list(zip(
@@ -303,8 +310,8 @@ def _run_chart(
         ))
         hovertemplate = (
             "<b>%{customdata[0]}</b><br>"
-            f"{measure_label}: " "<b>%{y:.1f}</b><br>"
-            "Actual: <b>%{customdata[1]:.1f}</b><br>"
+            f"{measure_label}: " f"<b>%{{y:{value_format}}}</b><br>"
+            f"Actual: <b>%{{customdata[1]:{value_format}}}</b><br>"
             "Clients: %{customdata[2]:.0f} / %{customdata[3]:.0f}"
             "<extra></extra>"
         )
@@ -312,8 +319,8 @@ def _run_chart(
         customdata = list(zip(hover_labels, plot_series["value"].tolist()))
         hovertemplate = (
             "<b>%{customdata[0]}</b><br>"
-            f"{measure_label}: " "<b>%{y:.1f}</b><br>"
-            "Actual: <b>%{customdata[1]:.1f}</b>"
+            f"{measure_label}: " f"<b>%{{y:{value_format}}}</b><br>"
+            f"Actual: <b>%{{customdata[1]:{value_format}}}</b>"
             "<extra></extra>"
         )
     fig.add_trace(go.Scatter(
@@ -356,6 +363,7 @@ def _run_chart(
             showline=False,
             zeroline=False,
             tickfont=dict(size=11, color="#94a3b8"),
+            tickformat=None if _is_percentage_axis(y_title) else ",.0f",
             title=dict(text=y_title, font=dict(size=10, color="#64748b")),
             rangemode="tozero",
         ),
@@ -394,6 +402,7 @@ def _multi_run_chart(
         return fig
 
     measure_label = "Median" if measure == "median" else "Moving avg"
+    value_format = ".1f" if _is_percentage_axis(y_title) else ",.0f"
     for label in series_df["series"].dropna().unique():
         trace_df = series_df[series_df["series"] == label]
         color = trace_df["color"].iloc[0] if "color" in trace_df.columns and not trace_df.empty else PRIMARY_GREEN
@@ -412,8 +421,8 @@ def _multi_run_chart(
             customdata=trace_df["value"].tolist(),
             hovertemplate=(
                 f"<b>{label}</b><br>%{{x}}<br>"
-                f"{measure_label}: " "<b>%{y:.1f}</b><br>"
-                "Actual: <b>%{customdata:.1f}</b>"
+                f"{measure_label}: " f"<b>%{{y:{value_format}}}</b><br>"
+                f"Actual: <b>%{{customdata:{value_format}}}</b>"
                 "<extra></extra>"
             ),
         ))
@@ -447,6 +456,7 @@ def _multi_run_chart(
             showline=False,
             zeroline=False,
             tickfont=dict(size=11, color="#94a3b8"),
+            tickformat=None if _is_percentage_axis(y_title) else ",.0f",
             title=dict(text=y_title, font=dict(size=10, color="#64748b")),
             rangemode="tozero",
         ),
@@ -620,6 +630,7 @@ __all__ = [
     "_chart_key_slug",
     "_exec_chart_layout",
     "_hex_to_rgba",
+    "_is_percentage_axis",
     "_multi_run_chart",
     "_run_chart",
     "_trend_chart_payload",
