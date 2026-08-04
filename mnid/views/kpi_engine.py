@@ -538,7 +538,13 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
     _LOGGER.info('MNID timing: comparative %.2fs', _time.monotonic() - _t4)
 
     _activity_stats = []
-    if facility_df is not None and not facility_df.empty:
+    # computed_by_label is sourced from `computed`/`overview_computed`, which
+    # already prefer the aggregate batch (_cur_batch) when available -- it
+    # doesn't actually need raw facility_df rows. Gating on facility_df alone
+    # made this whole section vanish for any date range outside the raw
+    # MAHIS dataset's own window (through 2026-07-21) even when running on
+    # the DHIS2 aggregate, which has nothing to do with that window.
+    if (facility_df is not None and not facility_df.empty) or _agg is not None:
         try:
             computed_by_label = {
                 str(item.get('label', '')): item

@@ -1319,12 +1319,25 @@ def _comparative_analysis_section(indicators: list, facility_code: str,
     dimensions = source.comparison_dimensions()
 
     if dimensions is not None:
-        all_facs, all_dists = dimensions
+        # comparison_dimensions() returns the raw DHIS2 aggregate's own
+        # facility_code/district universe -- all 29 districts and every
+        # facility_code with any data, with no name mapping (labels would
+        # show raw codes like "LL040037"). Use the curated crosswalk instead,
+        # same convention as the sidebar filter dropdowns: fewer facilities,
+        # but with real names and matching what's actually been mapped.
+        from mnid.core.dhis2_facilities import dhis2_districts, dhis2_name_to_code, dhis2_code_to_name
+        all_dists = dhis2_districts()
+        _dhis2_code_to_name = dhis2_code_to_name()
+        all_facs = sorted(_dhis2_code_to_name.keys())
     else:
         all_facs = sorted(mch_full['Facility_CODE'].dropna().astype(str).unique().tolist()) if len(mch_full) and 'Facility_CODE' in mch_full.columns else sorted(_ALL_FACILITIES[:])
         all_dists = sorted(mch_full['District'].dropna().astype(str).unique().tolist()) if len(mch_full) and 'District' in mch_full.columns else sorted(_ALL_DISTRICTS[:])
     current_dist = _FACILITY_DISTRICT.get(facility_code, '')
-    fac_opts = [{'label': _FACILITY_NAMES.get(f, f), 'value': f} for f in all_facs]
+    fac_opts = (
+        [{'label': _dhis2_code_to_name.get(f, f), 'value': f} for f in all_facs]
+        if dimensions is not None
+        else [{'label': _FACILITY_NAMES.get(f, f), 'value': f} for f in all_facs]
+    )
     dist_opts = [{'label': d, 'value': d} for d in all_dists]
     ind_opts = [{'label': ind['label'], 'value': ind['id']} for ind in tracked]
     default_facs = ([facility_code] if facility_code in all_facs else all_facs[:2]) or []
