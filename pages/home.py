@@ -1978,8 +1978,11 @@ def sync_picker_with_logic(period_type, n, current_active, urlparams):
     anchor = default_end
 
     if "dashboard-interval-update-today" in triggered_id:
-        if period_type == "Today":
-            return anchor, anchor
+        # This used to silently snap Custom Date Range back to "Today"
+        # every 10 minutes whenever Relative Period was still on its
+        # default "Today" value -- stomping any custom range picked in the
+        # meantime, with no way to tell the two apart. Reporting dashboards
+        # don't need a live-ticking "today"; leave whatever's shown alone.
         raise PreventUpdate
     if period_type:
         s, e = get_relative_date_range(period_type, current_date=anchor)

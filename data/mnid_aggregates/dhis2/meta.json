@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-08-04T10:12:08.177797",
-  "rows": 519131,
-  "indicators": 61,
+  "generated_at": "2026-08-04T20:23:27.393310",
+  "rows": 56898,
+  "indicators": 67,
   "grains": [
     "monthly"
   ],
   "data_source": "dhis2",
   "use_demo_data": false,
   "last_run_status": "ok",
-  "sync_run_id": "e18178d15161450a8c7fee739fd0a3d2",
-  "mapping_version": "2026-07-27",
+  "sync_run_id": "ee191ce792b045b39806d9d99e25b5cc",
+  "mapping_version": "2026-08-04",
   "period_start": "202505",
   "period_end": "202606",
   "skipped_unmapped_dhis2_indicators": 0

@@ -675,7 +675,8 @@ def create_column_chart(query_fiter,data_path, x_col, y_col, title, x_title, y_t
             title=None,  # Title added in layout
             text='label' if show_values else None,
             color_discrete_sequence=THEME["primary"],
-            barmode='group'
+            barmode='group',
+            template='plotly_white'
         )
     else:
         # SELECT x_col, AGG(y_col) … GROUP BY x_col
@@ -703,11 +704,12 @@ def create_column_chart(query_fiter,data_path, x_col, y_col, title, x_title, y_t
  
         # Modern gradient color for single-color bars
         fig = px.bar(
-            summary, 
-            x=x_col, 
-            y='data_value', 
+            summary,
+            x=x_col,
+            y='data_value',
             title=None,
-            text='label' if show_values else None
+            text='label' if show_values else None,
+            template='plotly_white'
         )
         
         # Apply theme single-color
@@ -948,6 +950,13 @@ def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_titl
     summary = summary.rename(columns={'metric_value': 'count'})
 
     # Create figure
+    # template='plotly_white' is passed explicitly (not left to plotly's
+    # global default) because apply_default_cascade() only reads the shared
+    # pio.templates.default singleton when template=None -- under concurrent
+    # Dash requests, two threads building a chart at the same instant can
+    # race on that singleton's lazily-built _props and crash with
+    # "ValueError: Invalid value" deep in plotly's basedatatypes internals.
+    # Passing template explicitly skips that shared-state read entirely.
     if color:
         fig = px.line(
             summary,
@@ -955,6 +964,7 @@ def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_titl
             y='count',
             color=color,
             color_discrete_sequence=THEME["primary"],
+            template='plotly_white',
             title=None  # Title added in layout
         )
     else:
@@ -963,6 +973,7 @@ def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_titl
             x='date_trunc',
             y='count',
             color_discrete_sequence=[THEME["single"]],
+            template='plotly_white',
             title=None
         )
     
@@ -1259,6 +1270,7 @@ def create_new_returning_chart(
         fig = px.line(
             df, x='date_trunc', y='metric_value', color='patient_type',
             color_discrete_map={'New': THEME['primary'][0], 'Returning': THEME['primary'][3]},
+            template='plotly_white',
             title=None,
         )
         fig.update_traces(
@@ -1301,6 +1313,7 @@ def create_new_returning_chart(
             hole=hole_size,
             color='patient_type',
             color_discrete_map={'New': THEME['primary'][0], 'Returning': THEME['primary'][3]},
+            template='plotly_white',
             title=None,
         )
         fig.update_traces(
@@ -1426,6 +1439,7 @@ def create_pie_chart(query_fiter,data_path, names_col, values_col, title,
         values='data_value',
         hole=hole_size,
         color_discrete_sequence=color_sequence,
+        template='plotly_white',
         title=None  # Title added in layout below
     )
 
@@ -1958,7 +1972,8 @@ def create_age_gender_histogram(
         title=None,          # Title added in layout
         text_auto=True,
         color_discrete_sequence=THEME["gender"],
-        category_orders={"age_bin": labels}
+        category_orders={"age_bin": labels},
+        template='plotly_white'
     )
 
     # Modern trace styling
@@ -2153,6 +2168,7 @@ def create_horizontal_bar_chart(
         color= color if color else None,
         color_discrete_sequence=THEME["primary"],
         orientation='h',
+        template='plotly_white',
         title=None
     )
 

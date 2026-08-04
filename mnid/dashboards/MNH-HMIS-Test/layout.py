@@ -667,6 +667,7 @@ def _district_figure(frame: pd.DataFrame):
         district, x="value", y="district", orientation="h",
         color_discrete_sequence=[RED],
         labels={"value": "Reported events", "district": "District"},
+        template='plotly_white',
     )
     figure.update_layout(
         margin={"l": 25, "r": 15, "t": 20, "b": 35},
