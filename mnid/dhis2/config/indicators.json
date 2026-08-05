@@ -1,5 +1,6 @@
 {
     "schema_version": "1.0",
+    "mapping_version": "2026-07-20",
     "mapping_version": "2026-08-04",
     "source": {
         "name": "Malawi HMIS DHIS2",
