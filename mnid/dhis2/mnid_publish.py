@@ -47,6 +47,17 @@ DHIS2_TO_MNID_ID = {
     'neonatal_deaths': 'mnid_nb_overview_002',
     'stillbirths': 'mnid_lab_overview_005',
     'anc_visits': 'mnid_anc_overview_001',
+    # 'blood_pressure_measured' is intentionally mapped to a pre-eclampsia
+    # screen-result flag ("RHD ANC (Pre-)Eclampsia Yes", sNlbaVoobzq), not a
+    # literal "BP was taken" counter -- confirmed no dedicated BP-taken data
+    # element exists anywhere in this DHIS2 instance (checked its own
+    # dataElements API directly). Kept as this proxy per explicit product
+    # decision: assessing for (pre-)eclampsia inherently requires taking
+    # blood pressure, so a positive/negative eclampsia screen result implies
+    # BP was checked for that visit. Caveat that still applies: this counts
+    # visits with a *recorded eclampsia-screen outcome*, which is likely a
+    # narrower population than "every visit where BP was physically taken" --
+    # treat the resulting percentage as a floor, not an exact count.
     'blood_pressure_measured': 'mnid_anc_prog_007',
     'tested_for_hiv': 'mnid_anc_prog_006',
     'screened_for_syphilis': 'mnid_anc_core_002',
