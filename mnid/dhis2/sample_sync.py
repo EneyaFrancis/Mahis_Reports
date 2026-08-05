@@ -23,6 +23,9 @@ INDICATOR_GROUPS = {
         "stillbirths",
     ),
     "Antenatal care": (
+        # 'blood_pressure_measured' maps to a pre-eclampsia screen-result
+        # flag, not a literal BP-taken counter -- see mnid_publish.py's
+        # DHIS2_TO_MNID_ID comment for the full explanation and caveat.
         "anc_visits", "blood_pressure_measured", "screened_for_anaemia", "tested_for_hiv",
         "screened_for_syphilis", "at_least_4_anc_contacts",
         "tetanus_doses_2", "new_anc_registrations",
@@ -43,6 +46,7 @@ INDICATOR_GROUPS = {
         "obstetric_complication_pph", "obstetric_complication_eclampsia",
         "obstetric_complication_obstructed_labour",
         "obstetric_complication_maternal_sepsis",
+        "obstetric_complication_ruptured_uterus",
         "signal_parenteral_antibiotics", "signal_anticonvulsants_mgso4",
         "signal_oxytocics", "signal_manual_placenta_removal",
         "signal_mva_retained_products", "signal_assisted_vaginal_delivery",
@@ -75,6 +79,17 @@ INDICATOR_GROUPS = {
     ),
     "Labour and delivery (2026-07 additions)": (
         "neonatal_complications_at_birth", "clients_referred_to_another_facility",
+    ),
+    # 2026-08 workbook refresh -- Ruptured Uterus joins its 4 obstetric-
+    # complication siblings above; these 5 are the individual data elements
+    # 'neonatal_complications_at_birth' already sums, published separately too
+    # so the total can be broken down by complication type.
+    "Newborn complications at birth (2026-08 breakdown)": (
+        "rhd_mat_newborn_complications_asphyxia",
+        "rhd_mat_newborn_complications_prematurity",
+        "rhd_mat_newborn_complications_sepsis",
+        "rhd_mat_newborn_complications_weight_2500g",
+        "rhd_mat_newborn_complications_othe",
     ),
 }
 SELECTED_INDICATOR_IDS = tuple(
@@ -116,12 +131,19 @@ def refresh_sample() -> dict:
     run_id = uuid.uuid4().hex
     values = []
     rejected = []
+    # A bare 'ou:LEVEL-4' wildcard resolves relative to the API user's own
+    # org-unit scope in DHIS2, not the whole system -- confirmed by direct
+    # query against mnid_publish.py's equivalent call, that returned only 5
+    # org units total for this account. Request the 67 crosswalk facilities'
+    # DHIS2 IDs explicitly instead, same as mnid_publish.py.
+    from mnid.core.dhis2_facilities import dhis2_known_org_unit_ids
+    org_units = dhis2_known_org_unit_ids()
     with DHIS2Client(settings) as client:
         for request_number, dx_batch in enumerate(
             _chunks(requested_dx, settings.dx_batch_size), 1
         ):
             payload = client.analytics(
-                dx_batch, periods, ["LEVEL-4"],
+                dx_batch, periods, org_units,
                 sync_run_id=run_id,
                 request_id=f"mnh-hmis-{request_number:04d}",
             )
