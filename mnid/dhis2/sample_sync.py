@@ -23,6 +23,9 @@ INDICATOR_GROUPS = {
         "stillbirths",
     ),
     "Antenatal care": (
+        # 'blood_pressure_measured' maps to a pre-eclampsia screen-result
+        # flag, not a literal BP-taken counter -- see mnid_publish.py's
+        # DHIS2_TO_MNID_ID comment for the full explanation and caveat.
         "anc_visits", "blood_pressure_measured", "screened_for_anaemia", "tested_for_hiv",
         "screened_for_syphilis", "at_least_4_anc_contacts",
         "tetanus_doses_2", "new_anc_registrations",
