@@ -1207,9 +1207,22 @@ def _readiness_header(df: pd.DataFrame, scope_meta: dict | None,
                       facility_codes: list[str], start_date, end_date) -> list:
     profile = _profile_scope_name(scope_meta)
     period = _period_label(start_date, end_date)
-    district_count = len({_facility_district(code) for code in facility_codes if _facility_district(code)})
     route = (scope_meta or {}).get("route", "default")
     source = "MAHIS dataset" if _resolve_data_source(route).requires_raw_dataset else "DHIS2 aggregate"
+
+    scope_meta = scope_meta or {}
+    if source == "DHIS2 aggregate" and not scope_meta.get("selected_districts") and not scope_meta.get("selected_facilities"):
+        # Nothing specific picked -- show the crosswalk's own totals (3
+        # districts, 67 facilities) instead of however many of them happen
+        # to have an actual data row in the aggregate right now (which
+        # varies sync to sync, and doesn't match the crosswalk's own
+        # DISTRICT field for the same facility_code either).
+        from mnid.core.dhis2_facilities import dhis2_districts, dhis2_known_facility_codes
+        district_count = len(dhis2_districts())
+        facility_count = len(dhis2_known_facility_codes())
+    else:
+        district_count = len({_facility_district(code) for code in facility_codes if _facility_district(code)})
+        facility_count = len(facility_codes)
     scope_items = _hierarchy_scope(df if df is not None else pd.DataFrame(), scope_meta, period)
 
     badge_style = {
@@ -1236,7 +1249,7 @@ def _readiness_header(df: pd.DataFrame, scope_meta: dict | None,
             html.Div([
                 html.Span("Live assessment", style={**badge_style, "background": "#ECFDF5", "borderColor": "#BBF7D0", "color": GREEN}),
                 html.Span(period, style=badge_style),
-                html.Span(f"{district_count} Districts · {len(facility_codes)} Facilities", style=badge_style),
+                html.Span(f"{district_count} Districts · {facility_count} Facilities", style=badge_style),
                 html.Span(source, style=badge_style),
             ], style={"display": "flex", "gap": "8px", "flexWrap": "wrap"}),
         ],

@@ -47,6 +47,17 @@ DHIS2_TO_MNID_ID = {
     'neonatal_deaths': 'mnid_nb_overview_002',
     'stillbirths': 'mnid_lab_overview_005',
     'anc_visits': 'mnid_anc_overview_001',
+    # 'blood_pressure_measured' is intentionally mapped to a pre-eclampsia
+    # screen-result flag ("RHD ANC (Pre-)Eclampsia Yes", sNlbaVoobzq), not a
+    # literal "BP was taken" counter -- confirmed no dedicated BP-taken data
+    # element exists anywhere in this DHIS2 instance (checked its own
+    # dataElements API directly). Kept as this proxy per explicit product
+    # decision: assessing for (pre-)eclampsia inherently requires taking
+    # blood pressure, so a positive/negative eclampsia screen result implies
+    # BP was checked for that visit. Caveat that still applies: this counts
+    # visits with a *recorded eclampsia-screen outcome*, which is likely a
+    # narrower population than "every visit where BP was physically taken" --
+    # treat the resulting percentage as a floor, not an exact count.
     'blood_pressure_measured': 'mnid_anc_prog_007',
     'tested_for_hiv': 'mnid_anc_prog_006',
     'screened_for_syphilis': 'mnid_anc_core_002',
@@ -83,6 +94,20 @@ DHIS2_TO_MNID_ID = {
     'obstetric_complication_pph': 'mnid_lab_core_pph',
     'obstetric_complication_eclampsia': 'mnid_lab_core_eclampsia',
     'obstetric_complication_obstructed_labour': 'mnid_lab_core_obstructedlabour',
+    # 2026-08 workbook refresh -- same clean data_element_operand pattern
+    # (RS3PtRniRns.<coc>) as its 3 siblings above, not the ambiguous bare
+    # data_element total that got labour_complications excluded.
+    'obstetric_complication_ruptured_uterus': 'mnid_lab_core_ruptureduterus',
+    # Same 2026-08 refresh -- these 5 are the individual data elements that
+    # 'neonatal_complications_at_birth' (below) already sums into one total;
+    # publishing them separately too breaks that total down by complication
+    # type (asphyxia/prematurity/sepsis/low birth weight/other) at no extra
+    # DHIS2 request cost, since the parent sum already pulls the same 5 dx.
+    'rhd_mat_newborn_complications_asphyxia': 'mnid_nb_core_complicationasphyxia',
+    'rhd_mat_newborn_complications_prematurity': 'mnid_nb_core_complicationprematurity',
+    'rhd_mat_newborn_complications_sepsis': 'mnid_nb_core_complicationsepsis',
+    'rhd_mat_newborn_complications_weight_2500g': 'mnid_nb_core_complicationweight2500g',
+    'rhd_mat_newborn_complications_othe': 'mnid_nb_core_complicationother',
     'signal_parenteral_antibiotics': 'mnid_lab_core_signalantibiotics',
     'signal_anticonvulsants_mgso4': 'mnid_lab_core_signalmgso4',
     'signal_oxytocics': 'mnid_lab_core_signaloxytocics',
@@ -186,6 +211,14 @@ MNID_META = {
     'mnid_lab_core_pph': ('Obstetric complication: PPH', 'Labour', 0),
     'mnid_lab_core_eclampsia': ('Obstetric complication: Eclampsia', 'Labour', 0),
     'mnid_lab_core_obstructedlabour': ('Obstetric complication: Obstructed labour', 'Labour', 0),
+    'mnid_lab_core_ruptureduterus': ('Obstetric complication: Ruptured uterus', 'Labour', 0),
+    # 5 breakdown components of 'Neonatal Complications at Birth' -- same
+    # target=0 monitor convention as the count above, no workbook-stated rate.
+    'mnid_nb_core_complicationasphyxia': ('Newborn complication: Asphyxia', 'Newborn', 0),
+    'mnid_nb_core_complicationprematurity': ('Newborn complication: Prematurity', 'Newborn', 0),
+    'mnid_nb_core_complicationsepsis': ('Newborn complication: Sepsis', 'Newborn', 0),
+    'mnid_nb_core_complicationweight2500g': ('Newborn complication: Weight < 2500g', 'Newborn', 0),
+    'mnid_nb_core_complicationother': ('Newborn complication: Other', 'Newborn', 0),
     'mnid_lab_core_signalantibiotics': ('Signal: Parenteral antibiotics', 'Labour', 0),
     'mnid_lab_core_signalmgso4': ('Signal: Anticonvulsants (MgSO4)', 'Labour', 0),
     'mnid_lab_core_signaloxytocics': ('Signal: Oxytocics', 'Labour', 0),
@@ -270,6 +303,7 @@ PCT_DENOMINATOR = {
     'obstetric_complication_pph': 'total_births',
     'obstetric_complication_eclampsia': 'total_births',
     'obstetric_complication_obstructed_labour': 'total_births',
+    'obstetric_complication_ruptured_uterus': 'total_births',
     'signal_parenteral_antibiotics': 'total_births',
     'signal_anticonvulsants_mgso4': 'total_births',
     'signal_oxytocics': 'total_births',
@@ -338,6 +372,68 @@ def _mahis_district(dhis2_district: str) -> str:
     return value
 
 
+_facility_code_to_district_cache: dict[str, str] | None = None
+
+
+def _facility_code_to_district() -> dict[str, str]:
+    global _facility_code_to_district_cache
+    if _facility_code_to_district_cache is None:
+        from mnid.core.dhis2_facilities import dhis2_code_to_district
+        _facility_code_to_district_cache = dhis2_code_to_district()
+    return _facility_code_to_district_cache
+
+
+def _write_facility_coverage_report(selected_units: list[dict]) -> None:
+    """Write which org units this sync actually returned data for, and
+    whether each one resolved to a named (crosswalk) facility_code.
+
+    Ground truth for the recurring "why are so many facilities blank/zero"
+    question -- rather than guessing at it turn after turn, every publish
+    run now leaves data/mnid_aggregates/dhis2/facility_coverage_report.json
+    showing exactly which reporting org units matched the curated 67-facility
+    list (data/geo/facilities_dhis2.json) and which didn't, so an unmatched
+    org unit can be looked up by name/district and either added to the
+    crosswalk or confirmed as a facility outside its current 67-facility
+    scope -- instead of silently disappearing as a blank facility_code.
+    """
+    matched = [u for u in selected_units if u.get('local_facility_code')]
+    unmatched = [u for u in selected_units if not u.get('local_facility_code')]
+    report = {
+        'generated_at': datetime.utcnow().isoformat(),
+        'org_units_seen': len(selected_units),
+        'matched_crosswalk_facility_code': len(matched),
+        'unmatched_no_facility_code': len(unmatched),
+        'matched': sorted(
+            [
+                {
+                    'org_unit_id': u.get('org_unit_id'),
+                    'name': u.get('name'),
+                    'district': u.get('district'),
+                    'local_facility_code': u.get('local_facility_code'),
+                }
+                for u in matched
+            ],
+            key=lambda r: (r['district'] or '', r['name'] or ''),
+        ),
+        'unmatched': sorted(
+            [
+                {
+                    'org_unit_id': u.get('org_unit_id'),
+                    'name': u.get('name'),
+                    'district': u.get('district'),
+                }
+                for u in unmatched
+            ],
+            key=lambda r: (r['district'] or '', r['name'] or ''),
+        ),
+    }
+    out_path = _PROJECT_ROOT / 'data' / 'mnid_aggregates' / DHIS2_ROUTE / 'facility_coverage_report.json'
+    try:
+        atomic_json(out_path, report)
+    except Exception as exc:
+        _LOG.warning('Failed to write facility coverage report: %s', exc)
+
+
 def _bridge_credentials_from_config() -> None:
     """Populate MNH_DHIS2_* env vars from config.py if not already set in the
     environment. Keeps mnid.dhis2.settings env-only (per its own security
@@ -360,11 +456,21 @@ def publish_mnid_aggregate() -> dict:
     requested_dx = atomic_dx_values(mapping)
     run_id = uuid.uuid4().hex
 
+    # A bare 'ou:LEVEL-4' wildcard resolves relative to the API user's own
+    # org-unit scope in DHIS2, not the whole system -- confirmed by direct
+    # query, that returned only 5 org units total for this account (Central
+    # Hospital sub-departments), even though all 67 crosswalk facilities have
+    # real data for the same period, same indicators. Requesting the 67
+    # crosswalk facilities' DHIS2 IDs explicitly bypasses that scoping
+    # entirely. See dhis2_known_org_unit_ids()'s docstring for the full story.
+    from mnid.core.dhis2_facilities import dhis2_known_org_unit_ids
+    org_units = dhis2_known_org_unit_ids()
+
     values, rejected = [], []
     with DHIS2Client(settings) as client:
         for request_number, dx_batch in enumerate(_chunks(requested_dx, settings.dx_batch_size), 1):
             payload = client.analytics(
-                dx_batch, periods, ['LEVEL-4'],
+                dx_batch, periods, org_units,
                 sync_run_id=run_id, request_id=f'mnid-publish-{request_number:04d}',
             )
             parsed, batch_rejected = parse_analytics_response(payload)
@@ -375,12 +481,30 @@ def publish_mnid_aggregate() -> dict:
 
     org_units_path = Path(__file__).resolve().parent / 'config' / 'organisation_units.json'
     units = json.loads(org_units_path.read_text(encoding='utf-8'))['organisation_units']
-    by_id = {u['org_unit_id']: u for u in units if u.get('level') == 'facility'}
+    # NOTE: not filtered to level=='facility' -- the 3 Central Hospitals sit
+    # at level 3 (their own top-level grouping, not a District Health
+    # Office), and their DHIS2 IDs are requested explicitly above via
+    # dhis2_known_org_unit_ids(), so they need to resolve here too regardless
+    # of level.
+    by_id = {u['org_unit_id']: u for u in units if u.get('org_unit_id')}
     seen_unit_ids = sorted({v.org_unit_id for v in values})
-    selected_units = [
-        by_id.get(uid, {'org_unit_id': uid, 'name': uid, 'district': None, 'local_facility_code': None})
-        for uid in seen_unit_ids
-    ]
+    from mnid.core.dhis2_facilities import dhis2_resolve_ancestor_facility_code
+    selected_units = []
+    for uid in seen_unit_ids:
+        unit = dict(by_id.get(uid) or {'org_unit_id': uid, 'name': uid, 'district': None, 'local_facility_code': None})
+        if not unit.get('local_facility_code'):
+            # Our own structure is 67 named facilities under 3 districts --
+            # whatever DHIS2 reports this org unit as (a department, ward, or
+            # other sub-unit below a named facility, not just the level-3
+            # Central Hospital case above), walk up its parent chain to the
+            # nearest ancestor that IS one of our named facilities, so data
+            # attaches to that facility instead of vanishing with a blank
+            # facility_code. Handles any future sub-unit DHIS2 introduces,
+            # not just the ones seen and hand-mapped so far.
+            unit['local_facility_code'] = dhis2_resolve_ancestor_facility_code(uid)
+        selected_units.append(unit)
+
+    _write_facility_coverage_report(selected_units)
 
     atomic = {(v.dx, v.period, v.org_unit_id): Decimal(v.raw_value) for v in values}
     calculated = calculate_indicators(mapping, atomic, periods, selected_units)
@@ -429,13 +553,27 @@ def publish_mnid_aggregate() -> dict:
             numerator = int(round(value))
             denominator = numerator
             pct = 100.0 if numerator else 0.0
+        facility_code = record.get('facility_code') or ''
+        # The crosswalk (data/geo/facilities_dhis2.json) is our own facility
+        # structure's authoritative district for a named facility -- prefer
+        # it whenever facility_code resolved, rather than deriving district
+        # from DHIS2's own org-unit hierarchy naming (_mahis_district below),
+        # which disagreed for Mzuzu Central Hospital: DHIS2 models it as its
+        # own top-level unit named "Mzuzu Central Hospital", which
+        # _mahis_district read as district "Mzuzu Central" -- not a real,
+        # selectable district -- while the crosswalk correctly has it under
+        # Mzimba. Falls back to _mahis_district only for the (should be rare/
+        # none, per dhis2_known_org_unit_ids()) case of an org unit that
+        # returned data without resolving to one of the 67 named facilities.
+        crosswalk_district = _facility_code_to_district().get(facility_code) if facility_code else None
+        district = crosswalk_district or _mahis_district(record.get('district'))
         rows.append({
             'indicator_id': mnid_id,
             'indicator_label': label,
             'category': category,
             'target': target,
-            'facility_code': record.get('facility_code') or '',
-            'district': _mahis_district(record.get('district')),
+            'facility_code': facility_code,
+            'district': district,
             'grain': 'monthly',
             'period_start': pd.Timestamp(period_start_date(record['period'])),
             'numerator': numerator,

@@ -1,10 +1,11 @@
 {
     "schema_version": "1.0",
     "mapping_version": "2026-07-20",
+    "mapping_version": "2026-08-04",
     "source": {
         "name": "Malawi HMIS DHIS2",
         "base_url": "https://dhis2.health.gov.mw",
-        "source_workbook": "Data Mapping - MNH dashboard - DHIS2.xlsx",
+        "source_workbook": "Data Mapping - MNH dashboard - DHIS2 (1).xlsx",
         "worksheet": "Sheet1"
     },
     "reporting_period": {

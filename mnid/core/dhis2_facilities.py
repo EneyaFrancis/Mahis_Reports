@@ -18,7 +18,9 @@ import json
 from pathlib import Path
 
 _FACILITIES_DHIS2_PATH = Path(__file__).resolve().parents[2] / 'data' / 'geo' / 'facilities_dhis2.json'
+_ORG_UNITS_PATH = Path(__file__).resolve().parents[2] / 'mnid' / 'dhis2' / 'config' / 'organisation_units.json'
 _records_cache: list[dict] | None = None
+_org_units_by_id_cache: dict[str, dict] | None = None
 
 
 def _load() -> list[dict]:
@@ -83,3 +85,85 @@ def dhis2_known_facility_codes() -> set[str]:
     to this known set everywhere (badges, totals, filtering) rather than
     mixing named and unnamed facilities in the same numbers."""
     return {rec['CODE'] for rec in _load() if rec.get('CODE')}
+
+
+def dhis2_known_org_unit_ids() -> list[str]:
+    """DHIS2 ID for every one of the 67 crosswalk facilities, for requesting
+    them explicitly in an analytics query.
+
+    Confirmed by direct query (2026-08-04): passing 'ou:LEVEL-4' as a bare
+    level wildcard silently scopes to whatever org-unit subtree the API
+    user's own account root sits under (DHIS2's normal behavior for an
+    unqualified LEVEL-n dimension item -- it resolves relative to the
+    calling user, not the whole system) -- for this API user, that returned
+    data for only 5 org units total (department-level sub-units of the 3
+    Central Hospitals), even though all 67 crosswalk facilities have real
+    reported data for the same period. Requesting these 67 IDs directly
+    bypasses that scoping and returns every facility's real data.
+    """
+    return [rec['DHIS2 ID'] for rec in _load() if rec.get('DHIS2 ID')]
+
+
+def _org_units_by_id() -> dict[str, dict]:
+    global _org_units_by_id_cache
+    if _org_units_by_id_cache is None:
+        try:
+            with open(_ORG_UNITS_PATH, 'r', encoding='utf-8') as fh:
+                units = json.load(fh).get('organisation_units', [])
+            _org_units_by_id_cache = {u['org_unit_id']: u for u in units if u.get('org_unit_id')}
+        except Exception:
+            _org_units_by_id_cache = {}
+    return _org_units_by_id_cache
+
+
+def dhis2_extra_org_unit_ids() -> list[str]:
+    """DHIS2 org_unit_id values for crosswalk facilities that don't sit at
+    the standard org-unit level the sync query requests (LEVEL-4/facility).
+
+    Malawi's Central/Referral Hospitals (Queen Elizabeth, Kamuzu Central,
+    Mzuzu Central, ...) are modelled directly under a national "Central
+    Hospital" grouping, bypassing the normal District Health Office
+    structure -- DHIS2 places them at level 3 ("district" in this registry's
+    own terms), not level 4. A query for org_units=['LEVEL-4'] alone
+    structurally excludes them, independent of any facility_code mapping --
+    the publish/sample-sync analytics calls need to request these explicitly
+    alongside the LEVEL-4 wildcard.
+    """
+    by_id = _org_units_by_id()
+    extra = []
+    for rec in _load():
+        dhis2_id = rec.get('DHIS2 ID')
+        unit = by_id.get(dhis2_id)
+        if unit is not None and unit.get('level') != 'facility':
+            extra.append(dhis2_id)
+    return extra
+
+
+def dhis2_resolve_ancestor_facility_code(org_unit_id: str, max_hops: int = 6) -> str | None:
+    """Resolve org_unit_id to a named facility_code, walking up the DHIS2
+    parent chain if the unit itself isn't one of the 67 crosswalk facilities.
+
+    Our own facility structure is 67 named facilities under 3 districts --
+    that's the structure data should ultimately belong to, no matter how
+    DHIS2 models it underneath (a department, a ward, a sub-unit one or more
+    levels below a named facility; Central Hospitals reporting at level 3
+    instead of level 4 is the same kind of mismatch, just one hop up rather
+    than down). Rather than hand-mapping each new sub-unit DHIS2 introduces
+    one at a time, walk up parent_org_unit_id until an ancestor with a known
+    local_facility_code is found -- that ancestor is the named facility this
+    data belongs to in our structure, whatever DHIS2 level it reports at.
+    """
+    by_id = _org_units_by_id()
+    current_id = org_unit_id
+    for _ in range(max_hops):
+        unit = by_id.get(current_id)
+        if unit is None:
+            return None
+        code = unit.get('local_facility_code')
+        if code:
+            return code
+        parent_id = unit.get('parent_org_unit_id')
+        if not parent_id or parent_id == current_id:
+            return None
+        current_id = parent_id
+    return None

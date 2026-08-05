@@ -406,6 +406,7 @@ _AGG_MATERNAL_COMPLICATION_IDS = {
     "Postpartum Haemorrhage": "mnid_lab_core_pph",
     "Maternal Sepsis": "mnid_lab_core_004",
     "Obstructed or Prolonged Labour": "mnid_lab_core_obstructedlabour",
+    "Ruptured Uterus": "mnid_lab_core_ruptureduterus",
 }
 
 
@@ -938,23 +939,23 @@ def render_country_profile(
         # loaded) -- counting unique Facility_CODE/District from it always
         # gave 0 regardless of selection. Use the already-resolved scope
         # instead: the selected district/facility count when something's
-        # picked, otherwise how many actually report in the aggregate.
-        districts_covered = (
-            len(districts) if districts
-            else int(agg_df['district'].dropna().astype(str).nunique()) if agg_df is not None and 'district' in agg_df.columns else 0
-        )
+        # picked. With nothing picked, use the crosswalk's own totals
+        # (data/geo/facilities_dhis2.json -- currently 3 districts, 67
+        # facilities) rather than deriving from the aggregate's own district
+        # attribution, which doesn't always agree with the crosswalk's
+        # DISTRICT field for the same facility_code.
+        from mnid.core.dhis2_facilities import dhis2_districts, dhis2_facilities_by_district, dhis2_known_facility_codes
+        districts_covered = len(districts) if districts else len(dhis2_districts())
         if facility_codes:
             facilities_reporting = len(facility_codes)
+        elif districts:
+            # District(s) picked but no specific facility -- narrow to just
+            # those districts' crosswalk facilities, not the full 67.
+            facilities_reporting = len({
+                name for d in districts for name in dhis2_facilities_by_district(d)
+            })
         else:
-            # No specific facility picked -- count unique facility_code
-            # within the selected district(s), not the whole aggregate.
-            _fac_scope = agg_df
-            if districts and _fac_scope is not None and 'district' in _fac_scope.columns:
-                _fac_scope = _fac_scope[_fac_scope['district'].astype(str).isin(districts)]
-            facilities_reporting = (
-                int(_fac_scope['facility_code'].dropna().astype(str).nunique())
-                if _fac_scope is not None and 'facility_code' in _fac_scope.columns else 0
-            )
+            facilities_reporting = len(dhis2_known_facility_codes())
     else:
         facilities_reporting = int(df["Facility_CODE"].dropna().astype(str).nunique()) if "Facility_CODE" in df.columns else 0
         districts_covered = int(df["District"].dropna().astype(str).nunique()) if "District" in df.columns else 0
