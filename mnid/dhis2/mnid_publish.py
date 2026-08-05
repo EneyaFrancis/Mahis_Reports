@@ -340,6 +340,20 @@ PCT_DENOMINATOR = {
     'pnc_mother_checked_within_48hrs': 'live_births',
     'birth_asphyxia_among_newborn_admissions': 'neonatal_admissions',
     'neonatal_sepsis_among_newborn_admissions': 'neonatal_admissions',
+
+    # Country Profile's neonatal complication run charts (Birth Asphyxia,
+    # Preterm Birth, Neonatal Sepsis) label themselves "rate as a percent of
+    # live births" in both MAHIS and DHIS2 mode (see executive_views.py's
+    # _trend_subtitle) -- pairing these 3 "at birth" breakdown counts (of
+    # 'neonatal_complications_at_birth', all newborns with the complication
+    # regardless of whether they were admitted) against live_births is what
+    # matches that label. Deliberately NOT using the "among newborn
+    # admissions" siblings above for this -- those measure a different,
+    # narrower population (admitted newborns only) and would silently make
+    # the existing "% of live births" subtitle wrong.
+    'rhd_mat_newborn_complications_asphyxia': 'live_births',
+    'rhd_mat_newborn_complications_prematurity': 'live_births',
+    'rhd_mat_newborn_complications_sepsis': 'live_births',
 }
 
 DHIS2_ROUTE = 'dhis2'

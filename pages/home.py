@@ -1962,7 +1962,7 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams,
 )
 def sync_picker_with_logic(period_type, n, current_active, urlparams):
     ctx = callback_context
-    triggered_id = ctx.triggered[0]['prop_id'] if ctx.triggered else ""
+    triggered_id = ctx.triggered_id
     data_route = (urlparams or {}).get('route', ["default"])[0]
     # Anchor relative periods ("Today" etc.) to DHIS2's own last-reported
     # date only while actually viewing an MNID/DHIS2-backed report -- e.g.
@@ -1977,12 +1977,20 @@ def sync_picker_with_logic(period_type, n, current_active, urlparams):
     default_start, default_end = _default_date_window(date_route)
     anchor = default_end
 
-    if "dashboard-interval-update-today" in triggered_id:
+    if triggered_id == "dashboard-interval-update-today":
         # This used to silently snap Custom Date Range back to "Today"
         # every 10 minutes whenever Relative Period was still on its
         # default "Today" value -- stomping any custom range picked in the
         # meantime, with no way to tell the two apart. Reporting dashboards
         # don't need a live-ticking "today"; leave whatever's shown alone.
+        raise PreventUpdate
+    if triggered_id == "active-button-store":
+        # Same stomping bug as the interval tick above, just from a
+        # different trigger: switching the active top-level report re-fires
+        # this callback, and with Relative Period still sitting on whatever
+        # it was last set to, the code below would silently overwrite a
+        # custom range back to that stale relative period's dates. Leave
+        # whatever's currently in the picker alone here.
         raise PreventUpdate
     if period_type:
         s, e = get_relative_date_range(period_type, current_date=anchor)

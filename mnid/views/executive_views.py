@@ -398,15 +398,26 @@ _AGG_ADMISSION_IDS = {
     "pnc": "mnid_pnc_core_mocheck7d",  # mothers_checked_within_7_days
 }
 
-# 4 of the 5 maternal complications have a real DHIS2 mapping (a true
-# percentage already computed against PCT_DENOMINATOR, see
-# mnid/dhis2/mnid_publish.py); none of the 3 neonatal complications do.
+# All 5 maternal complications have a real DHIS2 mapping (a true percentage
+# already computed against PCT_DENOMINATOR, see mnid/dhis2/mnid_publish.py).
 _AGG_MATERNAL_COMPLICATION_IDS = {
     "Pre-eclampsia and Eclampsia": "mnid_lab_core_eclampsia",
     "Postpartum Haemorrhage": "mnid_lab_core_pph",
     "Maternal Sepsis": "mnid_lab_core_004",
     "Obstructed or Prolonged Labour": "mnid_lab_core_obstructedlabour",
     "Ruptured Uterus": "mnid_lab_core_ruptureduterus",
+}
+
+# Same idea for the 3 neonatal complication run charts -- "at birth"
+# breakdown counts (of 'neonatal_complications_at_birth') paired against
+# live_births, matching the "% of live births" subtitle both routes already
+# show (see _trend_subtitle below). These were mapped in indicators.json but
+# never wired into this lookup, so DHIS2 mode silently rendered empty run
+# charts for all 3 despite having real, published data.
+_AGG_NEONATAL_COMPLICATION_IDS = {
+    "Birth Asphyxia": "mnid_nb_core_complicationasphyxia",
+    "Preterm Birth": "mnid_nb_core_complicationprematurity",
+    "Neonatal Sepsis": "mnid_nb_core_complicationsepsis",
 }
 
 
@@ -905,6 +916,7 @@ def render_country_profile(
         _cp_agg_ids = (
             set(_AGG_METRIC_IDS.values())
             | set(_AGG_MATERNAL_COMPLICATION_IDS.values())
+            | set(_AGG_NEONATAL_COMPLICATION_IDS.values())
             | set(_AGG_ADMISSION_IDS.values())
         )
         agg_df = agg_df[agg_df['indicator_id'].isin(_cp_agg_ids)]
@@ -1056,11 +1068,11 @@ def render_country_profile(
         ("Preterm Birth", PRIMARY_GREEN, _yn_mask(df, "mnid_labour_preterm")),
         ("Neonatal Sepsis", ADMISSIONS_BLUE, _yn_mask(df, "mnid_newborn_sepsis")),
     ]
-    # 4 of the 5 maternal complications have a real DHIS2 mapping (with a
-    # true percentage already computed against PCT_DENOMINATOR, see
-    # mnid/dhis2/mnid_publish.py); none of the 3 neonatal complications do.
-    # Unmapped ones get an empty series -- same "no data" rendering
-    # _trend_chart_payload already falls back to for sparse MAHIS periods.
+    # All 5 maternal and all 3 neonatal complications have a real DHIS2
+    # mapping now (true percentages already computed against
+    # PCT_DENOMINATOR, see mnid/dhis2/mnid_publish.py). Unmapped ones still
+    # get an empty series -- same "no data" rendering _trend_chart_payload
+    # already falls back to for sparse MAHIS periods.
     maternal_complication_cards = []
     for title, color, mask in maternal_complication_specs:
         chart_key = _chart_key_slug(title)
@@ -1084,10 +1096,14 @@ def render_country_profile(
     neonatal_complication_cards = []
     for title, color, mask in neonatal_complication_specs:
         chart_key = _chart_key_slug(title)
-        series_df = (
-            pd.DataFrame(columns=["month", "value"]) if use_dhis2
-            else _monthly_rate_series(df, mask, live_birth_denominator_mask, "person_id", include_counts=True)
-        )
+        if use_dhis2:
+            mnid_id = _AGG_NEONATAL_COMPLICATION_IDS.get(title)
+            series_df = (
+                _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct", include_counts=True)
+                if mnid_id else pd.DataFrame(columns=["month", "value", "numerator", "denominator"])
+            )
+        else:
+            series_df = _monthly_rate_series(df, mask, live_birth_denominator_mask, "person_id", include_counts=True)
         neonatal_complication_cards.append(_trend_chart_payload(
             chart_key,
             title,
