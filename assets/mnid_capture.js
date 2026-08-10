@@ -255,7 +255,7 @@
             for (var j = 0; j < traces.length; j++) {
                 if (j === 0 && xTrace.x) continue;
                 var yVal = traces[j].y ? traces[j].y[r] : undefined;
-                row.push(yVal !== undefined && yVal !== null ? yVal : '');
+                row.push(yVal !== undefined && yVal !== null ? clean(yVal) : '');
             }
             rows.push(row.join(','));
         }
