@@ -217,7 +217,7 @@
             return;
         }
 
-        var clean = function (v) { return String(v).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim(); };
+        var clean = function (v) { return String(v).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(); };
         var esc   = function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; };
 
         var rows = [];
