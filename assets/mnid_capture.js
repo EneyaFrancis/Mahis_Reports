@@ -1,9 +1,10 @@
 /**
- * MNID dashboard per-chart PNG capture.
+ * MNID dashboard per-chart PNG capture & CSV export.
  *
- * Injects a custom download button into Plotly's modebar (replacing the
+ * Injects custom download buttons into Plotly's modebar (replacing the
  * built-in one) on every chart that has the modebar enabled.
- * Uses Plotly.toImage() + canvas compositing with a white-themed header.
+ * - Camera button: PNG capture with branded header (all charts)
+ * - Table button: CSV data export (line/run charts only)
  */
 (function () {
     'use strict';
@@ -17,6 +18,13 @@
     var CAMERA_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;">' +
         '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>' +
         '<circle cx="12" cy="13" r="4"/>' +
+        '</svg>';
+
+    // Feather download icon for CSV
+    var TABLE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:0 auto;">' +
+        '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>' +
+        '<polyline points="7 10 12 15 17 10"/>' +
+        '<line x1="12" y1="15" x2="12" y2="3"/>' +
         '</svg>';
 
     // ── Data helpers ─────────────────────────────────────────────────────────
@@ -191,6 +199,79 @@
         'mnid-pill-blue':   { fg: '#475569' },
     };
 
+    // ── CSV export ────────────────────────────────────────────────────────────
+
+    function isLineChart(gd) {
+        if (!gd || !gd.data) return false;
+        for (var i = 0; i < gd.data.length; i++) {
+            var type = (gd.data[i].type || '').toLowerCase();
+            if (type === 'scatter' || type === 'scattergl') return true;
+        }
+        return false;
+    }
+
+    function exportCSV(gd, ctx) {
+        var traces = gd.data;
+        if (!traces || !traces.length) {
+            alert('No data available for CSV export.');
+            return;
+        }
+
+        var clean = function (v) { return String(v).replace(/<br\s*\/?>/gi, ' ').replace(/\s+/g, ' ').trim(); };
+        var esc   = function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; };
+
+        var rows = [];
+
+        // Metadata header
+        rows.push(esc('Indicator') + ',' + esc(clean(ctx.chartTitle || 'Chart')));
+        rows.push(esc('Facility') + ',' + esc(clean(ctx.facility || 'N/A')));
+        rows.push(esc('District') + ',' + esc(clean(ctx.district || 'N/A')));
+        rows.push(esc('Period')   + ',' + esc(clean(ctx.period || 'N/A')));
+        rows.push(esc('Program')  + ',' + esc(clean(ctx.program || 'N/A')));
+        rows.push('');
+
+        // Column headers from trace names (skip auto-generated names)
+        var xTrace = traces[0];
+        var headers = [clean(xTrace.name || 'Date')];
+        for (var i = 0; i < traces.length; i++) {
+            if (i === 0 && xTrace.x) continue;
+            var name = clean(traces[i].name || '');
+            if (/^Indicator\s+\d+$/.test(name) || name.toLowerCase() === 'trace') {
+                name = clean(ctx.chartTitle || '');
+            }
+            headers.push(name || ('Indicator ' + (i + 1)));
+        }
+        rows.push(headers.map(esc).join(','));
+
+        // Data rows
+        var maxLen = xTrace.x ? xTrace.x.length : 0;
+        for (var r = 0; r < maxLen; r++) {
+            var row = [];
+            if (xTrace.x && xTrace.x[r] !== undefined) {
+                row.push(esc(clean(xTrace.x[r])));
+            } else {
+                row.push('');
+            }
+            for (var j = 0; j < traces.length; j++) {
+                if (j === 0 && xTrace.x) continue;
+                var yVal = traces[j].y ? traces[j].y[r] : undefined;
+                row.push(yVal !== undefined && yVal !== null ? yVal : '');
+            }
+            rows.push(row.join(','));
+        }
+
+        var csv = rows.join('\n');
+        var blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement('a');
+        var safeTitle = (ctx.chartTitle || 'chart').replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_');
+        var safeFacility = (ctx.facility || 'report').replace(/[^a-zA-Z0-9_\- ]/g, '').replace(/\s+/g, '_');
+        link.download = safeTitle + '_' + safeFacility + '.csv';
+        link.href = url;
+        link.click();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 100);
+    }
+
     // ── Capture & download ───────────────────────────────────────────────────
 
     function captureCardByGd(gd) {
@@ -280,23 +361,93 @@
         var btns = modebar.querySelectorAll('.modebar-btn');
         for (var i = 0; i < btns.length; i++) {
             var title = (btns[i].getAttribute('data-title') || '').toLowerCase();
-            if (title.indexOf('download') !== -1) {
+            var isOurs = btns[i].classList.contains('mnid-capture-png-btn') || btns[i].classList.contains('mnid-capture-csv-btn');
+            if (!isOurs && title.indexOf('download') !== -1) {
                 btns[i].parentNode.removeChild(btns[i]);
                 return;
             }
         }
     }
 
+    function getIndicatorName(gd) {
+        // 1. Trace names (skip auto-generated)
+        if (gd && gd.data) {
+            for (var i = 0; i < gd.data.length; i++) {
+                var n = gd.data[i].name;
+                if (n && !/^Indicator\s+\d+$/.test(n) && n.toLowerCase() !== 'trace') return n;
+            }
+        }
+        // 2. Plotly figure title
+        if (gd && gd._fullLayout && gd._fullLayout.title && gd._fullLayout.title.text) {
+            var t = gd._fullLayout.title.text;
+            if (t && t !== 'Click to enter Plot title') return t;
+        }
+        // 3. DOM: first text child of the chart card (run chart indicator label)
+        var card = gd && gd.closest('.mnid-chart-card');
+        if (card) {
+            var children = card.children;
+            for (var j = 0; j < children.length; j++) {
+                var child = children[j];
+                if (child.classList.contains('js-plotly-plot')) continue;
+                if (child.classList.contains('modebar')) continue;
+                if (child.querySelector && child.querySelector('.js-plotly-plot')) continue;
+                var text = (child.textContent || '').trim();
+                if (text && text.length < 120 && !/^Target/.test(text)) {
+                    return text.split(/[\n\r]/)[0].trim();
+                }
+            }
+        }
+        return null;
+    }
+
+    function createCSVButton() {
+        var btn = document.createElement('a');
+        btn.className = 'modebar-btn mnid-capture-modebar-btn';
+        btn.setAttribute('rel', 'tooltip');
+        btn.setAttribute('data-title', 'Download data as CSV');
+        btn.innerHTML = TABLE_SVG;
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var gd = this.closest('.js-plotly-plot');
+            if (!gd) return;
+            var data = readStoreData();
+            var indicatorName = getIndicatorName(gd);
+            var card = gd.closest('.mnid-chart-card');
+            var catInfo = card ? findCategoryInfo(card) : { title: fallbackTitle(gd), pills: [] };
+            var chartTitle = indicatorName || catInfo.title || 'Chart';
+            exportCSV(gd, {
+                chartTitle: chartTitle,
+                facility: (data && data.facility) || 'N/A',
+                district: (data && data.district) || 'N/A',
+                period: (data && data.period) || 'N/A',
+                program: (data && data.program) || 'N/A',
+            });
+        });
+        return btn;
+    }
+
     function injectModebarButton(modebar) {
         removePlotlyDownloadBtn(modebar);
-        if (modebar.querySelector('.mnid-capture-modebar-btn')) return;
 
-        var btn = createModebarButton();
         var groups = modebar.querySelectorAll('.modebar-group');
-        if (groups.length > 0) {
-            groups[groups.length - 1].appendChild(btn);
-        } else {
-            modebar.appendChild(btn);
+        var lastGroup = groups.length > 0 ? groups[groups.length - 1] : modebar;
+
+        // PNG button
+        if (!modebar.querySelector('.mnid-capture-png-btn')) {
+            var pngBtn = createModebarButton();
+            pngBtn.classList.add('mnid-capture-png-btn');
+            lastGroup.appendChild(pngBtn);
+        }
+
+        // CSV button — only for line/run charts
+        var gd = modebar.closest('.js-plotly-plot');
+        if (gd && isLineChart(gd)) {
+            if (!modebar.querySelector('.mnid-capture-csv-btn')) {
+                var csvBtn = createCSVButton();
+                csvBtn.classList.add('mnid-capture-csv-btn');
+                lastGroup.appendChild(csvBtn);
+            }
         }
     }
 
