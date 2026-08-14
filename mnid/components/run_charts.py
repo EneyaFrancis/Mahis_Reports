@@ -526,7 +526,7 @@ def _trend_chart_card(
             dcc.Graph(
                 **({"id": graph_id} if graph_id is not None else {}),
                 figure=figure,
-                config=graph_config or {"displayModeBar": False, "responsive": True},
+                config=graph_config or {"displayModeBar": True, "responsive": True},
                 style=graph_style or {"height": "240px"},
             ),
             *([html.Div(
