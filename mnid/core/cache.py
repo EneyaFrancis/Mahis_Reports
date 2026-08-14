@@ -22,8 +22,8 @@ _EXECUTIVE_CACHE_DIR = os.environ.get('MNID_EXEC_CACHE_DIR') or os.path.join(
 )
 _MNID_EXECUTIVE_DISK_CACHE = diskcache.Cache(_EXECUTIVE_CACHE_DIR, size_limit=512 * 1024 * 1024)
 _MNID_WARNED_MESSAGES: set = set()
-_COUNTRY_PROFILE_RENDER_VERSION = "country-profile-v7-complication-rates"
-_EXECUTIVE_RENDER_VERSION = "executive-v2-operational-readiness-traffic-lights"
+_COUNTRY_PROFILE_RENDER_VERSION = "country-profile-v17-neonatal-run-charts"
+_EXECUTIVE_RENDER_VERSION = "executive-v13-neonatal-run-charts"
 
 
 _network_df_cache: dict = {}
@@ -179,6 +179,16 @@ def _resolve_scope_filters(df: pd.DataFrame, scope_meta: dict | None = None) -> 
                     selected_facility_codes.extend(name_to_codes.get(facility_name, []))
 
         selected_facility_codes = list(dict.fromkeys(selected_facility_codes))
+
+    if not selected_facility_codes and selected_facilities:
+        # DHIS2-route views pass an empty/no-Facility_CODE df here (DHIS2
+        # doesn't need raw MAHIS rows), so the MAHIS-based resolution above
+        # never runs -- fall back to the DHIS2 facility-name crosswalk so a
+        # selected facility still resolves to a facility_code the aggregate
+        # actually uses. Silently empty for names not yet in that crosswalk,
+        # same as the MAHIS path above.
+        from mnid.core.dhis2_facilities import dhis2_facility_codes_for_names
+        selected_facility_codes = dhis2_facility_codes_for_names(selected_facilities)
 
     return selected_facilities, selected_facility_codes, selected_districts
 

@@ -144,14 +144,14 @@ def convert_workbook(
     if not rows:
         raise DHIS2MappingError("Workbook worksheet is empty")
     headings = [normalize_heading(value) for value in rows[0]]
-    required = "indicator_name"
-    if required not in headings:
-        raise DHIS2MappingError("Workbook must contain an INDICATOR NAME column")
+    name_headings = ("indicator_name", "indicator_mahis", "name")
+    if not any(heading in headings for heading in name_headings):
+        raise DHIS2MappingError("Workbook must contain an INDICATOR NAME (or Indicator-MaHIS) column")
     index = {name: pos for pos, name in enumerate(headings) if name}
     existing = _read_existing(output_path)
     old_indicators = {item.get("id"): item for item in existing.get("indicators", []) if item.get("id")}
 
-    staged: list[tuple[int, str, str | None, str | None, str | None]] = []
+    staged: list[dict[str, Any]] = []
     for row_number, row in enumerate(rows[1:], 2):
         if not any(value is not None and str(value).strip() for value in row):
             continue
@@ -163,21 +163,53 @@ def convert_workbook(
                     if value:
                         return value
             return None
-        name = get("indicator_name", "name")
+        name = get(*name_headings)
         if not name:
             name = f"Unnamed workbook row {row_number}"
-        explicit_id = get("internal_id", "indicator_id", "id")
-        mapping = get("dhis2_id", "dhis2_ids", "mapping")
-        formula = get("indicator_calculation", "calculation", "formula")
-        staged.append((row_number, name, explicit_id, mapping, formula))
+        staged.append({
+            "row_number": row_number,
+            "name": name,
+            "explicit_id": get("internal_id", "indicator_id", "id"),
+            "mapping": get("dhis2_id", "dhis2_ids", "mapping"),
+            "formula": get("indicator_calculation", "calculation", "formula"),
+            "source": get("source"),
+            "comments": get("comments"),
+            "mapped": get("mapped"),
+            "dashboard_item": get("dashboard_item"),
+        })
+
+    # The workbook is a human-maintained checklist, not a 1-row-per-indicator
+    # table -- the same indicator name legitimately repeats (e.g. as a
+    # cross-reference row commented "Already captured above"). Group by
+    # normalized name instead of erroring on the second occurrence: prefer
+    # whichever occurrence actually carries a DHIS2 mapping as the row that
+    # drives the calculation, but keep every occurrence's Comments (that's
+    # where the "add to neonatal care dashboard", "not captured in HMIS", and
+    # similar operational notes live, sometimes only on the cross-reference
+    # row) and every occurrence's row number for traceability.
+    groups: dict[str, list[dict[str, Any]]] = {}
+    order: list[str] = []
+    for item in staged:
+        key = re.sub(r"\s+", " ", item["name"].strip()).casefold()
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(item)
+
+    def _primary(entries: list[dict[str, Any]]) -> dict[str, Any]:
+        return next((entry for entry in entries if entry["mapping"] or entry["formula"]), entries[0])
 
     names_to_ids = {
-        re.sub(r"\s+", " ", name.strip()).casefold(): explicit_id or stable_id(name)
-        for _, name, explicit_id, _, _ in staged
+        key: _primary(entries)["explicit_id"] or stable_id(_primary(entries)["name"])
+        for key, entries in groups.items()
     }
     indicators: list[dict[str, Any]] = []
     seen: set[str] = set()
-    for row_number, name, explicit_id, raw_mapping, formula in staged:
+    for key in order:
+        entries = groups[key]
+        primary = _primary(entries)
+        name, explicit_id = primary["name"], primary["explicit_id"]
+        raw_mapping, formula = primary["mapping"], primary["formula"]
         generated = explicit_id or stable_id(name)
         existing_match = old_indicators.get(generated)
         indicator_id = existing_match.get("id") if existing_match else generated
@@ -191,6 +223,7 @@ def convert_workbook(
         enabled = calculation is not None and status == "valid"
         if calculation and calculation["operation"] == "subtract":
             enabled = True
+        comments = [entry["comments"] for entry in entries if entry["comments"]]
         indicators.append({
             "id": indicator_id,
             "name": name,
@@ -201,9 +234,13 @@ def convert_workbook(
             "calculation": calculation,
             "validation": {"status": status, "messages": messages},
             "source_reference": {
-                "workbook_row": row_number,
+                "workbook_rows": [entry["row_number"] for entry in entries],
                 "original_indicator_name": name,
                 "original_mapping": raw_mapping or formula,
+                "reporting_source": primary["source"],
+                "comments": comments or None,
+                "mapped": primary["mapped"],
+                "dashboard_item": primary["dashboard_item"],
             },
         })
 

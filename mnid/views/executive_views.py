@@ -16,6 +16,7 @@ from mnid.components.run_charts import (
     _chart_key_slug,
     _trend_chart_payload,
 )
+from mnid.charts.layout import _capture_store
 from mnid.core.constants import BG, BORDER, DIM, FONT, GRID_C, MUTED, OK_C, TEXT, WARN_C
 from mnid.aggregation.store import (
     get_aggregate as _get_aggregate,
@@ -36,8 +37,8 @@ NEONATAL_ORANGE = "#D97706"
 STILLBIRTH_BLUE = "#0284C7"
 HERO_NAVY = "#182136"
 
-def _section_header(title: str) -> html.Div:
-    return html.Div([
+def _section_header(title: str, right=None) -> html.Div:
+    left = html.Div([
         html.Span(style={
             "width": "3px", "height": "12px", "background": "#16a34a",
             "borderRadius": "2px", "flexShrink": "0", "display": "inline-block",
@@ -46,7 +47,16 @@ def _section_header(title: str) -> html.Div:
             "fontSize": "11px", "fontWeight": "700", "color": "#64748b",
             "textTransform": "uppercase", "letterSpacing": ".09em",
         }),
-    ], style={"display": "flex", "alignItems": "center", "gap": "7px", "marginBottom": "12px", "marginTop": "8px"})
+    ], style={"display": "flex", "alignItems": "center", "gap": "7px"})
+    if right is None:
+        return html.Div([left], style={
+            "display": "flex", "alignItems": "center",
+            "marginBottom": "12px", "marginTop": "8px",
+        })
+    return html.Div([left, right], style={
+        "display": "flex", "alignItems": "center", "justifyContent": "space-between",
+        "gap": "12px", "flexWrap": "wrap", "marginBottom": "12px", "marginTop": "8px",
+    })
 
 
 def _responsive_grid(children: list, min_width: str = "220px", gap: str = "16px", margin_bottom: str = "20px") -> html.Div:
@@ -389,14 +399,26 @@ _AGG_ADMISSION_IDS = {
     "pnc": "mnid_pnc_core_mocheck7d",  # mothers_checked_within_7_days
 }
 
-# 4 of the 5 maternal complications have a real DHIS2 mapping (a true
-# percentage already computed against PCT_DENOMINATOR, see
-# mnid/dhis2/mnid_publish.py); none of the 3 neonatal complications do.
+# All 5 maternal complications have a real DHIS2 mapping (a true percentage
+# already computed against PCT_DENOMINATOR, see mnid/dhis2/mnid_publish.py).
 _AGG_MATERNAL_COMPLICATION_IDS = {
     "Pre-eclampsia and Eclampsia": "mnid_lab_core_eclampsia",
     "Postpartum Haemorrhage": "mnid_lab_core_pph",
     "Maternal Sepsis": "mnid_lab_core_004",
     "Obstructed or Prolonged Labour": "mnid_lab_core_obstructedlabour",
+    "Ruptured Uterus": "mnid_lab_core_ruptureduterus",
+}
+
+# Same idea for the 3 neonatal complication run charts -- "at birth"
+# breakdown counts (of 'neonatal_complications_at_birth') paired against
+# live_births, matching the "% of live births" subtitle both routes already
+# show (see _trend_subtitle below). These were mapped in indicators.json but
+# never wired into this lookup, so DHIS2 mode silently rendered empty run
+# charts for all 3 despite having real, published data.
+_AGG_NEONATAL_COMPLICATION_IDS = {
+    "Birth Asphyxia": "mnid_nb_core_complicationasphyxia",
+    "Preterm Birth": "mnid_nb_core_complicationprematurity",
+    "Neonatal Sepsis": "mnid_nb_core_complicationsepsis",
 }
 
 
@@ -498,13 +520,16 @@ def _agg_monthly_series(
     facility_codes: list[str] | None = None,
     districts: list[str] | None = None,
     value_field: str = "numerator",
+    include_counts: bool = False,
 ) -> pd.DataFrame:
     """DHIS2-aggregate equivalent of _monthly_series -- same ['month', 'value'] shape.
 
     value_field='numerator' for count trend charts (Total Births, mortality,
     stillbirths); 'pct' for indicators that are already a rate against their
     PCT_DENOMINATOR pair (the mapped complication charts) -- see
-    mnid/dhis2/mnid_publish.py::PCT_DENOMINATOR.
+    mnid/dhis2/mnid_publish.py::PCT_DENOMINATOR. When include_counts=True (only
+    meaningful for value_field='pct'), also carries 'numerator'/'denominator'
+    for the run-chart hover's "Clients: N / D" line.
     """
     series = _agg_time_series(
         agg_df, mnid_id, grain='monthly',
@@ -512,9 +537,11 @@ def _agg_monthly_series(
         start_date=start_date, end_date=end_date,
     )
     if series.empty:
-        return pd.DataFrame(columns=["month", "value"])
+        cols = ["month", "value", "numerator", "denominator"] if include_counts else ["month", "value"]
+        return pd.DataFrame(columns=cols)
     out = series.rename(columns={"period_start": "month", value_field: "value"})
-    return out[["month", "value"]]
+    cols = ["month", "value", "numerator", "denominator"] if include_counts else ["month", "value"]
+    return out[cols]
 
 
 def _agg_monthly_multiseries(
@@ -543,13 +570,15 @@ def _monthly_rate_series(
     denominator_mask: pd.Series,
     unique_col: str = "person_id",
     scale: float = 100.0,
+    include_counts: bool = False,
 ) -> pd.DataFrame:
+    cols = ["month", "value", "numerator", "denominator"] if include_counts else ["month", "value"]
     if df is None or df.empty or "Date" not in df.columns or unique_col not in df.columns:
-        return pd.DataFrame(columns=["month", "value"])
+        return pd.DataFrame(columns=cols)
     numerator = _monthly_series(df, numerator_mask, unique_col)
     denominator = _monthly_series(df, denominator_mask, unique_col)
     if denominator.empty:
-        return pd.DataFrame(columns=["month", "value"])
+        return pd.DataFrame(columns=cols)
     merged = denominator.rename(columns={"value": "denominator"}).merge(
         numerator.rename(columns={"value": "numerator"}),
         on="month",
@@ -561,7 +590,7 @@ def _monthly_rate_series(
         lambda row: round((row["numerator"] / row["denominator"]) * scale, 1) if row["denominator"] > 0 else 0.0,
         axis=1,
     )
-    return merged[["month", "value"]]
+    return merged[cols]
 
 
 def _delta_percent(current: float, previous: float) -> float:
@@ -888,6 +917,7 @@ def render_country_profile(
         _cp_agg_ids = (
             set(_AGG_METRIC_IDS.values())
             | set(_AGG_MATERNAL_COMPLICATION_IDS.values())
+            | set(_AGG_NEONATAL_COMPLICATION_IDS.values())
             | set(_AGG_ADMISSION_IDS.values())
         )
         agg_df = agg_df[agg_df['indicator_id'].isin(_cp_agg_ids)]
@@ -917,8 +947,31 @@ def render_country_profile(
     updated_label = end.strftime("%d %b %Y, %H:%M") if end is not None else "Unavailable"
 
     scope_items = _hierarchy_scope(df, scope_meta, period_label)
-    facilities_reporting = int(df["Facility_CODE"].dropna().astype(str).nunique()) if "Facility_CODE" in df.columns else 0
-    districts_covered = int(df["District"].dropna().astype(str).nunique()) if "District" in df.columns else 0
+    if use_dhis2:
+        # df/facility_df are empty on the DHIS2 route (no raw MAHIS rows are
+        # loaded) -- counting unique Facility_CODE/District from it always
+        # gave 0 regardless of selection. Use the already-resolved scope
+        # instead: the selected district/facility count when something's
+        # picked. With nothing picked, use the crosswalk's own totals
+        # (data/geo/facilities_dhis2.json -- currently 3 districts, 67
+        # facilities) rather than deriving from the aggregate's own district
+        # attribution, which doesn't always agree with the crosswalk's
+        # DISTRICT field for the same facility_code.
+        from mnid.core.dhis2_facilities import dhis2_districts, dhis2_facilities_by_district, dhis2_known_facility_codes
+        districts_covered = len(districts) if districts else len(dhis2_districts())
+        if facility_codes:
+            facilities_reporting = len(facility_codes)
+        elif districts:
+            # District(s) picked but no specific facility -- narrow to just
+            # those districts' crosswalk facilities, not the full 67.
+            facilities_reporting = len({
+                name for d in districts for name in dhis2_facilities_by_district(d)
+            })
+        else:
+            facilities_reporting = len(dhis2_known_facility_codes())
+    else:
+        facilities_reporting = int(df["Facility_CODE"].dropna().astype(str).nunique()) if "Facility_CODE" in df.columns else 0
+        districts_covered = int(df["District"].dropna().astype(str).nunique()) if "District" in df.columns else 0
 
     _fmt_count = lambda v: f"{v:,}" if v is not None else "N/A"
     summary_cards = [
@@ -1016,22 +1069,22 @@ def render_country_profile(
         ("Preterm Birth", PRIMARY_GREEN, _yn_mask(df, "mnid_labour_preterm")),
         ("Neonatal Sepsis", ADMISSIONS_BLUE, _yn_mask(df, "mnid_newborn_sepsis")),
     ]
-    # 4 of the 5 maternal complications have a real DHIS2 mapping (with a
-    # true percentage already computed against PCT_DENOMINATOR, see
-    # mnid/dhis2/mnid_publish.py); none of the 3 neonatal complications do.
-    # Unmapped ones get an empty series -- same "no data" rendering
-    # _trend_chart_payload already falls back to for sparse MAHIS periods.
+    # All 5 maternal and all 3 neonatal complications have a real DHIS2
+    # mapping now (true percentages already computed against
+    # PCT_DENOMINATOR, see mnid/dhis2/mnid_publish.py). Unmapped ones still
+    # get an empty series -- same "no data" rendering _trend_chart_payload
+    # already falls back to for sparse MAHIS periods.
     maternal_complication_cards = []
     for title, color, mask in maternal_complication_specs:
         chart_key = _chart_key_slug(title)
         if use_dhis2:
             mnid_id = _AGG_MATERNAL_COMPLICATION_IDS.get(title)
             series_df = (
-                _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct")
-                if mnid_id else pd.DataFrame(columns=["month", "value"])
+                _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct", include_counts=True)
+                if mnid_id else pd.DataFrame(columns=["month", "value", "numerator", "denominator"])
             )
         else:
-            series_df = _monthly_rate_series(df, mask, total_birth_denominator_mask, "person_id")
+            series_df = _monthly_rate_series(df, mask, total_birth_denominator_mask, "person_id", include_counts=True)
         maternal_complication_cards.append(_trend_chart_payload(
             chart_key,
             title,
@@ -1044,10 +1097,14 @@ def render_country_profile(
     neonatal_complication_cards = []
     for title, color, mask in neonatal_complication_specs:
         chart_key = _chart_key_slug(title)
-        series_df = (
-            pd.DataFrame(columns=["month", "value"]) if use_dhis2
-            else _monthly_rate_series(df, mask, live_birth_denominator_mask, "person_id")
-        )
+        if use_dhis2:
+            mnid_id = _AGG_NEONATAL_COMPLICATION_IDS.get(title)
+            series_df = (
+                _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct", include_counts=True)
+                if mnid_id else pd.DataFrame(columns=["month", "value", "numerator", "denominator"])
+            )
+        else:
+            series_df = _monthly_rate_series(df, mask, live_birth_denominator_mask, "person_id", include_counts=True)
         neonatal_complication_cards.append(_trend_chart_payload(
             chart_key,
             title,
@@ -1172,9 +1229,20 @@ def render_country_profile(
         "borderRadius": "10px", "overflow": "hidden", "marginBottom": "20px",
     })
 
+    scope_map = {item["label"]: item["value"] for item in scope_items}
+    capture_store = _capture_store(
+        facility_name=scope_map.get("Facility", profile_name["eyebrow"]),
+        district=scope_map.get("District", "All districts"),
+        period=scope_map.get("Period", period_label),
+        program=indicator_label,
+        indicators_text="",
+        tab_name=profile_name["tab_label"],
+    )
+
     return html.Div(
         className="mnid-executive-page",
         children=[
+            capture_store,
             hero,
             *([alert] if alert else []),
             scope_band,
@@ -1182,7 +1250,27 @@ def render_country_profile(
             _responsive_grid(summary_cards, min_width="200px", gap="14px"),
             _section_header("Mortality Snapshot · Immediate Attention Required"),
             _responsive_grid([_mortality_card(*spec) for spec in mortality_specs], min_width="260px", gap="14px"),
-            _section_header("Mortality Trends · 12-Month Run Charts"),
+            _section_header(
+                "Mortality Trends · 12-Month Run Charts",
+                right=html.Div([
+                    html.Span("Measure", style={
+                        "fontSize": "10px", "fontWeight": "700", "color": "#94a3b8",
+                        "textTransform": "uppercase", "letterSpacing": ".06em",
+                    }),
+                    html.Button(
+                        id="mnid-cp-measure-toggle",
+                        className="mnid-trend-toggle is-line",
+                        n_clicks=0,
+                        type="button",
+                        title="Toggle between median and moving average",
+                        children=[
+                            html.Span("Median", id="mnid-cp-measure-toggle-text", className="mnid-trend-toggle-text"),
+                            html.Span(className="mnid-trend-toggle-thumb"),
+                        ],
+                    ),
+                    dcc.Store(id="mnid-cp-measure-store", data="median"),
+                ], style={"display": "flex", "alignItems": "center", "gap": "8px"}),
+            ),
             _two_column_chart_grid([
                 total_births_chart,
                 maternal_mortality_chart,

@@ -741,7 +741,7 @@ layout = html.Div(
                 "top":             "0",
                 "left":            "0",
                 "bottom":          "0",
-                "width":           "280px",
+                "width":           "340px",
                 "background":      "#ffffff",
                 "boxShadow":       "4px 0 16px rgba(0,0,0,0.15)",
                 "zIndex":          "1200",
@@ -827,7 +827,10 @@ layout = html.Div(
                                 className="modern-dropdown",
                             ),
                         ]),
-                        # Custom Date Range
+                        # Custom Date Range. The drawer is wide enough
+                        # (340px) for a single-month calendar to render
+                        # inline, anchored to the field, without needing a
+                        # portal or clipping.
                         html.Div(className="filter-group", children=[
                             html.Label("Custom Date Range", className="filter-label"),
                             dcc.DatePickerRange(
@@ -839,6 +842,7 @@ layout = html.Div(
                                 end_date=_default_date_window()[1],
                                 display_format='YYYY-MM-DD',
                                 className="modern-datepicker",
+                                number_of_months_shown=1,
                             ),
                         ]),
                         # Hidden overview filter (kept for callbacks)
@@ -1167,14 +1171,19 @@ layout = html.Div(
     Input("filter-drawer-close-btn",  "n_clicks"),
     Input("filter-drawer-backdrop",   "n_clicks"),
     Input("filter-float-btn",         "n_clicks"),
+    Input("dashboard-btn-generate",   "n_clicks"),
     State("filter-drawer-open", "data"),
     prevent_initial_call=True,
 )
-def _toggle_filter_drawer(n_toggle, n_close, n_backdrop, _n_float, is_open):
-    new_open = not is_open
+def _toggle_filter_drawer(n_toggle, n_close, n_backdrop, _n_float, n_apply, is_open):
+    # Apply Filters always closes the drawer (it starts the dashboard reload
+    # behind it) rather than toggling, so it stays correct even if a future
+    # change lets it fire while the drawer is already closed.
+    triggered_id = callback_context.triggered_id
+    new_open = False if triggered_id == "dashboard-btn-generate" else not is_open
     drawer_style = {
         "position": "fixed", "top": "0", "left": "0", "bottom": "0",
-        "width": "280px", "background": "#ffffff",
+        "width": "340px", "background": "#ffffff",
         "boxShadow": "4px 0 16px rgba(0,0,0,0.15)", "zIndex": "1200",
         "overflowY": "auto", "display": "flex", "flexDirection": "column",
         "transform": "translateX(0)" if new_open else "translateX(-100%)",
@@ -1194,12 +1203,14 @@ def _toggle_filter_drawer(n_toggle, n_close, n_backdrop, _n_float, is_open):
     Input("filter-drawer-close-btn",  "n_clicks"),
     Input("filter-drawer-backdrop",   "n_clicks"),
     Input("filter-float-btn",         "n_clicks"),
+    Input("dashboard-btn-generate",   "n_clicks"),
     State("filter-drawer-open", "data"),
     prevent_initial_call=True,
 )
-def _sync_drawer_state(n_toggle, n_close, n_backdrop, _n_float, is_open):
-    del n_toggle, n_close, n_backdrop, _n_float  # inputs drive trigger; only state matters
-    return not is_open
+def _sync_drawer_state(n_toggle, n_close, n_backdrop, _n_float, n_apply, is_open):
+    del n_toggle, n_close, n_backdrop, _n_float, n_apply  # inputs drive trigger; only state matters
+    triggered_id = callback_context.triggered_id
+    return False if triggered_id == "dashboard-btn-generate" else not is_open
 
 
 _KPI_PAGE_SIZE = 15
@@ -1505,47 +1516,249 @@ def _set_active_button(menu_clicks):
     return prop_dict['name']
 
 
+def _resolve_filter_cascade(level, districts, moh_level, active_report, urlparams, data_route):
+    """Resolve Level/District/Facility dropdown state -- shared by the live
+    cascade callback (fires on every filter change) and the Apply-gated
+    dashboard render, so the two can't drift out of sync. Returns None when
+    the user isn't recognized (unauthorized)."""
+    user_data = _load_user_registry(data_route)
+    user_row, scope = _resolve_user_scope(urlparams, user_data)
+    if user_row is None:
+        return None
+
+    user_level = scope['level']
+    user_districts = scope.get('districts') or []
+    user_facilities = scope.get('facilities') or []
+    if isinstance(user_facilities, str):
+        user_facilities = [user_facilities]
+    requested_level = _normalize_level(level) if level else user_level
+
+    if user_level == 'national':
+        effective_level = requested_level if requested_level in {'national', 'district', 'facility'} else 'national'
+    elif user_level == 'district':
+        effective_level = requested_level if requested_level in {'district', 'facility'} else 'district'
+    else:
+        effective_level = 'facility'
+    level_title = _title_level(effective_level)
+
+    # A non-national user's own scope is fixed to their account, not a
+    # choice -- show District (and Facility, for a facility-level user)
+    # populated with that fixed value instead of hiding them, but lock them
+    # from being changed. Level has nothing above their own ceiling to pick
+    # either, so it's locked too. A national user keeps the existing
+    # editable behaviour.
+    level_disabled = user_level != 'national'
+    facility_value = None
+    if user_level == 'national':
+        show_district_filter = effective_level == "national"
+        district_group_style = {} if show_district_filter else {"display": "none"}
+        district_disabled = not show_district_filter
+        district_note = ""
+        if not show_district_filter:
+            districts = []
+        facility_disabled = False
+    else:
+        show_district_filter = True
+        district_group_style = {}
+        district_disabled = True
+        district_note = ""
+        districts = list(user_districts)
+        facility_disabled = user_level == 'facility'
+        if user_level == 'facility':
+            facility_value = list(user_facilities)
+
+    # DHIS2-route deployments source District/Facility options from the
+    # DHIS2 facility crosswalk instead of facilities_dropdowns.json (a MAHIS
+    # facility-code list DHIS2 has no relationship to) -- that keeps what's
+    # offered here limited to what DHIS2 can actually resolve, rather than
+    # letting users pick a MAHIS-only facility that can never match.
+    is_dhis2_route = get_mnid_data_source(data_route).source == 'dhis2'
+    if is_dhis2_route:
+        from mnid.core.dhis2_facilities import dhis2_districts, dhis2_facilities_by_district
+        facilities_dict = None
+    else:
+        facilities_path = os.path.join(path, f'data/{data_route}', 'dcc_dropdown_json', 'facilities_dropdowns.json')
+        with open(facilities_path, 'r') as f:
+            facilities_dict = json.load(f)
+
+    if requested_level == "national":
+        if is_dhis2_route:
+            all_districts = dhis2_districts()
+            all_facilities = sorted(set(
+                facility
+                for district in districts
+                if district in all_districts
+                for facility in dhis2_facilities_by_district(district)
+            ))
+        else:
+            all_districts = sorted(facilities_dict.keys())
+            all_facilities = sorted(set(
+                facility
+                for district in districts
+                if district in all_districts
+                for facility in facilities_dict.get(district, [])
+            ))
+    elif requested_level == "district":
+        all_districts = sorted(set(user_districts))
+        if is_dhis2_route:
+            all_facilities = sorted(set(
+                facility
+                for district in user_districts
+                if district in all_districts
+                for facility in dhis2_facilities_by_district(district)
+            ))
+        else:
+            all_facilities = sorted(set(
+                facility
+                for district in user_districts
+                if district in all_districts
+                for facility in facilities_dict.get(district, [])
+            ))
+    else:
+        all_districts = sorted(set(user_districts))
+        all_facilities = list(user_facilities)
+
+    # Narrow the Health Facility dropdown by the selected Facility Level,
+    # scoped to Maternal Health only (where that filter is shown). Uses the
+    # dataset's own Facility_CODE/Facility pairs (real facilities with data),
+    # not facilities_dropdowns.json's broader, code-less location list.
+    if active_report == 'Maternal Health' and moh_level and moh_level != 'All':
+        try:
+            data_path = f"data/{data_route}/parquet"
+            _fac_level_lookup = DataStorage.query_duckdb(
+                f"SELECT DISTINCT {FACILITY_CODE_}, {FACILITY_} FROM '{data_path}'"
+            )
+            _level_matched = {
+                row[FACILITY_]
+                for _, row in _fac_level_lookup.iterrows()
+                if resolve_facility_level(row[FACILITY_CODE_], row[FACILITY_]) == moh_level
+            }
+            all_facilities = sorted(set(all_facilities) & _level_matched)
+        except Exception:
+            pass
+
+    return {
+        'level_title':          level_title,
+        'level_disabled':       level_disabled,
+        'show_district_filter': show_district_filter,
+        'district_group_style': district_group_style,
+        'district_disabled':    district_disabled,
+        'district_note':        district_note,
+        'districts':            districts,
+        'all_districts':        all_districts,
+        'all_facilities':       all_facilities,
+        'facility_disabled':    facility_disabled,
+        'facility_value':       facility_value,
+        'effective_level':      effective_level,
+        'requested_level':      requested_level,
+        'scope':                scope,
+        'user_level':           user_level,
+        'user_districts':       user_districts,
+    }
+
+
+@callback(
+    Output('dashboard-district-filter-group', 'style'),
+    Output('dashboard-district-filter', 'options'),
+    Output('dashboard-district-filter', 'value'),
+    Output('dashboard-district-filter', 'disabled'),
+    Output('dashboard-district-note', 'children'),
+    Output('dashboard-facility-filter', 'options'),
+    Output('dashboard-facility-filter', 'value', allow_duplicate=True),
+    Output('dashboard-facility-filter', 'disabled'),
+    Output('dashboard-level-filter', 'disabled'),
+    Input('dashboard-level-filter', 'value'),
+    Input('dashboard-district-filter', 'value'),
+    Input('dashboard-moh-level-filter', 'value'),
+    Input('url-params-store', 'data'),
+    State('active-button-store', 'data'),
+    prevent_initial_call=True,
+)
+def sync_filter_cascade(level, districts, moh_level, urlparams, active_report):
+    # Lives independently of Apply Filters -- picking a district (or changing
+    # Level/MOH Level) needs to immediately refresh which facilities are
+    # selectable, otherwise there's nothing to pick before Apply is even
+    # clickable. This never touches dashboard-container -- the actual
+    # dashboard content stays gated behind Apply Filters in update_dashboard.
+    # url-params-store is an Input (not just State) so this also fires once,
+    # correctly, right after page load -- otherwise a non-national user's
+    # District/Facility fields would show editable and unlocked until they
+    # happened to touch a dropdown themselves.
+    data_route = (urlparams or {}).get('route', ["default"])[0]
+    if not districts:
+        # Lets a URL land pre-scoped to a district, e.g.
+        # ...&district=Lilongwe -- only seeds when nothing's selected yet
+        # (initial load), never overrides a district the user already picked.
+        url_district = (urlparams or {}).get('district')
+        if url_district:
+            districts = list(url_district)
+    resolved = _resolve_filter_cascade(level, districts, moh_level, active_report, urlparams, data_route)
+    if resolved is None:
+        raise PreventUpdate
+    facility_value = resolved['facility_value']
+    return (
+        resolved['district_group_style'],
+        [{'label': d, 'value': d} for d in resolved['all_districts']],
+        resolved['districts'],
+        resolved['district_disabled'],
+        resolved['district_note'],
+        [{'label': f, 'value': f} for f in resolved['all_facilities']],
+        facility_value if facility_value is not None else no_update,
+        resolved['facility_disabled'],
+        resolved['level_disabled'],
+    )
+
+
 @callback(
     [Output('dashboard-container', 'children'),
      Output('dashboard-level-filter', 'value'),
-     Output('dashboard-district-filter-group', 'style'),
-     Output('dashboard-district-filter', 'options'),
-     Output('dashboard-district-filter', 'value'),
-     Output('dashboard-district-filter', 'disabled'),
-     Output('dashboard-district-note', 'children'),
-     Output('dashboard-facility-filter', 'options'),
-     Output('dashboard-facility-filter', 'value'),
      Output('filter-period-text', 'children'),
      Output('dashboard-render-state', 'data')],
     [
+        # Only these four re-render the dashboard immediately: clicking "Apply
+        # Filters", clicking a menu button, or navigating (URL/route change).
+        # Every actual filter control below is a State, not an Input, so
+        # changing a dropdown or the date range no longer applies live --
+        # the user has to click Apply Filters first. District/Facility
+        # dropdown *options* are refreshed live by sync_filter_cascade above.
         Input('dashboard-btn-generate', 'n_clicks'),
-        Input('dashboard-date-range-picker', 'start_date'),
-        Input('dashboard-date-range-picker', 'end_date'),
-        Input('dashboard-level-filter', 'value'),
-        Input('dashboard-district-filter', 'value'),
-        Input('dashboard-facility-filter', 'value'),
-        Input('dashboard-overview-filter', 'value'),
-        Input('dashboard-category-filter', 'value'),
         Input({"type": "menu-button", "name": ALL}, "n_clicks"),
         Input('url', 'pathname'),
-        Input('dashboard-moh-level-filter', 'value'),
         Input('url-params-store', 'data'),
     ],
     [
+        State('dashboard-date-range-picker', 'start_date'),
+        State('dashboard-date-range-picker', 'end_date'),
+        State('dashboard-level-filter', 'value'),
+        State('dashboard-district-filter', 'value'),
+        State('dashboard-facility-filter', 'value'),
+        State('dashboard-overview-filter', 'value'),
+        State('dashboard-category-filter', 'value'),
+        State('dashboard-moh-level-filter', 'value'),
         State('dashboard-age-filter', 'value'),
         State('active-button-store', 'data'),
         State('mnid-active-tab-store', 'data'),
     ],
 )
-def update_dashboard(gen, start_date, end_date, level,
+def update_dashboard(gen, menu_clicks, pathname, urlparams,
+                     start_date, end_date, level,
                      districts, facilities, overview, category,
-                     menu_clicks, pathname, moh_level, urlparams, age, current_active, active_mnid_tab):
+                     moh_level, age, current_active, active_mnid_tab):
     try:
         ctx = callback_context
         triggered_id = ctx.triggered[0]['prop_id'] if ctx.triggered else None
 
         data_route = (urlparams or {}).get('route', ["default"])[0]
         dataset_version = _dataset_version_token(data_route)
+
+        if not districts:
+            # Same URL-seeded district as sync_filter_cascade, applied here
+            # too so the very first render (URL/initial load, before the
+            # user has clicked Apply Filters even once) already lands
+            # district-scoped instead of waiting on a second interaction.
+            url_district = (urlparams or {}).get('district')
+            if url_district:
+                districts = list(url_district)
 
         # Determine which report to show. scrolling-menu's buttons are fully
         # regenerated on every update_menu re-run (e.g. the periodic
@@ -1580,85 +1793,26 @@ def update_dashboard(gen, start_date, end_date, level,
         location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
         DATA_PATH_ = f"data/{data_route}/parquet"
 
-        user_data = _load_user_registry(data_route)
-        user_row, scope = _resolve_user_scope(urlparams, user_data)
-
-        if user_row is None:
+        is_maternal = 'Maternal Health' in selected_reports
+        resolved = _resolve_filter_cascade(
+            level, districts, moh_level,
+            'Maternal Health' if is_maternal else None,
+            urlparams, data_route,
+        )
+        if resolved is None:
             return (html.Div("Unauthorized User. Please contact system administrator."), level,
-                    {'display': 'none'} if level in ['National', 'Facility'] else {},
-                    [], [], False, "", [], "", "",
-                    {'status': 'unauthorized'})
+                    "", {'status': 'unauthorized'})
 
-        user_level = scope['level']
-        user_districts = scope.get('districts') or []
+        scope           = resolved['scope']
+        user_level      = resolved['user_level']
+        user_districts  = resolved['user_districts']
+        effective_level = resolved['effective_level']
+        level           = resolved['level_title']
+        districts       = resolved['districts']
         # if user_level == 'facility' and scope.get('facility_code'):
         #     location = scope['facility_code']
 
         url_object = f"Location={location}&uuid={urlparams.get('uuid', [None])[0]}&user_level={user_level}"
-
-        # Level resolution
-        requested_level = _normalize_level(level) if level else user_level
-
-        # print(user_row, scope, user_level)
-
-        if user_level == 'national':
-            effective_level = requested_level if requested_level in {'national', 'district', 'facility'} else 'national'
-        elif user_level == 'district':
-            effective_level = requested_level if requested_level in {'district', 'facility'} else 'district'
-        else:
-            effective_level = 'facility'
-        level = _title_level(effective_level)
-
-        show_district_filter = effective_level == "national"
-        district_group_style = {} if show_district_filter else {"display": "none"}
-        district_disabled = not show_district_filter
-        district_note = ""
-        if not show_district_filter:
-            districts = []
-
-        # Dropdown option lists
-        facilities_path = os.path.join(path, f'data/{data_route}', 'dcc_dropdown_json', 'facilities_dropdowns.json')
-        with open(facilities_path, 'r') as f:
-            facilities_dict = json.load(f)
-        if requested_level == "national":
-            all_districts = sorted(facilities_dict.keys())
-            all_facilities = sorted(set(
-                facility
-                for district in districts
-                if district in all_districts
-                for facility in facilities_dict.get(district, [])
-            ))
-        elif requested_level == "district":
-            all_districts = sorted(set(user_districts))
-            all_facilities = sorted(set(
-                facility
-                for district in user_districts
-                if district in all_districts
-                for facility in facilities_dict.get(district, [])
-            ))
-        else:
-            all_districts = sorted(set(user_districts))
-            all_facilities = scope.get('facilities') or []
-        if isinstance(all_facilities, str):
-            all_facilities = [all_facilities]
-
-        # Narrow the Health Facility dropdown by the selected Facility Level,
-        # scoped to Maternal Health only (where that filter is shown). Uses the
-        # dataset's own Facility_CODE/Facility pairs (real facilities with data),
-        # not facilities_dropdowns.json's broader, code-less location list.
-        if 'Maternal Health' in selected_reports and moh_level and moh_level != 'All':
-            try:
-                _fac_level_lookup = DataStorage.query_duckdb(
-                    f"SELECT DISTINCT {FACILITY_CODE_}, {FACILITY_} FROM '{DATA_PATH_}'"
-                )
-                _level_matched = {
-                    row[FACILITY_]
-                    for _, row in _fac_level_lookup.iterrows()
-                    if resolve_facility_level(row[FACILITY_CODE_], row[FACILITY_]) == moh_level
-                }
-                all_facilities = sorted(set(all_facilities) & _level_matched)
-            except Exception:
-                pass
 
         # Shared scope & query building
         # active_dists: at district level fall back to user's districts when
@@ -1760,13 +1914,6 @@ def update_dashboard(gen, start_date, end_date, level,
         return (
             dashboard_content,
             level,
-            district_group_style,
-            [{'label': d, 'value': d} for d in all_districts],
-            districts,
-            district_disabled,
-            district_note,
-            [{'label': f, 'value': f} for f in all_facilities],
-            facilities,
             f"{start_dt} - {end_dt}",
             {
                 'status': 'ok',
@@ -1803,13 +1950,6 @@ def update_dashboard(gen, start_date, end_date, level,
             dash.no_update,
             dash.no_update,
             dash.no_update,
-            dash.no_update,
-            dash.no_update,
-            dash.no_update,
-            dash.no_update,
-            dash.no_update,
-            dash.no_update,
-            dash.no_update,
         )
 
 @callback(
@@ -1822,16 +1962,35 @@ def update_dashboard(gen, start_date, end_date, level,
 )
 def sync_picker_with_logic(period_type, n, current_active, urlparams):
     ctx = callback_context
-    triggered_id = ctx.triggered[0]['prop_id'] if ctx.triggered else ""
+    triggered_id = ctx.triggered_id
     data_route = (urlparams or {}).get('route', ["default"])[0]
-    source = get_mnid_data_source(data_route)
-    date_route = source.route if current_active == 'Maternal Health' else data_route
+    # Anchor relative periods ("Today" etc.) to DHIS2's own last-reported
+    # date only while actually viewing an MNID/DHIS2-backed report -- e.g.
+    # "Today" would otherwise land on the real calendar date, which DHIS2
+    # (monthly grain, synced up to some past month) has no data for.
+    # _is_dhis2_mnid_report already encodes exactly this policy (config
+    # says dhis2 AND the active report is actually an MNID one) -- reusing
+    # it here instead of the old direct 'Maternal Health' string match,
+    # which silently fell through to plain MAHIS-anchored dates (today's
+    # calendar date) for anything that didn't match that exact string.
+    date_route = 'dhis2' if _is_dhis2_mnid_report([current_active], load_dashboard_menu()) else data_route
     default_start, default_end = _default_date_window(date_route)
     anchor = default_end
 
-    if "dashboard-interval-update-today" in triggered_id:
-        if period_type == "Today":
-            return anchor, anchor
+    if triggered_id == "dashboard-interval-update-today":
+        # This used to silently snap Custom Date Range back to "Today"
+        # every 10 minutes whenever Relative Period was still on its
+        # default "Today" value -- stomping any custom range picked in the
+        # meantime, with no way to tell the two apart. Reporting dashboards
+        # don't need a live-ticking "today"; leave whatever's shown alone.
+        raise PreventUpdate
+    if triggered_id == "active-button-store":
+        # Same stomping bug as the interval tick above, just from a
+        # different trigger: switching the active top-level report re-fires
+        # this callback, and with Relative Period still sitting on whatever
+        # it was last set to, the code below would silently overwrite a
+        # custom range back to that stale relative period's dates. Leave
+        # whatever's currently in the picker alone here.
         raise PreventUpdate
     if period_type:
         s, e = get_relative_date_range(period_type, current_date=anchor)
@@ -1867,39 +2026,31 @@ def reset_ui_controls(n_clicks):
     prevent_initial_call=True
 )
 def change_style(generate, reset):
-    # Returns bold items on generate to indicate active filters
-    ctx = callback_context
-    triggered_id = ctx.triggered[0]['prop_id'] if ctx.triggered else None
-    if triggered_id == "dashboard-btn-generate.n_clicks":
-        style_active = {
-                    # "display": "flex",
-                    "alignItems": "center",
-                    "gap": "5px",
-                    "border": "3px solid green",
-                    "borderRadius": "8px"
-                    }
-        return style_active, style_active, style_active, style_active, style_active, style_active, style_active, style_active
-    else:
-        style_default = {}
-        return style_default, style_default, style_default, style_default, style_default, style_default, style_default, style_default
+    # Green "applied" border on Apply Filters disabled for now, per request --
+    # left the callback in place in case it's wanted back later.
+    style_default = {}
+    return style_default, style_default, style_default, style_default, style_default, style_default, style_default, style_default
 
 
 @callback(
     Output('dashboard-age-filter-group', 'style'),
     Output('dashboard-category-filter-group', 'style'),
     Input('active-button-store', 'data'),
+    Input('mnid-active-tab-store', 'data'),
 )
-def toggle_age_group_visibility(active_report):
+def toggle_age_group_visibility(active_report, active_mnid_tab):
     report = str(active_report or '').strip().lower()
 
     hide_for = {'maternal health', 'newborn', 'neonatal program'}
-    show_program_for = {'maternal health'}
     if report in hide_for:
         age_style = {'display': 'none'}
     else:
         age_style = {}
 
-    if report in show_program_for:
+    # Program Category (ANC/Labour/PNC) only makes sense on MNID's own
+    # "Maternal" sub-tab -- not Country Profile/Operational Readiness/Newborn,
+    # even while the outer "Maternal Health" report is the active selection.
+    if active_mnid_tab == 'maternal-dashboard':
         program_style = {}
     else:
         program_style = {'display': 'none'}

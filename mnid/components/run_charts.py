@@ -147,8 +147,9 @@ def bucket_time_series(series_df: pd.DataFrame, grain: str, value_col: str = "va
     working = working.dropna(subset=["period_start"])
     if working.empty:
         return pd.DataFrame(columns=["period_start", "bucket_key", "bucket_label", value_col])
+    count_cols = [c for c in ("numerator", "denominator") if c in working.columns]
     bucketed = (
-        working.groupby("period_start", as_index=False)[value_col]
+        working.groupby("period_start", as_index=False)[[value_col, *count_cols]]
         .sum()
         .sort_values("period_start")
     )
@@ -170,6 +171,8 @@ def bucket_time_series(series_df: pd.DataFrame, grain: str, value_col: str = "va
             .reset_index()
         )
         bucketed[value_col] = pd.to_numeric(bucketed[value_col], errors="coerce").fillna(0)
+        for col in count_cols:
+            bucketed[col] = pd.to_numeric(bucketed[col], errors="coerce").fillna(0)
     bucketed["bucket_key"] = bucketed["period_start"].dt.strftime("%Y-%m-%d")
     bucketed["bucket_label"] = bucketed["period_start"].apply(lambda ts: _format_grain_label(ts, grain))
     return bucketed
@@ -232,6 +235,12 @@ def _grain_tick_angle(grain: str) -> int:
     }.get(str(grain or "monthly").lower(), -28)
 
 
+def _is_percentage_axis(y_title: str) -> bool:
+    """Return whether a run chart represents a percentage rather than a count."""
+    normalized = str(y_title or "").strip().lower()
+    return "%" in normalized or "percent" in normalized
+
+
 def _serialize_trend_series(series_df: pd.DataFrame) -> list[dict]:
     if series_df is None or series_df.empty:
         return []
@@ -253,6 +262,7 @@ def _run_chart(
     y_title: str,
     target: float | None = None,
     grain: str = "monthly",
+    measure: str = "median",
 ) -> go.Figure:
     fig = go.Figure()
     if series.empty:
@@ -287,7 +297,32 @@ def _run_chart(
         else pd.to_datetime(plot_series["month"], errors="coerce").dt.strftime("%b %Y")
     )
     smooth_grain = grain if grain in {"weekly", "monthly", "quarterly", "yearly"} else "monthly"
-    smoothed, _ = _moving_average_values(plot_series["value"].tolist(), smooth_grain)
+    smoothed, _ = _moving_average_values(plot_series["value"].tolist(), smooth_grain, method=measure)
+    measure_label = "Median" if measure == "median" else "Moving avg"
+    value_format = ".1f" if _is_percentage_axis(y_title) else ",.0f"
+    has_counts = "numerator" in plot_series.columns and "denominator" in plot_series.columns
+    if has_counts:
+        customdata = list(zip(
+            hover_labels,
+            plot_series["value"].tolist(),
+            plot_series["numerator"].tolist(),
+            plot_series["denominator"].tolist(),
+        ))
+        hovertemplate = (
+            "<b>%{customdata[0]}</b><br>"
+            f"{measure_label}: " f"<b>%{{y:{value_format}}}</b><br>"
+            f"Actual: <b>%{{customdata[1]:{value_format}}}</b><br>"
+            "Clients: %{customdata[2]:.0f} / %{customdata[3]:.0f}"
+            "<extra></extra>"
+        )
+    else:
+        customdata = list(zip(hover_labels, plot_series["value"].tolist()))
+        hovertemplate = (
+            "<b>%{customdata[0]}</b><br>"
+            f"{measure_label}: " f"<b>%{{y:{value_format}}}</b><br>"
+            f"Actual: <b>%{{customdata[1]:{value_format}}}</b>"
+            "<extra></extra>"
+        )
     fig.add_trace(go.Scatter(
         x=x_values,
         y=smoothed,
@@ -297,8 +332,8 @@ def _run_chart(
         marker=dict(size=7, color=color, line=dict(color="#fff", width=1.5)),
         fill="tozeroy",
         fillcolor=_hex_to_rgba(color, 0.08),
-        customdata=hover_labels,
-        hovertemplate="%{customdata}<br>%{y:.1f}<extra></extra>",
+        customdata=customdata,
+        hovertemplate=hovertemplate,
     ))
     if target is not None:
         fig.add_hline(
@@ -328,6 +363,7 @@ def _run_chart(
             showline=False,
             zeroline=False,
             tickfont=dict(size=11, color="#94a3b8"),
+            tickformat=None if _is_percentage_axis(y_title) else ",.0f",
             title=dict(text=y_title, font=dict(size=10, color="#64748b")),
             rangemode="tozero",
         ),
@@ -342,6 +378,7 @@ def _multi_run_chart(
     y_title: str,
     target: float | None = None,
     grain: str = "monthly",
+    measure: str = "median",
 ) -> go.Figure:
     fig = go.Figure()
     if series_df.empty:
@@ -364,10 +401,12 @@ def _multi_run_chart(
         )
         return fig
 
+    measure_label = "Median" if measure == "median" else "Moving avg"
+    value_format = ".1f" if _is_percentage_axis(y_title) else ",.0f"
     for label in series_df["series"].dropna().unique():
         trace_df = series_df[series_df["series"] == label]
         color = trace_df["color"].iloc[0] if "color" in trace_df.columns and not trace_df.empty else PRIMARY_GREEN
-        smoothed, _ = _moving_average_values(trace_df["value"].tolist(), grain)
+        smoothed, _ = _moving_average_values(trace_df["value"].tolist(), grain, method=measure)
         fig.add_trace(go.Scatter(
             x=(
                 trace_df["bucket_label"]
@@ -379,7 +418,13 @@ def _multi_run_chart(
             mode="lines+markers",
             line=dict(color=color, width=3.0, shape="spline", smoothing=0.45),
             marker=dict(size=6, color=color, line=dict(color="#fff", width=1.0)),
-            hovertemplate=f"{label}<br>%{{x}}<br>%{{y:.1f}}<extra></extra>",
+            customdata=trace_df["value"].tolist(),
+            hovertemplate=(
+                f"<b>{label}</b><br>%{{x}}<br>"
+                f"{measure_label}: " f"<b>%{{y:{value_format}}}</b><br>"
+                f"Actual: <b>%{{customdata:{value_format}}}</b>"
+                "<extra></extra>"
+            ),
         ))
 
     if target is not None:
@@ -411,6 +456,7 @@ def _multi_run_chart(
             showline=False,
             zeroline=False,
             tickfont=dict(size=11, color="#94a3b8"),
+            tickformat=None if _is_percentage_axis(y_title) else ",.0f",
             title=dict(text=y_title, font=dict(size=10, color="#64748b")),
             rangemode="tozero",
         ),
@@ -480,7 +526,7 @@ def _trend_chart_card(
             dcc.Graph(
                 **({"id": graph_id} if graph_id is not None else {}),
                 figure=figure,
-                config=graph_config or {"displayModeBar": False, "responsive": True},
+                config=graph_config or {"displayModeBar": True, "responsive": True},
                 style=graph_style or {"height": "240px"},
             ),
             *([html.Div(
@@ -508,6 +554,7 @@ def _trend_chart_payload(
     y_title: str,
     series_df: pd.DataFrame,
     multi: bool = False,
+    measure: str = "median",
 ) -> dict:
     default_grain = _EXEC_DEFAULT_GRAINS.get(chart_key, "monthly")
     bucketed = (
@@ -516,9 +563,9 @@ def _trend_chart_payload(
         else bucket_time_series(series_df, default_grain)
     )
     figure = (
-        _multi_run_chart(bucketed, title, y_title, grain=default_grain)
+        _multi_run_chart(bucketed, title, y_title, grain=default_grain, measure=measure)
         if multi
-        else _run_chart(bucketed, title, accent, y_title, grain=default_grain)
+        else _run_chart(bucketed, title, accent, y_title, grain=default_grain, measure=measure)
     )
     return {
         "card": _trend_chart_card(
@@ -583,6 +630,7 @@ __all__ = [
     "_chart_key_slug",
     "_exec_chart_layout",
     "_hex_to_rgba",
+    "_is_percentage_axis",
     "_multi_run_chart",
     "_run_chart",
     "_trend_chart_payload",

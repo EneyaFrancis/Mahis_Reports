@@ -133,6 +133,7 @@ def _indicator_run_fig(
     periods: list, tickfmt: str, hfmt: str,
     grain: str = 'monthly',
     precomputed: pd.DataFrame | None = None,
+    measure: str = 'median',
 ) -> go.Figure:
     if precomputed is not None and not precomputed.empty:
         xs     = precomputed['period_start'].tolist()
@@ -157,7 +158,8 @@ def _indicator_run_fig(
             d_vals.append(d_val)
 
     period_labels = [_format_grain_label(pd.Timestamp(x), grain) for x in xs]
-    smoothed, _   = _moving_average_values(ys, grain)
+    smoothed, _   = _moving_average_values(ys, grain, method=measure)
+    measure_label = 'Median' if measure == 'median' else 'Moving avg'
     valid_ys      = [y for y in smoothed if y is not None]
     if not valid_ys:
         return go.Figure(layout={
@@ -205,7 +207,7 @@ def _indicator_run_fig(
         customdata=list(zip(period_labels, n_vals, d_vals, ys)),
         hovertemplate=(
             '<b>%{customdata[0]}</b><br>'
-            'Moving avg: <b>%{y:.1f}%</b><br>'
+            f'{measure_label}: ' '<b>%{y:.1f}%</b><br>'
             'Actual: <b>%{customdata[3]:.1f}%</b><br>'
             'Clients: %{customdata[1]} / %{customdata[2]}'
             '<extra></extra>'
@@ -252,6 +254,7 @@ def _run_chart_cards(
     agg_df: pd.DataFrame | None = None,
     fallback_df: pd.DataFrame | None = None,
     grain: str = 'monthly',
+    measure: str = 'median',
 ) -> list:
     tracked = [i for i in indicators if i.get('status') == 'tracked' and i.get('category') == cat]
     if selected_ids:
@@ -369,11 +372,11 @@ def _run_chart_cards(
             _fb_dates = pd.to_datetime(_fb['Date'], errors='coerce').dropna() if 'Date' in _fb.columns else pd.Series([], dtype='datetime64[ns]')
             if not _fb_dates.empty:
                 _fb, _fb_periods, _fb_tickfmt, _fb_hfmt = _trend_period_context(_fb, grain)
-                fig = _indicator_run_fig(_fb, ind, color, _fb_periods, _fb_tickfmt, _fb_hfmt, grain, precomputed=None)
+                fig = _indicator_run_fig(_fb, ind, color, _fb_periods, _fb_tickfmt, _fb_hfmt, grain, precomputed=None, measure=measure)
             else:
-                fig = _indicator_run_fig(plot_df, ind, color, periods, tickfmt, hfmt, grain, precomputed=None)
+                fig = _indicator_run_fig(plot_df, ind, color, periods, tickfmt, hfmt, grain, precomputed=None, measure=measure)
         else:
-            fig = _indicator_run_fig(plot_df, ind, color, periods, tickfmt, hfmt, grain, precomputed=precomputed)
+            fig = _indicator_run_fig(plot_df, ind, color, periods, tickfmt, hfmt, grain, precomputed=precomputed, measure=measure)
 
         target       = ind.get('target')
         target_badge = None
@@ -508,6 +511,17 @@ def _trend_switcher(
                             searchable=False,
                             style={'minWidth': '110px', 'fontSize': '12px'},
                         ),
+                        html.Button(
+                            id='mnid-trend-measure-toggle',
+                            className='mnid-trend-toggle is-line',
+                            n_clicks=0,
+                            type='button',
+                            title='Toggle between median and moving average',
+                            children=[
+                                html.Span('Median', id='mnid-trend-measure-toggle-text', className='mnid-trend-toggle-text'),
+                                html.Span(className='mnid-trend-toggle-thumb'),
+                            ],
+                        ),
                     ],
                 ),
             ],
@@ -515,6 +529,7 @@ def _trend_switcher(
         dcc.Store(id='mnid-trend-store', data=trend_store),
         dcc.Store(id='mnid-trend-active-cat', data=default_cat),
         dcc.Store(id='mnid-trend-cats-store', data=cat_order),
+        dcc.Store(id='mnid-trend-measure-store', data='median'),
         dcc.Loading(
             html.Div(id='mnid-run-charts-container', className='mnid-chart-grid', children=[]),
             type='circle', color='#15803d',
@@ -529,17 +544,24 @@ def _trend_switcher(
     Output('mnid-trend-location', 'options'),
     Output('mnid-trend-ind-filter', 'options'),
     Output('mnid-trend-ind-filter', 'value'),
+    Output('mnid-trend-measure-toggle', 'className'),
+    Output('mnid-trend-measure-toggle-text', 'children'),
+    Output('mnid-trend-measure-store', 'data'),
     Input({'type': 'trend-cat-btn', 'index': ALL}, 'n_clicks'),
     Input('mnid-trend-location', 'value'),
     Input('mnid-trend-ind-filter', 'value'),
     Input('mnid-trend-grain', 'value'),
+    Input('mnid-trend-measure-toggle', 'n_clicks'),
     State('mnid-trend-store', 'data'),
     State('mnid-trend-active-cat', 'data'),
     State('mnid-trend-cats-store', 'data'),
+    State('mnid-trend-measure-store', 'data'),
     prevent_initial_call=False,
 )
-def update_trend_chart(n_clicks_list, location, selected_inds, grain, stored_trend, active_cat, cat_order):
+def update_trend_chart(n_clicks_list, location, selected_inds, grain, measure_clicks,
+                       stored_trend, active_cat, cat_order, stored_measure):
     grain      = (grain or 'monthly').strip().lower()
+    measure    = (stored_measure or 'median').strip().lower()
     categories = cat_order or _CAT_ORDER
     cat = active_cat if active_cat in categories else (categories[0] if categories else 'ANC')
 
@@ -554,6 +576,11 @@ def update_trend_chart(n_clicks_list, location, selected_inds, grain, stored_tre
                 cat_changed = True
         except Exception:
             pass
+
+    if triggered_prop == 'mnid-trend-measure-toggle.n_clicks':
+        measure = 'mean' if measure == 'median' else 'median'
+    measure_class = 'mnid-trend-toggle is-line' if measure == 'median' else 'mnid-trend-toggle is-bar'
+    measure_text  = 'Median' if measure == 'median' else 'Avg'
 
     trend_payload   = stored_trend or {}
     tracked         = trend_payload.get('tracked', [])
@@ -581,11 +608,11 @@ def update_trend_chart(n_clicks_list, location, selected_inds, grain, stored_tre
     cards   = _run_chart_cards(
         df, tracked, cat, location or 'all',
         default_ind_values if cat_changed else selected_inds,
-        scope_meta, agg_df=_agg_now, fallback_df=_df_full, grain=grain,
+        scope_meta, agg_df=_agg_now, fallback_df=_df_full, grain=grain, measure=measure,
     )
     # Truncate to match the number of buttons actually on the page.
     # On initial page load the maternal tab hasn't rendered yet so n_clicks_list=[]
     # — returning an empty list avoids the "Expected 0, got N" callback error.
     all_classes = ['mnid-filter-btn active' if c == cat else 'mnid-filter-btn' for c in categories]
     classes = all_classes[:len(n_clicks_list)]
-    return cards, cat, classes, loc_options, ind_options, ind_value_out
+    return cards, cat, classes, loc_options, ind_options, ind_value_out, measure_class, measure_text, measure

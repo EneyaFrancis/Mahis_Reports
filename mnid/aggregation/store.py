@@ -25,6 +25,17 @@ _AGG_DF_BY_ROUTE: dict[str, pd.DataFrame | None] = {}
 _LOADED_ROUTES: set[str] = set()
 _AGG_CACHE_MAX_ROUTES = 8
 
+# meta.json's own 'generated_at' at the moment each route was last loaded --
+# checked on every load_aggregate() call (even cache hits) so a fresh publish
+# (mnid_publish.py / the MAHIS aggregation job) is picked up automatically on
+# the next request. Before this, a route once loaded stayed in memory for the
+# rest of the worker process's life regardless of how many times the parquet
+# on disk was rebuilt -- every "republish and reload the page" cycle kept
+# silently serving whatever was loaded first, which is exactly what produced
+# a string of different, all-stale totals while iterating on the DHIS2
+# mapping. A worker restart isn't needed for this to self-correct anymore.
+_LOADED_ROUTE_STAMP: dict[str, str] = {}
+
 # routes with a background build already in flight, so a burst of requests
 # for a not-yet-built route doesn't launch duplicate aggregation jobs.
 _ROUTES_BUILDING: set[str] = set()
@@ -39,6 +50,7 @@ def _trim_route_cache() -> None:
         oldest = next(iter(_AGG_DF_BY_ROUTE))
         _AGG_DF_BY_ROUTE.pop(oldest, None)
         _LOADED_ROUTES.discard(oldest)
+        _LOADED_ROUTE_STAMP.pop(oldest, None)
 
 
 def _trigger_background_build(route: str) -> None:
@@ -63,6 +75,20 @@ def _trigger_background_build(route: str) -> None:
             _ROUTES_BUILDING.discard(route)
 
     threading.Thread(target=_build, daemon=True, name=f'mnid-agg-build-{route}').start()
+
+
+def _current_meta_stamp(output_dir: str) -> str:
+    """Cheap read of meta.json's 'generated_at' -- a few hundred bytes, safe to
+    read on every load_aggregate() call to detect a fresh publish/rebuild."""
+    import json
+    try:
+        meta_path = Path(output_dir) / 'meta.json'
+        if not meta_path.exists():
+            return ''
+        with open(meta_path, encoding='utf-8') as f:
+            return str(json.load(f).get('generated_at') or '')
+    except Exception:
+        return ''
 
 
 def _meta_source_matches(output_dir: str) -> bool:
@@ -96,28 +122,66 @@ def load_aggregate(route: str = _DEFAULT_ROUTE, output_dir: str | None = None) -
     """Read the aggregate parquet for one route from disk into memory. Returns None if absent."""
     output_dir = output_dir or _route_out_dir(route)
     if route in _LOADED_ROUTES:
-        return _AGG_DF_BY_ROUTE.get(route)
+        if _current_meta_stamp(output_dir) == _LOADED_ROUTE_STAMP.get(route, ''):
+            return _AGG_DF_BY_ROUTE.get(route)
+        _LOG.info('Aggregate on disk changed since last load (route=%s), reloading.', route)
+        _LOADED_ROUTES.discard(route)
+        _AGG_DF_BY_ROUTE.pop(route, None)
+        _RESOLVE_LOOKUP_CACHE.clear()
 
+    current_stamp = _current_meta_stamp(output_dir)
     path = Path(output_dir) / _PARQUET_NAME
     if not path.exists():
         _LOG.debug('Aggregate not found at %s (route=%s), falling back to live compute', path, route)
         _trigger_background_build(route)
         _LOADED_ROUTES.add(route)
         _AGG_DF_BY_ROUTE[route] = None
+        _LOADED_ROUTE_STAMP[route] = current_stamp
         _trim_route_cache()
         return None
 
     if not _meta_source_matches(output_dir):
         _LOADED_ROUTES.add(route)
         _AGG_DF_BY_ROUTE[route] = None
+        _LOADED_ROUTE_STAMP[route] = current_stamp
         _trim_route_cache()
         return None
 
     try:
         agg_df = pd.read_parquet(str(path))
         agg_df['period_start'] = pd.to_datetime(agg_df['period_start'])
+        if route == 'dhis2':
+            # The published DHIS2 aggregate has data for far more
+            # facility_codes nationwide than have a name in the curated
+            # crosswalk (data/geo/facilities_dhis2.json) -- by policy, every
+            # DHIS2-route view (badges, totals, filtering) is capped to that
+            # known/named set, rather than mixing named and unnamed
+            # facilities in the same "X Facilities" numbers.
+            from mnid.core.dhis2_facilities import dhis2_known_facility_codes
+            known_codes = dhis2_known_facility_codes()
+            if known_codes:
+                capped = agg_df[agg_df['facility_code'].isin(known_codes)].reset_index(drop=True)
+                if capped.empty and not agg_df.empty:
+                    # Every published row failed to match the curated crosswalk
+                    # (e.g. mnid_publish.py couldn't resolve local_facility_code
+                    # for any org unit in this sync) -- capping would silently
+                    # zero out a real, non-empty aggregate, which every caller
+                    # then reads as "no DHIS2 data" and falls back to MAHIS/demo
+                    # data instead. That's worse than showing uncapped rows
+                    # under whatever facility_code DHIS2 gave them, so skip the
+                    # cap here and surface it loudly instead of hiding it.
+                    _LOG.warning(
+                        'DHIS2 facility-code cap would remove all %d rows (0/%d known '
+                        'codes matched) -- skipping cap for route=%s so real data isn\'t '
+                        'masked by an empty-looking aggregate. Check mnid_publish.py\'s '
+                        'facility_code resolution and organisation_units.json coverage.',
+                        len(agg_df), len(known_codes), route,
+                    )
+                else:
+                    agg_df = capped
         _AGG_DF_BY_ROUTE[route] = agg_df
         _LOADED_ROUTES.add(route)
+        _LOADED_ROUTE_STAMP[route] = current_stamp
         _trim_route_cache()
         _LOG.info('Aggregate loaded: %d rows from %s (route=%s)', len(agg_df), path, route)
         return agg_df
@@ -125,6 +189,7 @@ def load_aggregate(route: str = _DEFAULT_ROUTE, output_dir: str | None = None) -
         _LOG.warning('Failed to load aggregate parquet for route=%s: %s', route, exc)
         _LOADED_ROUTES.add(route)
         _AGG_DF_BY_ROUTE[route] = None
+        _LOADED_ROUTE_STAMP[route] = current_stamp
         _trim_route_cache()
         return None
 
@@ -141,11 +206,13 @@ def invalidate_cache(route: str | None = None) -> None:
     if route is None:
         _AGG_DF_BY_ROUTE.clear()
         _LOADED_ROUTES.clear()
+        _LOADED_ROUTE_STAMP.clear()
         _RESOLVE_LOOKUP_CACHE.clear()
         _LOG.info('Aggregate cache invalidated (all routes)')
         return
     _AGG_DF_BY_ROUTE.pop(route, None)
     _LOADED_ROUTES.discard(route)
+    _LOADED_ROUTE_STAMP.pop(route, None)
     _RESOLVE_LOOKUP_CACHE.clear()
     _LOG.info('Aggregate cache invalidated (route=%s)', route)
 

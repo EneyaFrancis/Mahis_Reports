@@ -628,6 +628,17 @@ def _no_data_card(message: str = 'No data available for this period.') -> html.D
     ])
 
 
+def _has_coverage_data(coverage: tuple) -> bool:
+    """Whether an indicator has any observations in the requested window.
+
+    A zero numerator with a positive denominator is real (and important) 0%
+    performance.  Only the all-zero result means DHIS2 supplied no data for
+    the indicator anywhere in the selected period and scope.
+    """
+    num, den, _ = coverage
+    return bool((num or 0) > 0 or (den or 0) > 0)
+
+
 def _coverage_charts_section(
     by_cat: dict,
     df: pd.DataFrame,
@@ -663,11 +674,7 @@ def _coverage_charts_section(
     phases = [(cat, phase_map.get(cat, cat)) for cat in _resolve_category_order(
         [{'category': k} for k in by_cat.keys()], categories
     )]
-    active_phases = [(c, t) for c, t in phases if by_cat.get(c)]
-    single_card = len(active_phases) == 1
-    row_height = 52 if single_card else 38
-
-    cards = []
+    visible_phases = []
     for cat_key, cat_title in phases:
         inds = by_cat.get(cat_key, [])
         if not inds:
@@ -675,21 +682,44 @@ def _coverage_charts_section(
         tracked  = [i for i in inds if i.get('status') == 'tracked']
         awaiting = [i for i in inds if i.get('status') == 'awaiting_baseline']
         computed = [_compute(i) for i in tracked]
-        cov_by_id = {ind['id']: c for ind, c in zip(tracked, computed)}
-        avg_pct  = round(sum(c[2] for c in computed) / len(computed), 0) if computed else None
 
-        pills = [html.Span(f'{len(tracked)} available', className='mnid-pill mnid-pill-green')]
+        # Aggregation intentionally emits all-zero rows for configured DHIS2
+        # indicators with no observations.  Do not turn those into misleading
+        # 0% bars; remove the rows before sizing the Plotly chart so no blank
+        # vertical space is reserved for them.
+        available = [
+            (ind, coverage)
+            for ind, coverage in zip(tracked, computed)
+            if _has_coverage_data(coverage)
+        ]
+        visible_inds = [ind for ind, _ in available] + awaiting
+        if not visible_inds:
+            continue
+        visible_phases.append((cat_key, cat_title, available, awaiting, visible_inds))
+
+    single_card = len(visible_phases) == 1
+    row_height = 52 if single_card else 38
+    cards = []
+
+    for cat_key, cat_title, available, awaiting, visible_inds in visible_phases:
+        cov_by_id = {ind['id']: coverage for ind, coverage in available}
+        avg_pct = (
+            round(sum(coverage[2] for _, coverage in available) / len(available), 0)
+            if available else None
+        )
+
+        pills = [html.Span(f'{len(available)} available', className='mnid-pill mnid-pill-green')]
         if awaiting:
             pills.append(html.Span(f'{len(awaiting)} awaiting', className='mnid-pill mnid-pill-amber'))
         if avg_pct is not None:
             pc = 'mnid-pill-green' if avg_pct >= 80 else ('mnid-pill-amber' if avg_pct >= 65 else 'mnid-pill-red')
             pills.append(html.Span(f'Avg {_display_pct(avg_pct):.0f}%', className=f'mnid-pill {pc}'))
 
-        fig = _coverage_phase_fig(cat_title, inds, df,
+        fig = _coverage_phase_fig(cat_title, visible_inds, df,
                                    agg_df=agg_df, start_date=start_date, end_date=end_date,
                                    facility_codes=facility_codes, districts=districts, grain=grain,
                                    row_height=row_height, precomputed=cov_by_id)
-        inner_height = max(len(inds) * row_height + 70, CHART_HEIGHT_SM)
+        inner_height = max(len(visible_inds) * row_height + 70, CHART_HEIGHT_SM)
         outer_height = _clamp_chart_height(inner_height, CHART_HEIGHT_SM, CHART_HEIGHT_LG)
 
         title_style = {'fontSize': '13px' if single_card else '12px', 'fontWeight': '600', 'color': TEXT}
@@ -1289,12 +1319,25 @@ def _comparative_analysis_section(indicators: list, facility_code: str,
     dimensions = source.comparison_dimensions()
 
     if dimensions is not None:
-        all_facs, all_dists = dimensions
+        # comparison_dimensions() returns the raw DHIS2 aggregate's own
+        # facility_code/district universe -- all 29 districts and every
+        # facility_code with any data, with no name mapping (labels would
+        # show raw codes like "LL040037"). Use the curated crosswalk instead,
+        # same convention as the sidebar filter dropdowns: fewer facilities,
+        # but with real names and matching what's actually been mapped.
+        from mnid.core.dhis2_facilities import dhis2_districts, dhis2_name_to_code, dhis2_code_to_name
+        all_dists = dhis2_districts()
+        _dhis2_code_to_name = dhis2_code_to_name()
+        all_facs = sorted(_dhis2_code_to_name.keys())
     else:
         all_facs = sorted(mch_full['Facility_CODE'].dropna().astype(str).unique().tolist()) if len(mch_full) and 'Facility_CODE' in mch_full.columns else sorted(_ALL_FACILITIES[:])
         all_dists = sorted(mch_full['District'].dropna().astype(str).unique().tolist()) if len(mch_full) and 'District' in mch_full.columns else sorted(_ALL_DISTRICTS[:])
     current_dist = _FACILITY_DISTRICT.get(facility_code, '')
-    fac_opts = [{'label': _FACILITY_NAMES.get(f, f), 'value': f} for f in all_facs]
+    fac_opts = (
+        [{'label': _dhis2_code_to_name.get(f, f), 'value': f} for f in all_facs]
+        if dimensions is not None
+        else [{'label': _FACILITY_NAMES.get(f, f), 'value': f} for f in all_facs]
+    )
     dist_opts = [{'label': d, 'value': d} for d in all_dists]
     ind_opts = [{'label': ind['label'], 'value': ind['id']} for ind in tracked]
     default_facs = ([facility_code] if facility_code in all_facs else all_facs[:2]) or []

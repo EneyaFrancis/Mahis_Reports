@@ -37,6 +37,7 @@ from mnid.charts.coverage import (
 from mnid.charts.layout import (
     _topbar, _sidebar, _alert_banner, _section_anchor,
     _kpi_row, _hero_donut_row,
+    _resolve_topbar_context, _capture_store,
 )
 from mnid.charts.heatmap import (
     _compute_heatmap_store, _compute_heatmap_store_from_agg,
@@ -538,7 +539,13 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
     _LOGGER.info('MNID timing: comparative %.2fs', _time.monotonic() - _t4)
 
     _activity_stats = []
-    if facility_df is not None and not facility_df.empty:
+    # computed_by_label is sourced from `computed`/`overview_computed`, which
+    # already prefer the aggregate batch (_cur_batch) when available -- it
+    # doesn't actually need raw facility_df rows. Gating on facility_df alone
+    # made this whole section vanish for any date range outside the raw
+    # MAHIS dataset's own window (through 2026-07-21) even when running on
+    # the DHIS2 aggregate, which has nothing to do with that window.
+    if (facility_df is not None and not facility_df.empty) or _agg is not None:
         try:
             computed_by_label = {
                 str(item.get('label', '')): item
@@ -612,9 +619,22 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
             ],
         )
 
-    indicator_content = html.Div(
-        className=f'mnid-main{" mnid-main-newborn" if dashboard_theme == "newborn" else ""}',
-        children=[
+    topbar_ctx = _resolve_topbar_context(facility_code, facility_df, network_df, scope_meta, dashboard_theme)
+    capture_store = _capture_store(
+        facility_name=topbar_ctx['facility_name'],
+        district=topbar_ctx['district'],
+        period=period,
+        program='Labour & Delivery' if topbar_ctx['selected_program'] == 'Labour' else topbar_ctx['selected_program'],
+        indicators_text=f'{len(tracked)} available / {len(awaiting)} pending',
+        tab_name=dashboard_title,
+    )
+
+    indicator_content = html.Div([
+        capture_store,
+        html.Div(
+            id='mnid-capture-target',
+            className=f'mnid-main mnid-capture-container{" mnid-main-newborn" if dashboard_theme == "newborn" else ""}',
+            children=[
             _topbar(facility_code, period, len(tracked), len(awaiting),
                     facility_df=facility_df, network_df=network_df,
                     period_note=period_note, scope_meta=scope_meta,
@@ -707,7 +727,8 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
             ),
             comparative_div,
         ],
-    )
+        ),
+    ])
 
     return {
         'indicator_content': indicator_content,
