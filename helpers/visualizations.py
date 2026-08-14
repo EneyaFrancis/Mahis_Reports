@@ -1735,6 +1735,7 @@ def create_crosstab_table(
         )
         data = DataStorage.query_duckdb(joined_query)
         data = apply_calculated_fields(data, custom_fields)
+        data = _apply_replace(data.rename(columns=rename), replace)
         ct_aggfunc = aggfunc
 
     def _axis_arg(arg):
@@ -1759,7 +1760,7 @@ def create_crosstab_table(
             columns=columns_arg,
             values=data[values_col],
             aggfunc=ct_aggfunc,
-            normalize=norm if ct_aggfunc != 'first' else False
+            normalize=norm if ct_aggfunc != 'first' else False,
         )
 
     # With 2+ column levels, pandas only creates a column for (outer, inner) pairs
@@ -1779,7 +1780,7 @@ def create_crosstab_table(
 
     ct = ct.fillna(0)
     ct = ct.reset_index()
-    ct = _apply_replace(ct.rename(columns=rename), replace)
+    # ct = _apply_replace(ct.rename(columns=rename), replace)
 
     dash_columns = []
     for col in ct.columns:
