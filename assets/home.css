@@ -718,7 +718,6 @@
 
 .btn-apply-modern:active {
     animation: btn-loading-pulse 1.2s ease-in-out infinite;
-    pointer-events: none;
 }
 
 /* Content fade-in after loading completes */

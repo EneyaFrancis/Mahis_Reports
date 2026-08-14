@@ -690,14 +690,30 @@ def _render_mnh_dashboard_tab(active_tab, executive_token):
 
 
 @callback(
+    Output('mnid-cp-measure-toggle', 'className'),
+    Output('mnid-cp-measure-toggle-text', 'children'),
+    Output('mnid-cp-measure-store', 'data'),
+    Input('mnid-cp-measure-toggle', 'n_clicks'),
+    State('mnid-cp-measure-store', 'data'),
+    prevent_initial_call=True,
+)
+def _toggle_country_profile_measure(_n_clicks, stored_measure):
+    measure = 'mean' if (stored_measure or 'median') == 'median' else 'median'
+    measure_class = 'mnid-trend-toggle is-line' if measure == 'median' else 'mnid-trend-toggle is-bar'
+    measure_text  = 'Median' if measure == 'median' else 'Avg'
+    return measure_class, measure_text, measure
+
+
+@callback(
     Output({'type': 'mnid-cp-graph',   'chart': MATCH}, 'figure'),
     Output({'type': 'mnid-cp-caption', 'chart': MATCH}, 'children'),
     Input({'type': 'mnid-cp-grain',    'chart': MATCH}, 'value'),
+    Input('mnid-cp-measure-store', 'data'),
     State({'type': 'mnid-cp-series',   'chart': MATCH}, 'data'),
     State({'type': 'mnid-cp-meta',     'chart': MATCH}, 'data'),
     prevent_initial_call=False,
 )
-def _update_country_profile_chart_grain(grain, stored_rows, meta):
+def _update_country_profile_chart_grain(grain, measure, stored_rows, meta):
     if not stored_rows:
         raise PreventUpdate
     series_df = pd.DataFrame(stored_rows)
@@ -707,16 +723,17 @@ def _update_country_profile_chart_grain(grain, stored_rows, meta):
     if 'month' in series_df.columns:
         series_df['month'] = pd.to_datetime(series_df['month'], errors='coerce')
     grain    = (grain or 'monthly').strip().lower()
+    measure  = (measure or 'median').strip().lower()
     title    = meta.get('title') or 'Chart'
     accent   = meta.get('accent') or '#15803D'
     y_title  = meta.get('y_title') or 'Cases'
     is_multi = bool(meta.get('multi'))
     if is_multi:
         bucketed = bucket_multi_series(series_df.copy(), grain)
-        figure   = _multi_run_chart(bucketed, title, y_title, grain=grain)
+        figure   = _multi_run_chart(bucketed, title, y_title, grain=grain, measure=measure)
     else:
-        bucketed = bucket_time_series(series_df[['month', 'value']].copy(), grain)
-        figure   = _run_chart(bucketed, title, accent, y_title, grain=grain)
+        bucketed = bucket_time_series(series_df.copy(), grain)
+        figure   = _run_chart(bucketed, title, accent, y_title, grain=grain, measure=measure)
     caption = describe_grain_window(bucketed, grain)
     return figure, caption
 

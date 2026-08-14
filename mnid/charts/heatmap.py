@@ -21,6 +21,25 @@ from mnid.core.constants import (
 from mnid.charts.chart_helpers import _display_pct, _infer_facility_type, _contrast_text
 from mnid.aggregation.store import _floor_to_period
 
+
+def _facility_display_name(code: str) -> str:
+    """FACILITY_NAMES is MAHIS-keyed and has no entry for DHIS2 facility_code
+    values -- without this fallback, DHIS2-route facility rows/labels here
+    show the raw code (e.g. "LL040037") instead of a real name."""
+    name = _FACILITY_NAMES.get(code)
+    if name:
+        return name
+    from mnid.core.dhis2_facilities import dhis2_code_to_name
+    return dhis2_code_to_name().get(code, code)
+
+
+def _facility_display_district(code: str) -> str:
+    district = _FACILITY_DISTRICT.get(code)
+    if district:
+        return district
+    from mnid.core.dhis2_facilities import dhis2_code_to_district
+    return dhis2_code_to_district().get(code, '')
+
 # Monthly first (cheapest, normally broadest coverage), then progressively
 # finer/other grains as a fallback when monthly has zero rows for a given
 # facility/district scope + date window. See _compute_heatmap_store_from_agg.
@@ -585,7 +604,7 @@ def _build_facility_performance_heatmap_fig(stored: dict, year: str,
 
     def _row_name(key):
         code = str(key or '').rstrip('*')
-        return _FACILITY_NAMES.get(code, code)
+        return _facility_display_name(code)
 
     def _is_current(key):
         return str(key or '').rstrip('*') == str(stored.get('current_fac', ''))
@@ -615,7 +634,7 @@ def _build_facility_performance_heatmap_fig(stored: dict, year: str,
         })
 
     table_rows = [r for r in table_rows if any(v is not None for v in r['values'])]
-    table_rows.sort(key=lambda r: (r['avg'] is None, -(r['avg'] or 0), r['name']))
+    table_rows.sort(key=lambda r: r['name'].lower())
 
     if not table_rows or not rows_idx:
         return html.Div(
@@ -704,9 +723,9 @@ def _build_performance_attention_table(stored: dict, year: str,
     row_keys, z_raw = _filter_by_fac_data(stored, year, focus_districts)
     def _name(key):
         code = str(key or '').rstrip('*')
-        return _FACILITY_NAMES.get(code, code)
+        return _facility_display_name(code)
     def _dist(key):
-        return _FACILITY_DISTRICT.get(str(key or '').rstrip('*'), '')
+        return _facility_display_district(str(key or '').rstrip('*'))
     def _ftype(key):
         return _infer_facility_type(str(key or '').rstrip('*'))
     label_col = 'Facility'
@@ -944,8 +963,8 @@ def _build_geo_heatmap_fig(stored: dict, view: str, year: str,
                 continue
             x, y = pos
             avg = _fac_avg(fac)
-            name = _FACILITY_NAMES.get(fac, fac)
-            dist = _FACILITY_DISTRICT.get(fac, '')
+            name = _facility_display_name(fac)
+            dist = _facility_display_district(fac)
             fac_x.append(x)
             fac_y.append(y)
             fac_text.append(f'<b>{name}</b><br>{dist}<br>Avg coverage: {f"{_display_pct(avg):.1f}%" if avg is not None else "No data"}')
@@ -956,7 +975,7 @@ def _build_geo_heatmap_fig(stored: dict, view: str, year: str,
         if fac_x:
             fig.add_trace(go.Scatter(
                 x=fac_x, y=fac_y, mode='markers+text',
-                text=[_FACILITY_NAMES.get(f, f) for f in fac_codes if fac_positions.get(f)],
+                text=[_facility_display_name(f) for f in fac_codes if fac_positions.get(f)],
                 textposition=fac_text_pos,
                 textfont=dict(size=9, color=TEXT, family=FONT),
                 hovertext=fac_text, hovertemplate='%{hovertext}<extra></extra>',
@@ -1062,10 +1081,10 @@ def _build_district_treemap(stored: dict, view: str, year: str,
         hl_set  = {current_dist} if view in ('monthly', 'yearly') else set(labels)
 
     elif view == 'by_facility':
-        fac_labels  = [f'{_FACILITY_NAMES.get(f, f)}*' if f == current_fac else _FACILITY_NAMES.get(f, f) for f in dyn_facs]
+        fac_labels  = [f'{_facility_display_name(f)}*' if f == current_fac else _facility_display_name(f) for f in dyn_facs]
         labels  = list(dyn_districts) + fac_labels
         parents = ([''] * len(dyn_districts) +
-                   [_FACILITY_DISTRICT.get(f, '') for f in dyn_facs])
+                   [_facility_display_district(f) for f in dyn_facs])
         d_covs  = [district_avgs.get(d) for d in dyn_districts]
         f_covs  = [_fac_avg(f) for f in dyn_facs]
         covs    = d_covs + f_covs
@@ -1074,8 +1093,8 @@ def _build_district_treemap(stored: dict, view: str, year: str,
 
     elif view == 'district_facs':
         dist_filter = district or current_dist
-        facs = [f for f in dyn_facs if _FACILITY_DISTRICT.get(f) == dist_filter]
-        labels  = [f'{_FACILITY_NAMES.get(f, f)}*' if f == current_fac else _FACILITY_NAMES.get(f, f) for f in facs]
+        facs = [f for f in dyn_facs if _facility_display_district(f) == dist_filter]
+        labels  = [f'{_facility_display_name(f)}*' if f == current_fac else _facility_display_name(f) for f in facs]
         parents = [''] * len(labels)
         values  = [1.0] * len(labels)
         covs    = [_fac_avg(f) for f in facs]

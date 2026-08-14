@@ -1,11 +1,12 @@
 {
     "schema_version": "1.0",
     "mapping_version": "2026-07-20",
+    "mapping_version": "2026-08-04",
     "source": {
         "name": "Malawi HMIS DHIS2",
         "base_url": "https://dhis2.health.gov.mw",
-        "source_workbook": "Data Mapping - MNH dashboard - DHIS2.xlsx",
-        "worksheet": "MNH indicators"
+        "source_workbook": "Data Mapping - MNH dashboard - DHIS2 (1).xlsx",
+        "worksheet": "Sheet1"
     },
     "reporting_period": {
         "period_type": "monthly",
@@ -13,6 +14,68 @@
         "end_period": "202605"
     },
     "indicators": [
+        {
+            "id": "maternity_unit_admissions",
+            "name": "Maternity Unit Admissions",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    2
+                ],
+                "original_indicator_name": "Maternity Unit Admissions",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "neonatal_admissions",
+            "name": "Neonatal Admissions",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "utECJ6sZdYO",
+                        "data_element_id": "utECJ6sZdYO",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    3
+                ],
+                "original_indicator_name": "Neonatal Admissions",
+                "original_mapping": "utECJ6sZdYO",
+                "reporting_source": null,
+                "comments": [
+                    "Add to neonatal care dashboard, to only display for facilities that have neonatal care units and Sick neonate dataset assigned"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Neonatal care"
+            }
+        },
         {
             "id": "live_births",
             "name": "Live Births",
@@ -60,9 +123,22 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 2,
+                "workbook_rows": [
+                    4,
+                    40,
+                    122,
+                    156
+                ],
                 "original_indicator_name": "Live Births",
-                "original_mapping": "iBBnHx1Uf50, EeywK6AHQdK, jz793Wzon1W, q7NoDcfaciO, kaYz6eqxqQH"
+                "original_mapping": "iBBnHx1Uf50, EeywK6AHQdK, jz793Wzon1W, q7NoDcfaciO, kaYz6eqxqQH",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "Already captured",
+                    "Already captured above",
+                    "Already captured above"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
             }
         },
         {
@@ -84,9 +160,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 3,
+                "workbook_rows": [
+                    5
+                ],
                 "original_indicator_name": "Total Births",
-                "original_mapping": "Live Births + Stillbirths"
+                "original_mapping": "Live Births + Stillbirths",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
             }
         },
         {
@@ -112,9 +194,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 4,
+                "workbook_rows": [
+                    6
+                ],
                 "original_indicator_name": "Fresh Stillbirths",
-                "original_mapping": "YLydKJIyGFF"
+                "original_mapping": "YLydKJIyGFF",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
             }
         },
         {
@@ -140,9 +228,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 5,
+                "workbook_rows": [
+                    7
+                ],
                 "original_indicator_name": "Macerated Stillbirths",
-                "original_mapping": "EJ0qYm1FrcH"
+                "original_mapping": "EJ0qYm1FrcH",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
             }
         },
         {
@@ -168,9 +262,20 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 6,
+                "workbook_rows": [
+                    8,
+                    58,
+                    176
+                ],
                 "original_indicator_name": "Maternal Deaths",
-                "original_mapping": "WjHvEHMCyKo"
+                "original_mapping": "WjHvEHMCyKo",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "Already captured",
+                    "Already captured"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
             }
         },
         {
@@ -214,9 +319,19 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 7,
+                "workbook_rows": [
+                    9,
+                    66,
+                    204
+                ],
                 "original_indicator_name": "Neonatal Deaths",
-                "original_mapping": "jz793Wzon1W, bZDmsHkagGA, XO2ACv2K1aW, MnmCsf59HyU"
+                "original_mapping": "jz793Wzon1W, bZDmsHkagGA, XO2ACv2K1aW, MnmCsf59HyU",
+                "reporting_source": "Maternity report, KMC report and sick neonate report",
+                "comments": [
+                    "Already captured"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": null
             }
         },
         {
@@ -248,9 +363,460 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 8,
+                "workbook_rows": [
+                    10,
+                    41,
+                    123
+                ],
                 "original_indicator_name": "Stillbirths",
-                "original_mapping": "YLydKJIyGFF, EJ0qYm1FrcH"
+                "original_mapping": "YLydKJIyGFF, EJ0qYm1FrcH",
+                "reporting_source": null,
+                "comments": [
+                    "Already captured",
+                    "Already captured above"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "institutional_mmr",
+            "name": "Institutional MMR",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "Formula references could not be resolved unambiguously."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    11
+                ],
+                "original_indicator_name": "Institutional MMR",
+                "original_mapping": "(Maternal Deaths/Live births) X 100,000",
+                "reporting_source": null,
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Country profile"
+            }
+        },
+        {
+            "id": "neonatal_mortality_rate",
+            "name": "Neonatal Mortality Rate",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "Formula references could not be resolved unambiguously."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    12
+                ],
+                "original_indicator_name": "Neonatal Mortality Rate",
+                "original_mapping": "(Neonatal Deaths/Live births) X 1,000",
+                "reporting_source": null,
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Country profile"
+            }
+        },
+        {
+            "id": "stillbirth_rate",
+            "name": "Stillbirth Rate",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "Formula references could not be resolved unambiguously."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    13
+                ],
+                "original_indicator_name": "Stillbirth Rate",
+                "original_mapping": "(Stillbirths/Live births) X 1,000",
+                "reporting_source": null,
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Country profile"
+            }
+        },
+        {
+            "id": "fresh_stillbirth",
+            "name": "Fresh Stillbirth %",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "Formula references could not be resolved unambiguously."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    14
+                ],
+                "original_indicator_name": "Fresh Stillbirth %",
+                "original_mapping": "(Fress Stillbirth /stillbirths) x 100",
+                "reporting_source": null,
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "macerated_stillbirth",
+            "name": "Macerated Stillbirth %",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "Formula references could not be resolved unambiguously."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    15
+                ],
+                "original_indicator_name": "Macerated Stillbirth %",
+                "original_mapping": "(Macerated Stillbirth /stillbirths) x 100",
+                "reporting_source": null,
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "data_completeness",
+            "name": "Data Completeness %",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "sum",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "GzO4xPVk8pl",
+                        "data_element_id": "GzO4xPVk8pl",
+                        "category_option_combo_id": null
+                    },
+                    {
+                        "type": "data_element",
+                        "dx": "B0UtGNECmZW",
+                        "data_element_id": "B0UtGNECmZW",
+                        "category_option_combo_id": null
+                    },
+                    {
+                        "type": "data_element",
+                        "dx": "HpGgtFaxmDg",
+                        "data_element_id": "HpGgtFaxmDg",
+                        "category_option_combo_id": null
+                    },
+                    {
+                        "type": "data_element",
+                        "dx": "ACmZFToDqxh",
+                        "data_element_id": "ACmZFToDqxh",
+                        "category_option_combo_id": null
+                    },
+                    {
+                        "type": "data_element",
+                        "dx": "mkD9UHGim8B",
+                        "data_element_id": "mkD9UHGim8B",
+                        "category_option_combo_id": null
+                    },
+                    {
+                        "type": "data_element",
+                        "dx": "ugvSAcnFoAy",
+                        "data_element_id": "ugvSAcnFoAy",
+                        "category_option_combo_id": null
+                    },
+                    {
+                        "type": "data_element",
+                        "dx": "kblbQ6BEuJN",
+                        "data_element_id": "kblbQ6BEuJN",
+                        "category_option_combo_id": null
+                    },
+                    {
+                        "type": "data_element",
+                        "dx": "BvdXer8Vm6y",
+                        "data_element_id": "BvdXer8Vm6y",
+                        "category_option_combo_id": null
+                    },
+                    {
+                        "type": "data_element",
+                        "dx": "suFv4rXfKdu",
+                        "data_element_id": "suFv4rXfKdu",
+                        "category_option_combo_id": null
+                    },
+                    {
+                        "type": "data_element",
+                        "dx": "Gpq3QDmtNF6",
+                        "data_element_id": "Gpq3QDmtNF6",
+                        "category_option_combo_id": null
+                    },
+                    {
+                        "type": "data_element",
+                        "dx": "j1eHsAbi8KY",
+                        "data_element_id": "j1eHsAbi8KY",
+                        "category_option_combo_id": null
+                    },
+                    {
+                        "type": "data_element",
+                        "dx": "cjAZdyPIawD",
+                        "data_element_id": "cjAZdyPIawD",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    16
+                ],
+                "original_indicator_name": "Data Completeness %",
+                "original_mapping": "GzO4xPVk8pl, B0UtGNECmZW, HpGgtFaxmDg, ACmZFToDqxh, mkD9UHGim8B, ugvSAcnFoAy, kblbQ6BEuJN, BvdXer8Vm6y, suFv4rXfKdu, Gpq3QDmtNF6, j1eHsAbi8KY, cjAZdyPIawD",
+                "reporting_source": null,
+                "comments": [
+                    "Key datasets for reporting rate where the MNH indicators are being drawn from. It should be able to pull for health centres, district and central hospitals. In DHIS2 these are already calculated indicators, included their IDs on the same"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Country/facility profile"
+            }
+        },
+        {
+            "id": "essential_medicine_availability",
+            "name": "Essential medicine availability",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    17
+                ],
+                "original_indicator_name": "Essential medicine availability",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "cpap_equipment_available",
+            "name": "CPAP equipment available",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    18
+                ],
+                "original_indicator_name": "CPAP equipment available",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "phototherapy_unit_available",
+            "name": "Phototherapy unit available",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    19
+                ],
+                "original_indicator_name": "Phototherapy unit available",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "neonatal_resuscitation_equipment_available",
+            "name": "Neonatal resuscitation equipment available",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    20
+                ],
+                "original_indicator_name": "Neonatal resuscitation equipment available",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "emonc_competency_assessed",
+            "name": "EmONC competency assessed",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    21
+                ],
+                "original_indicator_name": "EmONC competency assessed",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "ssnc_competency_assessed",
+            "name": "SSNC competency assessed",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    22
+                ],
+                "original_indicator_name": "SSNC competency assessed",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "record_completeness",
+            "name": "Record completeness",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    23
+                ],
+                "original_indicator_name": "Record completeness",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "data_entered_within_7_days",
+            "name": "Data entered within 7 days",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    24
+                ],
+                "original_indicator_name": "Data entered within 7 days",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
             }
         },
         {
@@ -300,9 +866,72 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 9,
+                "workbook_rows": [
+                    25,
+                    89
+                ],
                 "original_indicator_name": "ANC Visits",
-                "original_mapping": "SVC5nKhvcQr, ZgDrKbIPkgE, Jtrq0pYsqT0, Jpkh8pokAY7, EUvtRZSLh2F"
+                "original_mapping": "SVC5nKhvcQr, ZgDrKbIPkgE, Jtrq0pYsqT0, Jpkh8pokAY7, EUvtRZSLh2F",
+                "reporting_source": "ANC Report",
+                "comments": [
+                    "Already captured above"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Antenatal Care"
+            }
+        },
+        {
+            "id": "anc_complications",
+            "name": "ANC Complications",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    26,
+                    90
+                ],
+                "original_indicator_name": "ANC Complications",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "anc_clients_not_admissioned_to_labour",
+            "name": "ANC Clients Not Admissioned to Labour",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    27,
+                    91
+                ],
+                "original_indicator_name": "ANC Clients Not Admissioned to Labour",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
             }
         },
         {
@@ -328,9 +957,18 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 10,
+                "workbook_rows": [
+                    28,
+                    92
+                ],
                 "original_indicator_name": "Blood pressure measured",
-                "original_mapping": "sNlbaVoobzq"
+                "original_mapping": "sNlbaVoobzq",
+                "reporting_source": "ANC Report",
+                "comments": [
+                    "Already captured above"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Antenatal care"
             }
         },
         {
@@ -362,9 +1000,18 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 11,
+                "workbook_rows": [
+                    29,
+                    93
+                ],
                 "original_indicator_name": "Screened for anaemia",
-                "original_mapping": "AmkTUKYrM31, QUDJ8U1O0Yl"
+                "original_mapping": "AmkTUKYrM31, QUDJ8U1O0Yl",
+                "reporting_source": "ANC Report",
+                "comments": [
+                    "Already captured above"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Antenatal care"
             }
         },
         {
@@ -408,9 +1055,18 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 12,
+                "workbook_rows": [
+                    30,
+                    94
+                ],
                 "original_indicator_name": "Tested for HIV",
-                "original_mapping": "qG10jihknty, Xr6Xa1ZnJqy, CRhkHMKt3Ps, hbFsoMQNkwe"
+                "original_mapping": "qG10jihknty, Xr6Xa1ZnJqy, CRhkHMKt3Ps, hbFsoMQNkwe",
+                "reporting_source": "ANC Report",
+                "comments": [
+                    "Already captured above"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Antenatal care"
             }
         },
         {
@@ -442,9 +1098,78 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 13,
+                "workbook_rows": [
+                    31,
+                    95
+                ],
                 "original_indicator_name": "Screened for syphilis",
-                "original_mapping": "xHSyFJc8jKX, H1hggbKQpZH"
+                "original_mapping": "xHSyFJc8jKX, H1hggbKQpZH",
+                "reporting_source": "ANC Report",
+                "comments": [
+                    "Already captured above"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Antenatal care"
+            }
+        },
+        {
+            "id": "screened_for_urinary_tract_infections",
+            "name": "Screened for urinary tract infections",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    32,
+                    96
+                ],
+                "original_indicator_name": "Screened for urinary tract infections",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Not currently available",
+                    "Currently not available"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "gestational_age_assessed_using_ultrasound_pocus",
+            "name": "Gestational age assessed using ultrasound/POCUS",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    33,
+                    97
+                ],
+                "original_indicator_name": "Gestational age assessed using ultrasound/POCUS",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Not currently available",
+                    "Currently not available"
+                ],
+                "mapped": null,
+                "dashboard_item": null
             }
         },
         {
@@ -476,9 +1201,18 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 14,
+                "workbook_rows": [
+                    34,
+                    98
+                ],
                 "original_indicator_name": "At least 4 ANC contacts",
-                "original_mapping": "Jpkh8pokAY7, EUvtRZSLh2F"
+                "original_mapping": "Jpkh8pokAY7, EUvtRZSLh2F",
+                "reporting_source": "ANC Report",
+                "comments": [
+                    "Already captured above"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Antenatal care"
             }
         },
         {
@@ -504,149 +1238,80 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 15,
+                "workbook_rows": [
+                    35,
+                    99
+                ],
                 "original_indicator_name": "Tetanus doses (2+)",
-                "original_mapping": "WCpjbJAYTfE"
+                "original_mapping": "WCpjbJAYTfE",
+                "reporting_source": "ANC Report",
+                "comments": [
+                    "Already captured above"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Antenatal care"
             }
         },
         {
-            "id": "uterotonic_given_after_birth",
-            "name": "Uterotonic given after birth",
+            "id": "screened_for_infection",
+            "name": "Screened for infection",
             "description": null,
             "source": "dhis2",
-            "enabled": true,
-            "value_type": "count",
-            "calculation": {
-                "operation": "direct",
-                "operands": [
-                    {
-                        "type": "data_element",
-                        "dx": "FhNg0SdUMe8",
-                        "data_element_id": "FhNg0SdUMe8",
-                        "category_option_combo_id": null
-                    }
-                ]
-            },
-            "validation": {
-                "status": "valid",
-                "messages": []
-            },
-            "source_reference": {
-                "workbook_row": 16,
-                "original_indicator_name": "Uterotonic given after birth",
-                "original_mapping": "FhNg0SdUMe8"
-            }
-        },
-        {
-            "id": "newborns_not_breathing_at_birth_receiving_bag_mask_ventilation",
-            "name": "Newborns not breathing at birth receiving bag-mask ventilation",
-            "description": null,
-            "source": "dhis2",
-            "enabled": true,
-            "value_type": "count",
-            "calculation": {
-                "operation": "direct",
-                "operands": [
-                    {
-                        "type": "data_element",
-                        "dx": "NtkuSvtY8D0",
-                        "data_element_id": "NtkuSvtY8D0",
-                        "category_option_combo_id": null
-                    }
-                ]
-            },
-            "validation": {
-                "status": "valid",
-                "messages": []
-            },
-            "source_reference": {
-                "workbook_row": 17,
-                "original_indicator_name": "Newborns not breathing at birth receiving bag-mask ventilation",
-                "original_mapping": "NtkuSvtY8D0"
-            }
-        },
-        {
-            "id": "pre_eclampsia_eclampsia_receiving_magnesium_sulphate",
-            "name": "Pre-eclampsia/eclampsia receiving magnesium sulphate",
-            "description": null,
-            "source": "dhis2",
-            "enabled": true,
-            "value_type": "percentage",
-            "calculation": {
-                "operation": "percentage",
-                "multiplier": 100,
-                "numerator": {
-                    "operands": [
-                        {
-                            "type": "data_element",
-                            "dx": "n7XnfWv0tHo",
-                            "data_element_id": "n7XnfWv0tHo",
-                            "category_option_combo_id": null
-                        }
-                    ]
-                },
-                "denominator": {
-                    "operands": [
-                        {
-                            "type": "data_element_operand",
-                            "dx": "RS3PtRniRns.JPgETYeD4qF",
-                            "data_element_id": "RS3PtRniRns",
-                            "category_option_combo_id": "JPgETYeD4qF"
-                        }
-                    ]
-                },
-                "zero_denominator_result": null
-            },
-            "validation": {
-                "status": "valid",
-                "messages": []
-            },
-            "source_reference": {
-                "workbook_row": 18,
-                "original_indicator_name": "Pre-eclampsia/eclampsia receiving magnesium sulphate",
-                "original_mapping": "(n7XnfWv0tHo)/(RS3PtRniRns.JPgETYeD4qF)"
-            }
-        },
-        {
-            "id": "early_initiation_of_breastfeeding_within_1_hour_of_birth",
-            "name": "Early initiation of breastfeeding within 1 hour of birth",
-            "description": null,
-            "source": "dhis2",
-            "enabled": true,
-            "value_type": "count",
-            "calculation": {
-                "operation": "subtract",
-                "minuend": {
-                    "indicator_ids": [
-                        "live_births"
-                    ]
-                },
-                "subtrahend": {
-                    "operands": [
-                        {
-                            "type": "data_element",
-                            "dx": "bjLZY1FqdDJ",
-                            "data_element_id": "bjLZY1FqdDJ",
-                            "category_option_combo_id": null
-                        }
-                    ]
-                }
-            },
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
             "validation": {
                 "status": "review_required",
                 "messages": [
-                    "Workbook subtraction was preserved as a count; confirm the intended dashboard value type."
+                    "No valid DHIS2 mapping was found in the source workbook."
                 ]
             },
             "source_reference": {
-                "workbook_row": 19,
-                "original_indicator_name": "Early initiation of breastfeeding within 1 hour of birth",
-                "original_mapping": "(iBBnHx1Uf50, EeywK6AHQdK, jz793Wzon1W, q7NoDcfaciO, kaYz6eqxqQH) - (bjLZY1FqdDJ)"
+                "workbook_rows": [
+                    36,
+                    100
+                ],
+                "original_indicator_name": "Screened for infection",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Infection has been defined as those women that were tested for either HIV and Syphillis and reported separately.",
+                    "Already captured above"
+                ],
+                "mapped": null,
+                "dashboard_item": null
             }
         },
         {
-            "id": "vitamin_k_at_birth",
-            "name": "Vitamin K at birth",
+            "id": "labour_delivery_visits",
+            "name": "Labour & Delivery Visits",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    37,
+                    119
+                ],
+                "original_indicator_name": "Labour & Delivery Visits",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "labour_complications",
+            "name": "Labour Complications",
             "description": null,
             "source": "dhis2",
             "enabled": true,
@@ -656,8 +1321,8 @@
                 "operands": [
                     {
                         "type": "data_element",
-                        "dx": "zAcW94iEdXU",
-                        "data_element_id": "zAcW94iEdXU",
+                        "dx": "RS3PtRniRns",
+                        "data_element_id": "RS3PtRniRns",
                         "category_option_combo_id": null
                     }
                 ]
@@ -667,121 +1332,105 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 20,
-                "original_indicator_name": "Vitamin K at birth",
-                "original_mapping": "zAcW94iEdXU"
+                "workbook_rows": [
+                    38,
+                    120
+                ],
+                "original_indicator_name": "Labour Complications",
+                "original_mapping": "RS3PtRniRns",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "New addition",
+                    "Already captured"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
             }
         },
         {
-            "id": "new_anc_registrations",
-            "name": "New ANC registrations",
+            "id": "labour_clients_not_admissioned_to_pnc",
+            "name": "Labour Clients Not Admissioned to PNC",
             "description": null,
             "source": "dhis2",
-            "enabled": true,
-            "value_type": "count",
-            "calculation": {
-                "operation": "direct",
-                "operands": [
-                    {
-                        "type": "data_element",
-                        "dx": "zAvhV81SCLV",
-                        "data_element_id": "zAvhV81SCLV",
-                        "category_option_combo_id": null
-                    }
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
                 ]
             },
-            "validation": {
-                "status": "valid",
-                "messages": []
-            },
             "source_reference": {
-                "workbook_row": 21,
-                "original_indicator_name": "New ANC registrations",
-                "original_mapping": "zAvhV81SCLV"
+                "workbook_rows": [
+                    39,
+                    121
+                ],
+                "original_indicator_name": "Labour Clients Not Admissioned to PNC",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
             }
         },
         {
-            "id": "started_anc_in_first_trimester_0_12_weeks",
-            "name": "Started ANC in first trimester (0-12 weeks)",
+            "id": "partograph_use",
+            "name": "Partograph use",
             "description": null,
             "source": "dhis2",
-            "enabled": true,
-            "value_type": "count",
-            "calculation": {
-                "operation": "direct",
-                "operands": [
-                    {
-                        "type": "data_element",
-                        "dx": "EVt2iC6Tn34",
-                        "data_element_id": "EVt2iC6Tn34",
-                        "category_option_combo_id": null
-                    }
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
                 ]
             },
-            "validation": {
-                "status": "valid",
-                "messages": []
-            },
             "source_reference": {
-                "workbook_row": 22,
-                "original_indicator_name": "Started ANC in first trimester (0-12 weeks)",
-                "original_mapping": "EVt2iC6Tn34"
+                "workbook_rows": [
+                    42,
+                    124
+                ],
+                "original_indicator_name": "Partograph use",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Not captured in DHIS2"
+                ],
+                "mapped": null,
+                "dashboard_item": null
             }
         },
         {
-            "id": "received_120_fefo_tablets",
-            "name": "Received 120+ FeFo tablets",
+            "id": "deliveries_with_objective_blood_loss_measurement",
+            "name": "Deliveries with objective blood loss measurement",
             "description": null,
             "source": "dhis2",
-            "enabled": true,
-            "value_type": "count",
-            "calculation": {
-                "operation": "direct",
-                "operands": [
-                    {
-                        "type": "data_element",
-                        "dx": "Rczpg2vCvat",
-                        "data_element_id": "Rczpg2vCvat",
-                        "category_option_combo_id": null
-                    }
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
                 ]
             },
-            "validation": {
-                "status": "valid",
-                "messages": []
-            },
             "source_reference": {
-                "workbook_row": 23,
-                "original_indicator_name": "Received 120+ FeFo tablets",
-                "original_mapping": "Rczpg2vCvat"
-            }
-        },
-        {
-            "id": "received_itn_during_anc",
-            "name": "Received ITN during ANC",
-            "description": null,
-            "source": "dhis2",
-            "enabled": true,
-            "value_type": "count",
-            "calculation": {
-                "operation": "direct",
-                "operands": [
-                    {
-                        "type": "data_element",
-                        "dx": "gLN6hOgR6ra",
-                        "data_element_id": "gLN6hOgR6ra",
-                        "category_option_combo_id": null
-                    }
-                ]
-            },
-            "validation": {
-                "status": "valid",
-                "messages": []
-            },
-            "source_reference": {
-                "workbook_row": 24,
-                "original_indicator_name": "Received ITN during ANC",
-                "original_mapping": "gLN6hOgR6ra"
+                "workbook_rows": [
+                    43,
+                    125
+                ],
+                "original_indicator_name": "Deliveries with objective blood loss measurement",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Not captured in HMIS",
+                    "Not captured in DHIS2"
+                ],
+                "mapped": null,
+                "dashboard_item": null
             }
         },
         {
@@ -821,9 +1470,173 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 25,
+                "workbook_rows": [
+                    44,
+                    126
+                ],
                 "original_indicator_name": "Women with imminent preterm birth receiving ACs",
-                "original_mapping": "(b4WuKkuuR0W)/(RS3PtRniRns.ezMtOgig3e6)"
+                "original_mapping": "(b4WuKkuuR0W)/(RS3PtRniRns.ezMtOgig3e6)",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "Already captured"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "eligible_women_receiving_antibiotic_prophylaxis",
+            "name": "Eligible women receiving antibiotic prophylaxis",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    45,
+                    127
+                ],
+                "original_indicator_name": "Eligible women receiving antibiotic prophylaxis",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "overall_caesarean_section_rate",
+            "name": "Overall caesarean section rate",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    46,
+                    128
+                ],
+                "original_indicator_name": "Overall caesarean section rate",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "uterotonic_given_after_birth",
+            "name": "Uterotonic given after birth",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "FhNg0SdUMe8",
+                        "data_element_id": "FhNg0SdUMe8",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    47,
+                    129
+                ],
+                "original_indicator_name": "Uterotonic given after birth",
+                "original_mapping": "FhNg0SdUMe8",
+                "reporting_source": "Maternity Report",
+                "comments": [
+                    "Already captured"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "immediate_skin_to_skin_care_for_newborn",
+            "name": "Immediate skin-to-skin care for newborn",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    48,
+                    130
+                ],
+                "original_indicator_name": "Immediate skin-to-skin care for newborn",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "newborns_not_breathing_at_birth_receiving_bag_mask_ventilation",
+            "name": "Newborns not breathing at birth receiving bag-mask ventilation",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "NtkuSvtY8D0",
+                        "data_element_id": "NtkuSvtY8D0",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    49,
+                    131
+                ],
+                "original_indicator_name": "Newborns not breathing at birth receiving bag-mask ventilation",
+                "original_mapping": "NtkuSvtY8D0",
+                "reporting_source": "Helping Babies Breathe Report",
+                "comments": [
+                    "Already captured"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Neonatal care"
             }
         },
         {
@@ -855,9 +1668,1665 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 26,
+                "workbook_rows": [
+                    50,
+                    132
+                ],
                 "original_indicator_name": "Facility deliveries",
-                "original_mapping": "YIP4fvYcGYQ, iGYCZRe52Vy"
+                "original_mapping": "YIP4fvYcGYQ, iGYCZRe52Vy",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "Already captured"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "maternal_sepsis_rate",
+            "name": "Maternal sepsis rate",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    51,
+                    133
+                ],
+                "original_indicator_name": "Maternal sepsis rate",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "pph_with_who_treatment_bundle",
+            "name": "PPH with WHO treatment bundle",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    52,
+                    134
+                ],
+                "original_indicator_name": "PPH with WHO treatment bundle",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Not captured in HMIS"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "pre_eclampsia_eclampsia_receiving_magnesium_sulphate",
+            "name": "Pre-eclampsia/eclampsia receiving magnesium sulphate",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "percentage",
+            "calculation": {
+                "operation": "percentage",
+                "multiplier": 100,
+                "numerator": {
+                    "operands": [
+                        {
+                            "type": "data_element",
+                            "dx": "n7XnfWv0tHo",
+                            "data_element_id": "n7XnfWv0tHo",
+                            "category_option_combo_id": null
+                        }
+                    ]
+                },
+                "denominator": {
+                    "operands": [
+                        {
+                            "type": "data_element_operand",
+                            "dx": "RS3PtRniRns.JPgETYeD4qF",
+                            "data_element_id": "RS3PtRniRns",
+                            "category_option_combo_id": "JPgETYeD4qF"
+                        }
+                    ]
+                },
+                "zero_denominator_result": null
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    53,
+                    135
+                ],
+                "original_indicator_name": "Pre-eclampsia/eclampsia receiving magnesium sulphate",
+                "original_mapping": "(n7XnfWv0tHo)/(RS3PtRniRns.JPgETYeD4qF)",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "New addition"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "birth_weight_recorded",
+            "name": "Birth weight recorded",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    54,
+                    69,
+                    136,
+                    212,
+                    253
+                ],
+                "original_indicator_name": "Birth weight recorded",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "pnc_visits",
+            "name": "PNC Visits",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    55,
+                    173
+                ],
+                "original_indicator_name": "PNC Visits",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "mother_complications",
+            "name": "Mother Complications",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    56,
+                    174
+                ],
+                "original_indicator_name": "Mother Complications",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured",
+                    "Already captured"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "newborn_complications",
+            "name": "Newborn Complications",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    57,
+                    175
+                ],
+                "original_indicator_name": "Newborn Complications",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured",
+                    "Already captured"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "newborn_deaths",
+            "name": "Newborn Deaths",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    59,
+                    177
+                ],
+                "original_indicator_name": "Newborn Deaths",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured",
+                    "Already captured"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "early_initiation_of_breastfeeding_within_1_hour_of_birth",
+            "name": "Early initiation of breastfeeding within 1 hour of birth",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "subtract",
+                "minuend": {
+                    "indicator_ids": [
+                        "live_births"
+                    ]
+                },
+                "subtrahend": {
+                    "operands": [
+                        {
+                            "type": "data_element",
+                            "dx": "bjLZY1FqdDJ",
+                            "data_element_id": "bjLZY1FqdDJ",
+                            "category_option_combo_id": null
+                        }
+                    ]
+                }
+            },
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "Workbook subtraction was preserved as a count; confirm the intended dashboard value type."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    60,
+                    178
+                ],
+                "original_indicator_name": "Early initiation of breastfeeding within 1 hour of birth",
+                "original_mapping": "(iBBnHx1Uf50, EeywK6AHQdK, jz793Wzon1W, q7NoDcfaciO, kaYz6eqxqQH) - (bjLZY1FqdDJ)",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "Already captured"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "birth_weight_assessed",
+            "name": "Birth weight assessed",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    61,
+                    179
+                ],
+                "original_indicator_name": "Birth weight assessed",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "blood_pressure_measured_during_pnc",
+            "name": "Blood pressure measured during PNC",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    62,
+                    180
+                ],
+                "original_indicator_name": "Blood pressure measured during PNC",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Not currently captured in PNC report",
+                    "Not currently captured on PNC report"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "temperature_of_mother_measured_during_pnc",
+            "name": "Temperature of mother measured during PNC",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    63,
+                    181
+                ],
+                "original_indicator_name": "Temperature of mother measured during PNC",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Not currently captured in PNC report",
+                    "Not currently captured on PNC report"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "vitamin_k_at_birth",
+            "name": "Vitamin K at birth",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "zAcW94iEdXU",
+                        "data_element_id": "zAcW94iEdXU",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    64,
+                    182
+                ],
+                "original_indicator_name": "Vitamin K at birth",
+                "original_mapping": "zAcW94iEdXU",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "Also captured below"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "outborn_babies",
+            "name": "Outborn babies",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    65,
+                    203
+                ],
+                "original_indicator_name": "Outborn babies",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "neonatal_complications_at_birth",
+            "name": "Neonatal Complications at Birth",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "sum",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "vcEWpcFjEuU",
+                        "data_element_id": "vcEWpcFjEuU",
+                        "category_option_combo_id": null
+                    },
+                    {
+                        "type": "data_element",
+                        "dx": "UXTZkim1Npv",
+                        "data_element_id": "UXTZkim1Npv",
+                        "category_option_combo_id": null
+                    },
+                    {
+                        "type": "data_element",
+                        "dx": "bPvw8ZdBgRe",
+                        "data_element_id": "bPvw8ZdBgRe",
+                        "category_option_combo_id": null
+                    },
+                    {
+                        "type": "data_element",
+                        "dx": "gkgM1TgE5oF",
+                        "data_element_id": "gkgM1TgE5oF",
+                        "category_option_combo_id": null
+                    },
+                    {
+                        "type": "data_element",
+                        "dx": "Z9Q4qIjoePS",
+                        "data_element_id": "Z9Q4qIjoePS",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    67,
+                    205
+                ],
+                "original_indicator_name": "Neonatal Complications at Birth",
+                "original_mapping": "vcEWpcFjEuU, UXTZkim1Npv, bPvw8ZdBgRe, gkgM1TgE5oF, Z9Q4qIjoePS",
+                "reporting_source": "MAT Report",
+                "comments": [
+                    "Already captured",
+                    "New addition"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "ikmc_initiated",
+            "name": "iKMC Initiated",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "zANGFtNoUEt",
+                        "data_element_id": "zANGFtNoUEt",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    68,
+                    211
+                ],
+                "original_indicator_name": "iKMC Initiated",
+                "original_mapping": "zANGFtNoUEt",
+                "reporting_source": "MAT Report",
+                "comments": [
+                    "Consider having the indicator renamed to newborns initiated on KMC. This will be a proxy for immediate KMC as some LBW and premature babies are immediately initiated on KMC soon after delivery. To move the indicator to iKMC when its fully rolled out and integrated with MAHIS"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "resuscitation_intervention_recorded",
+            "name": "Resuscitation intervention recorded",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "zE0WLBSHx1e",
+                        "data_element_id": "zE0WLBSHx1e",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    70,
+                    213
+                ],
+                "original_indicator_name": "Resuscitation intervention recorded",
+                "original_mapping": "zE0WLBSHx1e",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "Already captured below",
+                    "New addition"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "thermal_care_recorded",
+            "name": "Thermal care recorded",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    71,
+                    214,
+                    244
+                ],
+                "original_indicator_name": "Thermal care recorded",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "kmc_support_recorded",
+            "name": "KMC support recorded",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "zANGFtNoUEt",
+                        "data_element_id": "zANGFtNoUEt",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    72,
+                    215
+                ],
+                "original_indicator_name": "KMC support recorded",
+                "original_mapping": "zANGFtNoUEt",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "Already captured below",
+                    "New addition"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "low_birthweight_newborns",
+            "name": "Low birthweight newborns",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "gkgM1TgE5oF",
+                        "data_element_id": "gkgM1TgE5oF",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    73,
+                    216
+                ],
+                "original_indicator_name": "Low birthweight newborns",
+                "original_mapping": "gkgM1TgE5oF",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "Already captured below",
+                    "New addition"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "birth_asphyxia_among_newborn_admissions",
+            "name": "Birth asphyxia among newborn admissions",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "ei0CdL9nXv0",
+                        "data_element_id": "ei0CdL9nXv0",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    74,
+                    217
+                ],
+                "original_indicator_name": "Birth asphyxia among newborn admissions",
+                "original_mapping": "ei0CdL9nXv0",
+                "reporting_source": "Sick Neonate Report",
+                "comments": [
+                    "Already captured below",
+                    "Add to neonatal care dashboard, to be applicable to facilities that have neonatal care units"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Neonatal care"
+            }
+        },
+        {
+            "id": "neonatal_sepsis_among_newborn_admissions",
+            "name": "Neonatal sepsis among newborn admissions",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "gtmLmWfmPvp",
+                        "data_element_id": "gtmLmWfmPvp",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    75,
+                    218
+                ],
+                "original_indicator_name": "Neonatal sepsis among newborn admissions",
+                "original_mapping": "gtmLmWfmPvp",
+                "reporting_source": "Sick Neonate Report",
+                "comments": [
+                    "Already captured below",
+                    "Add to neonatal care dashboard, to be applicable to facilities that have neonatal care units"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Neonatal care"
+            }
+        },
+        {
+            "id": "pulse_oximeter_used_at_admission",
+            "name": "Pulse oximeter used at admission",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    76,
+                    219,
+                    232
+                ],
+                "original_indicator_name": "Pulse oximeter used at admission",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "babies_who_had_bilirubin_measured",
+            "name": "Babies who had bilirubin measured",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    77,
+                    220
+                ],
+                "original_indicator_name": "Babies who had bilirubin measured",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "babies_with_jaundice_who_had_bilirubin_measured",
+            "name": "Babies with jaundice who had bilirubin measured",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    78,
+                    221
+                ],
+                "original_indicator_name": "Babies with jaundice who had bilirubin measured",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "babies_with_jaundice_receiving_phototherapy",
+            "name": "Babies with jaundice receiving phototherapy",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    79,
+                    222
+                ],
+                "original_indicator_name": "Babies with jaundice receiving phototherapy",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "babies_breastfed_within_1_hour",
+            "name": "Babies breastfed within 1 hour",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    80,
+                    223
+                ],
+                "original_indicator_name": "Babies breastfed within 1 hour",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured above",
+                    "Already captured"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "eligible_babies_who_received_neonatal_resuscitation",
+            "name": "Eligible babies who received neonatal resuscitation",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    81,
+                    224
+                ],
+                "original_indicator_name": "Eligible babies who received neonatal resuscitation",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "eligible_preterm_and_low_birth_weight_babies_who_receive_ikmc",
+            "name": "Eligible preterm and low birth-weight babies who receive iKMC",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    82,
+                    225
+                ],
+                "original_indicator_name": "Eligible preterm and low birth-weight babies who receive iKMC",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "babies_between_1000_1499g_who_receive_prophylactic_cpap",
+            "name": "Babies between 1000-1499g who receive prophylactic CPAP",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    83,
+                    226
+                ],
+                "original_indicator_name": "Babies between 1000-1499g who receive prophylactic CPAP",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "babies_with_clinical_jaundice_who_receive_phototherapy",
+            "name": "Babies with clinical jaundice who receive phototherapy",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    84,
+                    227
+                ],
+                "original_indicator_name": "Babies with clinical jaundice who receive phototherapy",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "babies_with_suspected_sepsis_who_receive_parenteral_antibiotics",
+            "name": "Babies with suspected sepsis who receive parenteral antibiotics",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    85,
+                    228
+                ],
+                "original_indicator_name": "Babies with suspected sepsis who receive parenteral antibiotics",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "babies_not_hypothermic_on_admission",
+            "name": "Babies not hypothermic on admission",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    86,
+                    229
+                ],
+                "original_indicator_name": "Babies not hypothermic on admission",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "babies_not_hypothermic_at_any_time_in_the_neonatal_unit",
+            "name": "Babies not hypothermic at any time in the neonatal unit",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    87,
+                    230
+                ],
+                "original_indicator_name": "Babies not hypothermic at any time in the neonatal unit",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "babies_between_1500_1999g_who_receive_prophylactic_cpap",
+            "name": "Babies between 1500-1999g who receive prophylactic CPAP",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    88,
+                    231
+                ],
+                "original_indicator_name": "Babies between 1500-1999g who receive prophylactic CPAP",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "clients_registered_at_facility",
+            "name": "Clients registered at facility",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    101
+                ],
+                "original_indicator_name": "Clients registered at facility",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "new_anc_registrations",
+            "name": "New ANC registrations",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "zAvhV81SCLV",
+                        "data_element_id": "zAvhV81SCLV",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    102
+                ],
+                "original_indicator_name": "New ANC registrations",
+                "original_mapping": "zAvhV81SCLV",
+                "reporting_source": "ANC Report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Antenatal Care"
+            }
+        },
+        {
+            "id": "continuing_anc_clients",
+            "name": "Continuing ANC clients",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    103
+                ],
+                "original_indicator_name": "Continuing ANC clients",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "ultrasound_scanning_performed",
+            "name": "Ultrasound scanning performed",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    104
+                ],
+                "original_indicator_name": "Ultrasound scanning performed",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Not currently captured"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "hiv_positive_clients",
+            "name": "HIV positive clients",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    105
+                ],
+                "original_indicator_name": "HIV positive clients",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Is this for status at 1st visit or women already attending ANC"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "hiv_positive_clients_on_art",
+            "name": "HIV positive clients on ART",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    106
+                ],
+                "original_indicator_name": "HIV positive clients on ART",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Is this for status at 1st visit or women already attending ANC"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "tested_for_syphilis",
+            "name": "Tested for syphilis",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    107
+                ],
+                "original_indicator_name": "Tested for syphilis",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured above"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "screened_for_hepatitis_b",
+            "name": "Screened for Hepatitis B",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    108
+                ],
+                "original_indicator_name": "Screened for Hepatitis B",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Not currently captured"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "tested_for_haemoglobin_level",
+            "name": "Tested for Haemoglobin level",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    109
+                ],
+                "original_indicator_name": "Tested for Haemoglobin level",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured above, similar with women screened for anemia"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "previous_uterine_scars",
+            "name": "Previous uterine scars",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    110
+                ],
+                "original_indicator_name": "Previous uterine scars",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "started_anc_in_first_trimester_0_12_weeks",
+            "name": "Started ANC in first trimester (0-12 weeks)",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "EVt2iC6Tn34",
+                        "data_element_id": "EVt2iC6Tn34",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    111
+                ],
+                "original_indicator_name": "Started ANC in first trimester (0-12 weeks)",
+                "original_mapping": "EVt2iC6Tn34",
+                "reporting_source": "ANC Report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Antenatal Care"
+            }
+        },
+        {
+            "id": "4_anc_contacts",
+            "name": "4+ ANC contacts",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    112
+                ],
+                "original_indicator_name": "4+ ANC contacts",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured above"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "received_3_doses_of_sp",
+            "name": "Received 3+ doses of SP",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    113
+                ],
+                "original_indicator_name": "Received 3+ doses of SP",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured above"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "received_180_mms_tablets",
+            "name": "Received 180+ MMS tablets",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    114
+                ],
+                "original_indicator_name": "Received 180+ MMS tablets",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Not currently captured"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "received_120_fefo_tablets",
+            "name": "Received 120+ FeFo tablets",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "Rczpg2vCvat",
+                        "data_element_id": "Rczpg2vCvat",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    115
+                ],
+                "original_indicator_name": "Received 120+ FeFo tablets",
+                "original_mapping": "Rczpg2vCvat",
+                "reporting_source": "ANC Report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Antenatal Care"
+            }
+        },
+        {
+            "id": "received_itn_during_anc",
+            "name": "Received ITN during ANC",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "gLN6hOgR6ra",
+                        "data_element_id": "gLN6hOgR6ra",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    116
+                ],
+                "original_indicator_name": "Received ITN during ANC",
+                "original_mapping": "gLN6hOgR6ra",
+                "reporting_source": "ANC Report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Antenatal Care"
+            }
+        },
+        {
+            "id": "new_anc_registrations_by_age_group_18",
+            "name": "New ANC registrations by age group (<18)",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    117
+                ],
+                "original_indicator_name": "New ANC registrations by age group (<18)",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Age disaggregation not captured on ANC repor"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "received_2_doses_of_tdv",
+            "name": "Received 2+ doses of TdV",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    118
+                ],
+                "original_indicator_name": "Received 2+ doses of TdV",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": null
             }
         },
         {
@@ -883,9 +3352,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 27,
+                "workbook_rows": [
+                    137
+                ],
                 "original_indicator_name": "Delivered at this facility",
-                "original_mapping": "YIP4fvYcGYQ"
+                "original_mapping": "YIP4fvYcGYQ",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
             }
         },
         {
@@ -911,9 +3386,69 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 28,
+                "workbook_rows": [
+                    138
+                ],
                 "original_indicator_name": "Delivered at home or in transit",
-                "original_mapping": "KOu770F7YOQ"
+                "original_mapping": "KOu770F7YOQ",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "institutional_maternal_deaths",
+            "name": "Institutional maternal deaths",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    139
+                ],
+                "original_indicator_name": "Institutional maternal deaths",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured above"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "hiv_positive_clients_in_labour",
+            "name": "HIV positive clients in Labour",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    140
+                ],
+                "original_indicator_name": "HIV positive clients in Labour",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
             }
         },
         {
@@ -939,9 +3474,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 29,
+                "workbook_rows": [
+                    141
+                ],
                 "original_indicator_name": "Delivered by skilled attendant",
-                "original_mapping": "R9CHUW81m9o"
+                "original_mapping": "R9CHUW81m9o",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
             }
         },
         {
@@ -967,9 +3508,119 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 30,
+                "workbook_rows": [
+                    142
+                ],
                 "original_indicator_name": "Normal vaginal delivery",
-                "original_mapping": "GwzEUK12Pqh"
+                "original_mapping": "GwzEUK12Pqh",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "maternal_death_due_to_pph",
+            "name": "Maternal death due to PPH",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    143
+                ],
+                "original_indicator_name": "Maternal death due to PPH",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "maternal_death_due_to_sepsis",
+            "name": "Maternal death due to Sepsis",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    144
+                ],
+                "original_indicator_name": "Maternal death due to Sepsis",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "maternal_death_due_to_eclampsia",
+            "name": "Maternal death due to Eclampsia",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    145
+                ],
+                "original_indicator_name": "Maternal death due to Eclampsia",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "maternal_death_due_to_obstructed_labour",
+            "name": "Maternal death due to Obstructed labour",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    146
+                ],
+                "original_indicator_name": "Maternal death due to Obstructed labour",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
             }
         },
         {
@@ -995,9 +3646,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 31,
+                "workbook_rows": [
+                    147
+                ],
                 "original_indicator_name": "Obstetric complication: PPH",
-                "original_mapping": "RS3PtRniRns.ZGX8SK5P435"
+                "original_mapping": "RS3PtRniRns.ZGX8SK5P435",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
             }
         },
         {
@@ -1023,9 +3680,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 32,
+                "workbook_rows": [
+                    148
+                ],
                 "original_indicator_name": "Obstetric complication: Eclampsia",
-                "original_mapping": "RS3PtRniRns.JPgETYeD4qF"
+                "original_mapping": "RS3PtRniRns.JPgETYeD4qF",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
             }
         },
         {
@@ -1051,9 +3714,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 33,
+                "workbook_rows": [
+                    149
+                ],
                 "original_indicator_name": "Obstetric complication: Obstructed labour",
-                "original_mapping": "RS3PtRniRns.Ht1Pz8Kn2k3"
+                "original_mapping": "RS3PtRniRns.Ht1Pz8Kn2k3",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
             }
         },
         {
@@ -1079,9 +3748,373 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 34,
+                "workbook_rows": [
+                    150
+                ],
                 "original_indicator_name": "Obstetric complication: Maternal sepsis",
-                "original_mapping": "RS3PtRniRns.N6Kp9pEEqSI"
+                "original_mapping": "RS3PtRniRns.N6Kp9pEEqSI",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "obstetric_complication_ruptured_uterus",
+            "name": "Obstetric complication: Ruptured uterus",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element_operand",
+                        "dx": "RS3PtRniRns.VrBgkdWJor3",
+                        "data_element_id": "RS3PtRniRns",
+                        "category_option_combo_id": "VrBgkdWJor3"
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    151
+                ],
+                "original_indicator_name": "Obstetric complication: Ruptured uterus",
+                "original_mapping": "RS3PtRniRns.VrBgkdWJor3",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "New addition"
+                ],
+                "mapped": null,
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "hiv_positive_on_art_in_labour",
+            "name": "HIV positive on ART in Labour",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "MoximPvXuj6",
+                        "data_element_id": "MoximPvXuj6",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    152
+                ],
+                "original_indicator_name": "HIV positive on ART in Labour",
+                "original_mapping": "MoximPvXuj6",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "New addition"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "exposed_babies_on_art_prophylaxis",
+            "name": "Exposed babies on ART prophylaxis",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "iBBnHx1Uf50",
+                        "data_element_id": "iBBnHx1Uf50",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    153
+                ],
+                "original_indicator_name": "Exposed babies on ART prophylaxis",
+                "original_mapping": "iBBnHx1Uf50",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "New addition"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "fresh_stillbirth_rate",
+            "name": "Fresh stillbirth rate",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    154
+                ],
+                "original_indicator_name": "Fresh stillbirth rate",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured above"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "macerated_stillbirth_rate",
+            "name": "Macerated stillbirth rate",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    155
+                ],
+                "original_indicator_name": "Macerated stillbirth rate",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured above"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "neonatal_death_rate",
+            "name": "Neonatal death rate",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    157
+                ],
+                "original_indicator_name": "Neonatal death rate",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured above"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "clients_referred_to_another_facility",
+            "name": "Clients referred to another facility",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "l2GWTPGK4QP",
+                        "data_element_id": "l2GWTPGK4QP",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    158
+                ],
+                "original_indicator_name": "Clients referred to another facility",
+                "original_mapping": "l2GWTPGK4QP",
+                "reporting_source": "Maternity report",
+                "comments": [
+                    "New addition"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Labour and delivery"
+            }
+        },
+        {
+            "id": "referral_due_to_pph",
+            "name": "Referral due to PPH",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    159
+                ],
+                "original_indicator_name": "Referral due to PPH",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "referral_due_to_eclampsia",
+            "name": "Referral due to Eclampsia",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    160
+                ],
+                "original_indicator_name": "Referral due to Eclampsia",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "referral_due_to_obstructed_labour",
+            "name": "Referral due to Obstructed labour",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    161
+                ],
+                "original_indicator_name": "Referral due to Obstructed labour",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "referral_due_to_sepsis",
+            "name": "Referral due to Sepsis",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    162
+                ],
+                "original_indicator_name": "Referral due to Sepsis",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "maternal_mortality_ratio_mmr",
+            "name": "Maternal Mortality Ratio (MMR)",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    163
+                ],
+                "original_indicator_name": "Maternal Mortality Ratio (MMR)",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
             }
         },
         {
@@ -1107,9 +4140,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 35,
+                "workbook_rows": [
+                    164
+                ],
                 "original_indicator_name": "Signal: Parenteral antibiotics",
-                "original_mapping": "gXjGJoC7gDs"
+                "original_mapping": "gXjGJoC7gDs",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": null
             }
         },
         {
@@ -1135,9 +4174,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 36,
+                "workbook_rows": [
+                    165
+                ],
                 "original_indicator_name": "Signal: Anticonvulsants (MgSO4)",
-                "original_mapping": "n7XnfWv0tHo"
+                "original_mapping": "n7XnfWv0tHo",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": null
             }
         },
         {
@@ -1163,9 +4208,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 37,
+                "workbook_rows": [
+                    166
+                ],
                 "original_indicator_name": "Signal: Oxytocics",
-                "original_mapping": "FhNg0SdUMe8"
+                "original_mapping": "FhNg0SdUMe8",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": null
             }
         },
         {
@@ -1191,9 +4242,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 38,
+                "workbook_rows": [
+                    167
+                ],
                 "original_indicator_name": "Signal: Manual placenta removal",
-                "original_mapping": "BbmxEK5AYaL"
+                "original_mapping": "BbmxEK5AYaL",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": null
             }
         },
         {
@@ -1225,9 +4282,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 39,
+                "workbook_rows": [
+                    168
+                ],
                 "original_indicator_name": "Signal: MVA / retained products",
-                "original_mapping": "VT6P1wfvaZp, E2TanFi22H5"
+                "original_mapping": "VT6P1wfvaZp, E2TanFi22H5",
+                "reporting_source": "CAC Report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": null
             }
         },
         {
@@ -1253,9 +4316,43 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 40,
+                "workbook_rows": [
+                    169
+                ],
                 "original_indicator_name": "Signal: Assisted vaginal delivery",
-                "original_mapping": "LLrXje6xH8D"
+                "original_mapping": "LLrXje6xH8D",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "signal_neonatal_resuscitation",
+            "name": "Signal: Neonatal resuscitation",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    170
+                ],
+                "original_indicator_name": "Signal: Neonatal resuscitation",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Consider moving and having a bundle of newborn signal functions based on the new WHO guidance"
+                ],
+                "mapped": null,
+                "dashboard_item": null
             }
         },
         {
@@ -1281,9 +4378,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 41,
+                "workbook_rows": [
+                    171
+                ],
                 "original_indicator_name": "Signal: Caesarean section",
-                "original_mapping": "FYDa4NcJNrq"
+                "original_mapping": "FYDa4NcJNrq",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": null
             }
         },
         {
@@ -1309,9 +4412,67 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 42,
+                "workbook_rows": [
+                    172
+                ],
                 "original_indicator_name": "Signal: Blood transfusion",
-                "original_mapping": "vyIPU3KOFF6"
+                "original_mapping": "vyIPU3KOFF6",
+                "reporting_source": "Maternity report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "mothers_admitted_to_postnatal_ward",
+            "name": "Mothers admitted to postnatal ward",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    183
+                ],
+                "original_indicator_name": "Mothers admitted to postnatal ward",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "babies_admitted_to_postnatal_ward",
+            "name": "Babies admitted to postnatal ward",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    184
+                ],
+                "original_indicator_name": "Babies admitted to postnatal ward",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
             }
         },
         {
@@ -1367,9 +4528,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 43,
+                "workbook_rows": [
+                    185
+                ],
                 "original_indicator_name": "Mothers with postnatal complications",
-                "original_mapping": "fVzGijnVOrs, UcgSdalWMGa, sjpjF9WcIf2, blfZXfjQ5vZ, B0C73VHIXsm, h94ppnq7695"
+                "original_mapping": "fVzGijnVOrs, UcgSdalWMGa, sjpjF9WcIf2, blfZXfjQ5vZ, B0C73VHIXsm, h94ppnq7695",
+                "reporting_source": "PNC report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Postnatal care"
             }
         },
         {
@@ -1443,9 +4610,113 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 44,
+                "workbook_rows": [
+                    186
+                ],
                 "original_indicator_name": "Babies with postnatal complications",
-                "original_mapping": "PsSIGk4JCAp, OYc0KJJSavh, DaNydZHxar3, D6PpsB5P3fL, L3XKOQoukVq, wtuN1m0Kjn5, uojP8TYbL7X, TKceP6JwglP, kFgT8mdcQjA"
+                "original_mapping": "PsSIGk4JCAp, OYc0KJJSavh, DaNydZHxar3, D6PpsB5P3fL, L3XKOQoukVq, wtuN1m0Kjn5, uojP8TYbL7X, TKceP6JwglP, kFgT8mdcQjA",
+                "reporting_source": "PNC report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Postnatal care"
+            }
+        },
+        {
+            "id": "lbw_babies_receiving_kmc",
+            "name": "LBW babies receiving KMC",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    187
+                ],
+                "original_indicator_name": "LBW babies receiving KMC",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "pnc_baby_checked_within_48hrs",
+            "name": "PNC baby checked within 48hrs",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "f0IVxnte0OO",
+                        "data_element_id": "f0IVxnte0OO",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    188
+                ],
+                "original_indicator_name": "PNC baby checked within 48hrs",
+                "original_mapping": "f0IVxnte0OO",
+                "reporting_source": "PNC report",
+                "comments": [
+                    "New addition"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Postnatal care"
+            }
+        },
+        {
+            "id": "pnc_mother_checked_within_48hrs",
+            "name": "PNC Mother checked within 48hrs",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "JSN2CbjKFt9",
+                        "data_element_id": "JSN2CbjKFt9",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    189
+                ],
+                "original_indicator_name": "PNC Mother checked within 48hrs",
+                "original_mapping": "JSN2CbjKFt9",
+                "reporting_source": "PNC report",
+                "comments": [
+                    "New addition"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Postnatal care"
             }
         },
         {
@@ -1471,9 +4742,17 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 45,
+                "workbook_rows": [
+                    190
+                ],
                 "original_indicator_name": "Mothers checked within 7 days",
-                "original_mapping": "IDxBzSLUZVn"
+                "original_mapping": "IDxBzSLUZVn",
+                "reporting_source": "PNC Report",
+                "comments": [
+                    "Need to agree on indicator definition. First pnc check is within 48hrs which is the critical period, what should we be tracking?"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Postnatal care"
             }
         },
         {
@@ -1499,9 +4778,17 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 46,
+                "workbook_rows": [
+                    191
+                ],
                 "original_indicator_name": "Babies checked within 7 days",
-                "original_mapping": "jgDt2dm1QOS"
+                "original_mapping": "jgDt2dm1QOS",
+                "reporting_source": "PNC Report",
+                "comments": [
+                    "Need to agree on indicator definition. First pnc check is within 48hrs which is the critical period, what should we be tracking?"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Postnatal care"
             }
         },
         {
@@ -1527,9 +4814,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 47,
+                "workbook_rows": [
+                    192
+                ],
                 "original_indicator_name": "Mothers checked at 6 weeks",
-                "original_mapping": "cLuLPg1YMSq"
+                "original_mapping": "cLuLPg1YMSq",
+                "reporting_source": "PNC Report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Postnatal care"
             }
         },
         {
@@ -1555,9 +4848,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 48,
+                "workbook_rows": [
+                    193
+                ],
                 "original_indicator_name": "Babies checked at 6 weeks",
-                "original_mapping": "nJZsvYHkXQz"
+                "original_mapping": "nJZsvYHkXQz",
+                "reporting_source": "PNC Report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Postnatal care"
             }
         },
         {
@@ -1589,9 +4888,17 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 49,
+                "workbook_rows": [
+                    194
+                ],
                 "original_indicator_name": "Immediate postpartum family planning",
-                "original_mapping": "oZECAevnT9d, baBLHbjm5MP"
+                "original_mapping": "oZECAevnT9d, baBLHbjm5MP",
+                "reporting_source": "PNC Report",
+                "comments": [
+                    "To confirm with technical team"
+                ],
+                "mapped": "Yes",
+                "dashboard_item": "Postnatal care"
             }
         },
         {
@@ -1617,9 +4924,41 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 50,
+                "workbook_rows": [
+                    195
+                ],
                 "original_indicator_name": "HIV positive postnatal mothers",
-                "original_mapping": "elif3HHWci7"
+                "original_mapping": "elif3HHWci7",
+                "reporting_source": "PNC Report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Postnatal care"
+            }
+        },
+        {
+            "id": "hiv_exposed_babies",
+            "name": "HIV exposed babies",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    196
+                ],
+                "original_indicator_name": "HIV exposed babies",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": null
             }
         },
         {
@@ -1645,9 +4984,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 51,
+                "workbook_rows": [
+                    197
+                ],
                 "original_indicator_name": "HIV exposed babies on ART prophylaxis",
-                "original_mapping": "OmHmawnO5Ng"
+                "original_mapping": "OmHmawnO5Ng",
+                "reporting_source": "PNC Report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Postnatal care"
             }
         },
         {
@@ -1673,9 +5018,15 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 52,
+                "workbook_rows": [
+                    198
+                ],
                 "original_indicator_name": "Babies who received BCG",
-                "original_mapping": "kLmi0DXLHky"
+                "original_mapping": "kLmi0DXLHky",
+                "reporting_source": "PNC Report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Postnatal care"
             }
         },
         {
@@ -1701,9 +5052,867 @@
                 "messages": []
             },
             "source_reference": {
-                "workbook_row": 53,
+                "workbook_rows": [
+                    199
+                ],
                 "original_indicator_name": "Babies who received Polio 0",
-                "original_mapping": "AzGc4TyeFKI"
+                "original_mapping": "AzGc4TyeFKI",
+                "reporting_source": "PNC Report",
+                "comments": null,
+                "mapped": "Yes",
+                "dashboard_item": "Postnatal care"
+            }
+        },
+        {
+            "id": "underweight_babies",
+            "name": "Underweight babies",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    200
+                ],
+                "original_indicator_name": "Underweight babies",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "underweight_babies_percentage",
+            "name": "Underweight babies (percentage)",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    201
+                ],
+                "original_indicator_name": "Underweight babies (percentage)",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "exclusive_breastfeeding_counselling",
+            "name": "Exclusive breastfeeding counselling",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    202
+                ],
+                "original_indicator_name": "Exclusive breastfeeding counselling",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "rhd_mat_newborn_complications_asphyxia",
+            "name": "RHD MAT Newborn Complications Asphyxia",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "vcEWpcFjEuU",
+                        "data_element_id": "vcEWpcFjEuU",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    206
+                ],
+                "original_indicator_name": "RHD MAT Newborn Complications Asphyxia",
+                "original_mapping": "vcEWpcFjEuU",
+                "reporting_source": "MAT Report",
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "rhd_mat_newborn_complications_prematurity",
+            "name": "RHD MAT Newborn Complications Prematurity",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "UXTZkim1Npv",
+                        "data_element_id": "UXTZkim1Npv",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    207
+                ],
+                "original_indicator_name": "RHD MAT Newborn Complications Prematurity",
+                "original_mapping": "UXTZkim1Npv",
+                "reporting_source": "MAT Report",
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "rhd_mat_newborn_complications_sepsis",
+            "name": "RHD MAT Newborn Complications Sepsis",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "bPvw8ZdBgRe",
+                        "data_element_id": "bPvw8ZdBgRe",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    208
+                ],
+                "original_indicator_name": "RHD MAT Newborn Complications Sepsis",
+                "original_mapping": "bPvw8ZdBgRe",
+                "reporting_source": "MAT Report",
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "rhd_mat_newborn_complications_weight_2500g",
+            "name": "RHD MAT Newborn Complications Weight < 2500g",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "gkgM1TgE5oF",
+                        "data_element_id": "gkgM1TgE5oF",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    209
+                ],
+                "original_indicator_name": "RHD MAT Newborn Complications Weight < 2500g",
+                "original_mapping": "gkgM1TgE5oF",
+                "reporting_source": "MAT Report",
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "rhd_mat_newborn_complications_othe",
+            "name": "RHD MAT Newborn Complications Othe",
+            "description": null,
+            "source": "dhis2",
+            "enabled": true,
+            "value_type": "count",
+            "calculation": {
+                "operation": "direct",
+                "operands": [
+                    {
+                        "type": "data_element",
+                        "dx": "Z9Q4qIjoePS",
+                        "data_element_id": "Z9Q4qIjoePS",
+                        "category_option_combo_id": null
+                    }
+                ]
+            },
+            "validation": {
+                "status": "valid",
+                "messages": []
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    210
+                ],
+                "original_indicator_name": "RHD MAT Newborn Complications Othe",
+                "original_mapping": "Z9Q4qIjoePS",
+                "reporting_source": "MAT Report",
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "temperature_taken_at_admission",
+            "name": "Temperature taken at admission",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    233
+                ],
+                "original_indicator_name": "Temperature taken at admission",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "weight_taken_at_birth",
+            "name": "Weight taken at birth",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    234
+                ],
+                "original_indicator_name": "Weight taken at birth",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "glucose_monitored_at_admission",
+            "name": "Glucose monitored at admission",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    235
+                ],
+                "original_indicator_name": "Glucose monitored at admission",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "cpap_for_eligible_babies",
+            "name": "CPAP for eligible babies",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    236
+                ],
+                "original_indicator_name": "CPAP for eligible babies",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "cpap_for_babies_1000_1499g_prophylactic",
+            "name": "CPAP for babies 1000-1499g (prophylactic)",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    237
+                ],
+                "original_indicator_name": "CPAP for babies 1000-1499g (prophylactic)",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "cpap_1500_1999g_with_symptoms",
+            "name": "CPAP 1500-1999g (with symptoms)",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    238
+                ],
+                "original_indicator_name": "CPAP 1500-1999g (with symptoms)",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "time_birth_to_cpap_initiation_1000_1999g",
+            "name": "Time: Birth to CPAP initiation (1000-1999g)",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    239
+                ],
+                "original_indicator_name": "Time: Birth to CPAP initiation (1000-1999g)",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "kmc_1000_1999g",
+            "name": "KMC 1000-1999g",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    240
+                ],
+                "original_indicator_name": "KMC 1000-1999g",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "kmc_2000_2499g",
+            "name": "KMC 2000-2499g",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    241
+                ],
+                "original_indicator_name": "KMC 2000-2499g",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "time_birth_to_kmc_initiation_1000_2500g",
+            "name": "Time: Birth to KMC initiation (1000-2500g)",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    242
+                ],
+                "original_indicator_name": "Time: Birth to KMC initiation (1000-2500g)",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "not_hypothermic_at_admission",
+            "name": "Not hypothermic at admission",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    243
+                ],
+                "original_indicator_name": "Not hypothermic at admission",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "phototherapy_for_clinical_jaundice",
+            "name": "Phototherapy for clinical jaundice",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    245
+                ],
+                "original_indicator_name": "Phototherapy for clinical jaundice",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "bilirubin_measured_in_babies_with_jaundice",
+            "name": "Bilirubin measured in babies with jaundice",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    246
+                ],
+                "original_indicator_name": "Bilirubin measured in babies with jaundice",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "exchange_transfusion",
+            "name": "Exchange Transfusion",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    247
+                ],
+                "original_indicator_name": "Exchange Transfusion",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "neonatal_sepsis_among_admissions",
+            "name": "Neonatal sepsis among admissions",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    248
+                ],
+                "original_indicator_name": "Neonatal sepsis among admissions",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "antibiotics_for_clinical_sepsis",
+            "name": "Antibiotics for clinical sepsis",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    249
+                ],
+                "original_indicator_name": "Antibiotics for clinical sepsis",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "blood_culture_done_for_babies_on_antibiotics",
+            "name": "Blood culture done for babies on antibiotics",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    250
+                ],
+                "original_indicator_name": "Blood culture done for babies on antibiotics",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "birth_asphyxia_among_admissions",
+            "name": "Birth asphyxia among admissions",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    251
+                ],
+                "original_indicator_name": "Birth asphyxia among admissions",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "eligible_babies_receiving_bag_mask_ventilation",
+            "name": "Eligible babies receiving bag-mask ventilation",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    252
+                ],
+                "original_indicator_name": "Eligible babies receiving bag-mask ventilation",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": [
+                    "Already captured"
+                ],
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "low_birthweight_rate_2500g",
+            "name": "Low birthweight rate (<2500g)",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    254
+                ],
+                "original_indicator_name": "Low birthweight rate (<2500g)",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "data_completeness_birth_weight_proxy",
+            "name": "Data completeness (birth weight proxy)",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    255
+                ],
+                "original_indicator_name": "Data completeness (birth weight proxy)",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "device_supply_availability",
+            "name": "Device / supply availability",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    256
+                ],
+                "original_indicator_name": "Device / supply availability",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
+            }
+        },
+        {
+            "id": "nurse_ratios_and_training",
+            "name": "Nurse ratios and training",
+            "description": null,
+            "source": "dhis2",
+            "enabled": false,
+            "value_type": "unknown",
+            "calculation": null,
+            "validation": {
+                "status": "review_required",
+                "messages": [
+                    "No valid DHIS2 mapping was found in the source workbook."
+                ]
+            },
+            "source_reference": {
+                "workbook_rows": [
+                    257
+                ],
+                "original_indicator_name": "Nurse ratios and training",
+                "original_mapping": null,
+                "reporting_source": null,
+                "comments": null,
+                "mapped": null,
+                "dashboard_item": null
             }
         }
     ]

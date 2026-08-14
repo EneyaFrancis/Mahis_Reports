@@ -4653,6 +4653,14 @@
         "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
       },
       {
+        "id": "mnid_lab_core_ruptureduterus",
+        "label": "Obstetric complication: Ruptured uterus",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
         "id": "mnid_lab_core_signalantibiotics",
         "label": "Signal: Parenteral antibiotics",
         "category": "Labour",
@@ -6283,6 +6291,14 @@
       {
         "id": "mnid_lab_core_obstructedlabour",
         "label": "Obstetric complication: Obstructed labour",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_ruptureduterus",
+        "label": "Obstetric complication: Ruptured uterus",
         "category": "Labour",
         "target": 0,
         "status": "tracked",

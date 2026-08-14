@@ -5,6 +5,7 @@ Contains the topbar, sidebar, alert banner, KPI row, hero donut cards,
 priority indicators table, district gauge row, PPH cascade funnel,
 and the section anchor helper.
 """
+import json as _json
 import pandas as pd
 import plotly.graph_objects as go
 import logging
@@ -428,12 +429,28 @@ def _pph_cascade(df):
         return None
 
 
+# MNID capture store — holds filter params for the clientside PNG capture
+
+def _capture_store(facility_name, district, period, program, indicators_text, tab_name):
+    payload = _json.dumps({
+        'facility': facility_name,
+        'district': district,
+        'period': period,
+        'program': program,
+        'indicators': indicators_text,
+        'tab_name': tab_name,
+    })
+    return html.Div(
+        id='mnid-capture-store',
+        **{'data-capture': payload},
+        style={'display': 'none'},
+    )
+
+
 # MNID header, alert, KPI, and section navigation components
 
-def _topbar(facility, period, n_tracked, n_await, facility_df=None, network_df=None,
-            period_note=None, scope_meta=None,
-            title='Maternal and Child Health Indicators', subtitle='Clean view of performance, comparison, coverage, and readiness.',
-            theme='default'):
+def _resolve_topbar_context(facility, facility_df=None, network_df=None,
+                            scope_meta=None, theme='default'):
     facility_name = _FACILITY_NAMES.get(facility, facility or 'Network view')
     district = _FACILITY_DISTRICT.get(facility, 'All districts')
 
@@ -470,6 +487,24 @@ def _topbar(facility, period, n_tracked, n_await, facility_df=None, network_df=N
         district = selected_districts[0] if len(selected_districts) == 1 else ', '.join(selected_districts[:2]) + (f' +{len(selected_districts) - 2}' if len(selected_districts) > 2 else '')
 
     topbar_label = 'N-NID Dashboard' if theme == 'newborn' else 'M-NID Dashboard'
+
+    return {
+        'facility_name': facility_name,
+        'district': district,
+        'selected_program': selected_program,
+        'topbar_label': topbar_label,
+    }
+
+
+def _topbar(facility, period, n_tracked, n_await, facility_df=None, network_df=None,
+            period_note=None, scope_meta=None,
+            title='Maternal and Child Health Indicators', subtitle='Clean view of performance, comparison, coverage, and readiness.',
+            theme='default'):
+    ctx = _resolve_topbar_context(facility, facility_df, network_df, scope_meta, theme)
+    facility_name = ctx['facility_name']
+    district = ctx['district']
+    selected_program = ctx['selected_program']
+    topbar_label = ctx['topbar_label']
     newborn_focus = None
     if theme == 'newborn':
         newborn_focus = html.Div(className='mnid-topbar-highlight', children=[
