@@ -272,23 +272,26 @@
                   "filter_val3": "",
                   "x_title": "",
                   "y_title": "",
-                  "rename": {
-                    "person_id": "Number of Patients",
-                    "OPD Program": "OPD",
-                    "NCD PROGRAM": "NCD",
-                    "HIV PROGRAM": "ART",
-                    "HTS PROGRAM": "HTS",
-                    "AETC PROGRAM": "AETC",
-                    "ANC PROGRAM": "ANC",
-                    "IMMUNIZATION PROGRAM": "EPI",
-                    "LABOUR AND DELIVERY PROGRAM": "LABOUR",
-                    "NEONATAL PROGRAM": "NEONATAL",
-                    "PNC PROGRAM": "PNC",
-                    "ANC CONNECT PROGRAM": "ANC CONNECT"
-                  },
                   "replace": {
                     "Program": {
-                      "Program": ""
+                      "Program": "",
+                      "OPD Program": "OPD",
+                      "NCD PROGRAM": "NCD",
+                      "HIV PROGRAM": "ART",
+                      "HTS PROGRAM": "HTS",
+                      "AETC PROGRAM": "AETC",
+                      "ANC PROGRAM": "ANC",
+                      "IMMUNIZATION PROGRAM": "EPI",
+                      "LABOUR AND DELIVERY PROGRAM": "LABOUR",
+                      "NEONATAL PROGRAM": "NEONATAL",
+                      "PNC PROGRAM": "PNC",
+                      "ANC CONNECT PROGRAM": "ANC CONNECT"
+                    },
+                    "Encounter": {
+                      "Visit": "Start",
+                      "ANC Visit": "Start",
+                      "Registration": "Start",
+                      "Dispensing": "End"
                     }
                   }
                 }
@@ -8562,22 +8565,5 @@
       "NEONATAL PROGRAM"
     ],
     "access": "global"
-  },
-  {
-    "report_id": "report_4c23d45b",
-    "report_name": "AIMS TRACKER",
-    "date_created": "2026-07-13",
-    "visualization_types": {
-      "counts": [],
-      "charts": {
-        "sections": []
-      }
-    },
-    "count_items_per_row": 5,
-    "associated_programs": [
-      "HIV PROGRAM",
-      "HTC PROGRAM"
-    ],
-    "access": "limited"
   }
 ]
