@@ -1,0 +1,12 @@
+{
+  "generated_at": "2026-08-14T09:46:36.603966",
+  "elapsed_sec": 31.6,
+  "rows": 2268,
+  "indicators": 162,
+  "grains": [
+    "monthly"
+  ],
+  "data_source": "data/mahisuat/parquet",
+  "use_demo_data": false,
+  "last_run_status": "ok"
+}

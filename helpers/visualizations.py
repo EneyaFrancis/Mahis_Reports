@@ -4,12 +4,14 @@ import plotly.express as px
 import plotly.graph_objects as go
 import dash
 import operator
-from dash import dash_table, html
+from dash import dash_table, html, dcc, callback, Input, Output, State, MATCH
+from dash_iconify import DashIconify
 import re
 from datetime import datetime, timedelta
 from typing import List, Optional, Dict, Union, Callable
 import json
 import ast
+import uuid
 from io import BytesIO
 import base64
 import duckdb
@@ -1760,6 +1762,22 @@ def create_crosstab_table(
             normalize=norm if ct_aggfunc != 'first' else False
         )
 
+    # With 2+ column levels, pandas only creates a column for (outer, inner) pairs
+    # that actually co-occur in the data — so one outer group (e.g. a Program) can
+    # end up with fewer inner sub-columns (e.g. Encounter) than another. Reindex to
+    # the full outer x inner grid so every outer group shows the same set of inner
+    # sub-columns, which is what lets them merge cleanly under one header cell each.
+    if isinstance(ct.columns, pd.MultiIndex) and ct.columns.nlevels >= 2:
+        inner_values = ct.columns.get_level_values(-1).unique()
+        outer_combos = ct.columns.droplevel(-1).unique()
+        outer_tuples = list(outer_combos) if isinstance(outer_combos, pd.MultiIndex) else [(v,) for v in outer_combos]
+        full_columns = pd.MultiIndex.from_tuples(
+            [outer + (inner,) for outer in outer_tuples for inner in inner_values],
+            names=ct.columns.names
+        )
+        ct = ct.reindex(columns=full_columns)
+
+    ct = ct.fillna(0)
     ct = ct.reset_index()
     ct = _apply_replace(ct.rename(columns=rename), replace)
 
@@ -1784,23 +1802,116 @@ def create_crosstab_table(
 
     data_records = ct_flat.to_dict("records")
 
+    # reset_index() always prepends the index columns first, so the first
+    # n_index_levels dash_columns are the row-index axis and the rest are the
+    # (possibly 2-level) columns axis — used to build the two filter dropdowns.
+    n_index_levels = len(index_col) if isinstance(index_col, (list, tuple)) else 1
+    index_dash_columns = dash_columns[:n_index_levels]
+    group_dash_columns = dash_columns[n_index_levels:]
+
+    index_filter_options = (
+        sorted({str(v) for v in ct_flat[index_dash_columns[0]["id"]].dropna().unique()})
+        if index_dash_columns else []
+    )
+    columns_filter_options = sorted({c["name"][0] for c in group_dash_columns if c["name"][0]})
+
+    uid = uuid.uuid4().hex[:8]
+    table_id = {"type": "crosstab-table", "index": uid}
+    store_id = {"type": "crosstab-data-store", "index": uid}
+    index_dd_id = {"type": "crosstab-index-filter", "index": uid}
+    columns_dd_id = {"type": "crosstab-columns-filter", "index": uid}
+    download_btn_id = {"type": "crosstab-download-btn", "index": uid}
+    download_id = {"type": "crosstab-download", "index": uid}
+
+    dropdown_style = {"width": "170px", "fontSize": "12px", "textAlign": "left"}
+    filter_controls_children = []
+    if index_dash_columns:
+        filter_controls_children.append(
+            dcc.Dropdown(
+                id=index_dd_id,
+                options=[{"label": v, "value": v} for v in index_filter_options],
+                placeholder=f"Filter {index_dash_columns[0]['name'][0]}",
+                clearable=True,
+                style=dropdown_style,
+            )
+        )
+    if group_dash_columns:
+        filter_controls_children.append(
+            dcc.Dropdown(
+                id=columns_dd_id,
+                options=[{"label": v, "value": v} for v in columns_filter_options],
+                placeholder=f"Filter {group_dash_columns[0]['name'][0]}",
+                clearable=True,
+                style=dropdown_style,
+            )
+        )
+    filter_controls_children.append(
+        html.Button(
+            DashIconify(icon="lucide:download", width=16),
+            id=download_btn_id,
+            n_clicks=0,
+            title="Download as Excel",
+            style={
+                "padding": "6px 8px",
+                "border": "1px solid #d1d5db",
+                "borderRadius": "4px",
+                "background": "#ffffff",
+                "color": THEME["table_header"],
+                "cursor": "pointer",
+                "display": "flex",
+                "alignItems": "center",
+            },
+        )
+    )
+
     table = html.Div(
         [
-            html.H4(
-                title,
+            html.Div(
+                [
+                    html.H4(
+                        title,
+                        style={
+                            "margin": "0",
+                            "fontFamily": "Arial, sans-serif",
+                            "fontSize": "18px",
+                            "fontWeight": "bold",
+                            "color": THEME["table_header"],
+                        },
+                    ),
+                    html.Div(
+                        filter_controls_children,
+                        style={
+                            "display": "flex",
+                            "gap": "8px",
+                            "alignItems": "center",
+                            "justifyContent": "flex-end",
+                            "flexWrap": "wrap",
+                        },
+                    ),
+                ],
                 style={
-                    "textAlign": "center",
+                    "display": "flex",
+                    "justifyContent": "space-between",
+                    "alignItems": "center",
+                    "flexWrap": "wrap",
+                    "gap": "8px",
                     "marginBottom": "16px",
                     "marginTop": "12px",
-                    "fontFamily": "Arial, sans-serif",
-                    "fontSize": "18px",
-                    "fontWeight": "bold",
-                    "color": THEME["table_header"],
                 },
             ),
+            dcc.Store(
+                id=store_id,
+                data={
+                    "columns": dash_columns,
+                    "records": data_records,
+                    "n_index_levels": n_index_levels,
+                    "title": title,
+                },
+            ),
+            dcc.Download(id=download_id),
             html.Div(
                 dash_table.DataTable(
-                    id="crosstab-table",
+                    id=table_id,
                     columns=dash_columns,
                     data=data_records,
                     merge_duplicate_headers=True,
@@ -1812,9 +1923,9 @@ def create_crosstab_table(
                         "fontWeight": "bold",
                         "fontFamily": "Arial, sans-serif",
                         "textAlign": "center",
-                        "fontSize": "13px",
-                        "height": "42px",
-                        "lineHeight": "42px",
+                        "fontSize": "12px",
+                        "height": "15px",
+                        "lineHeight": "15px",
                         "whiteSpace": "normal",
                         "borderBottom": "2px solid #004a01",
                     },
@@ -1869,7 +1980,101 @@ def create_crosstab_table(
     )
 
     return table, ct_flat
- 
+
+
+@callback(
+    Output({"type": "crosstab-table", "index": MATCH}, "data"),
+    Output({"type": "crosstab-table", "index": MATCH}, "columns"),
+    Input({"type": "crosstab-index-filter", "index": MATCH}, "value"),
+    Input({"type": "crosstab-columns-filter", "index": MATCH}, "value"),
+    State({"type": "crosstab-data-store", "index": MATCH}, "data"),
+    prevent_initial_call=True,
+)
+def _filter_crosstab_table(index_value, columns_value, store_data):
+    """Re-filter a crosstab's displayed rows/columns from its index/columns dropdowns."""
+    if not store_data:
+        return dash.no_update, dash.no_update
+
+    columns = store_data["columns"]
+    records = store_data["records"]
+    n_index_levels = store_data["n_index_levels"]
+    index_columns = columns[:n_index_levels]
+    group_columns = columns[n_index_levels:]
+
+    filtered_columns = list(index_columns)
+    filtered_columns += (
+        [c for c in group_columns if c["name"][0] == columns_value]
+        if columns_value else group_columns
+    )
+
+    filtered_records = records
+    if index_value and index_columns:
+        idx_id = index_columns[0]["id"]
+        filtered_records = [r for r in records if str(r.get(idx_id)) == index_value]
+
+    return filtered_records, filtered_columns
+
+
+@callback(
+    Output({"type": "crosstab-download", "index": MATCH}, "data"),
+    Input({"type": "crosstab-download-btn", "index": MATCH}, "n_clicks"),
+    State({"type": "crosstab-table", "index": MATCH}, "data"),
+    State({"type": "crosstab-table", "index": MATCH}, "columns"),
+    State({"type": "crosstab-data-store", "index": MATCH}, "data"),
+    prevent_initial_call=True,
+)
+def _download_crosstab_table(n_clicks, data, columns, store_data):
+    """Export the currently displayed (possibly filtered) crosstab to Excel,
+    rebuilding merged multi-level headers from each column's name levels.
+
+    pandas' to_excel() can't write MultiIndex columns with index=False, so the
+    header is written directly via openpyxl instead, merging each header row's
+    horizontally-adjacent equal labels the same way the on-screen table does.
+    """
+    if not data or not columns:
+        return dash.no_update
+
+    import openpyxl
+
+    col_ids = [c["id"] for c in columns]
+    col_tuples = [tuple(c["name"]) for c in columns]
+    max_len = max(len(t) for t in col_tuples)
+    col_tuples = [t + ("",) * (max_len - len(t)) for t in col_tuples]
+
+    title = (store_data or {}).get("title") or "crosstab"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = re.sub(r'[\\/*?:\[\]]', '_', str(title))[:31] or "crosstab"
+
+    for level in range(max_len):
+        row = level + 1
+        col = 1
+        while col <= len(col_tuples):
+            label = col_tuples[col - 1][level]
+            span = 1
+            while (
+                col + span - 1 < len(col_tuples)
+                and all(col_tuples[col + span - 1][l] == col_tuples[col - 1][l] for l in range(level + 1))
+            ):
+                span += 1
+            ws.cell(row=row, column=col, value=label)
+            if span > 1:
+                ws.merge_cells(start_row=row, start_column=col, end_row=row, end_column=col + span - 1)
+            col += span
+
+    data_start_row = max_len + 1
+    for r, row_dict in enumerate(data, start=data_start_row):
+        for c, col_id in enumerate(col_ids, start=1):
+            ws.cell(row=r, column=c, value=row_dict.get(col_id))
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    safe_title = re.sub(r'[^A-Za-z0-9_-]+', '_', str(title)).strip('_') or "crosstab"
+    return dcc.send_bytes(buffer.getvalue(), filename=f"{safe_title}.xlsx")
+
+
 def create_age_gender_histogram(
     query_fiter,data_path, age_col, gender_col, title, xtitle, ytitle, bin_size,
     filter_col1=None, filter_value1=None,
