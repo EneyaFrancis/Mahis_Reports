@@ -249,7 +249,7 @@
               {
                 "id": "chart_pivot_summary",
                 "name": "Locations",
-                "type": "PivotTable",
+                "type": "CrossTab",
                 "level": "facility",
                 "filters": {
                   "measure": "nunique",
@@ -259,13 +259,13 @@
                     "District",
                     "Facility"
                   ],
-                  "columns": "Program",
+                  "columns": ["Program", "Encounter"],
                   "values_col": "person_id",
                   "title": "Attendance by Health Facility and Program",
                   "unique_column": "person_id",
                   "aggfunc": "nunique",
-                  "filter_col1": "",
-                  "filter_val1": "",
+                  "filter_col1": "Encounter",
+                  "filter_val1": ["Registration", "Dispensing"],
                   "filter_col2": "",
                   "filter_val2": "",
                   "filter_col3": "",
@@ -283,7 +283,8 @@
                     "IMMUNIZATION PROGRAM": "EPI",
                     "LABOUR AND DELIVERY PROGRAM": "LABOUR",
                     "NEONATAL PROGRAM": "NEONATAL",
-                    "PNC PROGRAM": "PNC"
+                    "PNC PROGRAM": "PNC",
+                    "ANC CONNECT PROGRAM": "ANC CONNECT"
                   },
                   "replace": {
                     "Program": {
