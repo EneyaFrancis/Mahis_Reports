@@ -16,6 +16,7 @@ from mnid.components.run_charts import (
     _chart_key_slug,
     _trend_chart_payload,
 )
+from mnid.charts.layout import _capture_store
 from mnid.core.constants import BG, BORDER, DIM, FONT, GRID_C, MUTED, OK_C, TEXT, WARN_C
 from mnid.aggregation.store import (
     get_aggregate as _get_aggregate,
@@ -1228,9 +1229,20 @@ def render_country_profile(
         "borderRadius": "10px", "overflow": "hidden", "marginBottom": "20px",
     })
 
+    scope_map = {item["label"]: item["value"] for item in scope_items}
+    capture_store = _capture_store(
+        facility_name=scope_map.get("Facility", profile_name["eyebrow"]),
+        district=scope_map.get("District", "All districts"),
+        period=scope_map.get("Period", period_label),
+        program=indicator_label,
+        indicators_text="",
+        tab_name=profile_name["tab_label"],
+    )
+
     return html.Div(
         className="mnid-executive-page",
         children=[
+            capture_store,
             hero,
             *([alert] if alert else []),
             scope_band,
