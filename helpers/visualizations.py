@@ -4,7 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import dash
 import operator
-from dash import dash_table, html, dcc, callback, Input, Output, State, MATCH
+from dash import dash_table, html, dcc, callback, Input, Output, State, MATCH, ALL
 from dash_iconify import DashIconify
 import re
 from datetime import datetime, timedelta
@@ -31,14 +31,15 @@ THEME = {
     # Gender/binary split (green + amber)
     "gender":   ["#006401", "#f59e0b", "#0d9488", "#7c3aed", "#dc2626"],
     # Single bar / line (no color grouping)
-    "single":   "#006401",
+    "single":   "#FFFFFF",
     # Table accent colours
-    "table_header":       "#525E52",
-    "table_header_text":  "#ffffff",
-    "table_row_alt":      "#f2f9f2",
-    "table_index_bg":     "#e8f5e8",
-    "table_active_bg":    "#d4edda",
-    "table_active_border":"#006401",
+    "table_header":       "#DDEBDD",
+    "table_header_text":  "#0F172A",
+    "table_row_alt":      "#EEEEEE",
+    "table_index_bg":     "#f4f4f4",
+    "table_active_bg":    "#ffffff",
+    "table_active_border":"#FFFFFF",
+    "chart_fill": "#006401",
 }
 
 def _prepare_data_for_visualization(df, unique_column, apply_deduplication=True):
@@ -597,11 +598,11 @@ def create_sum(query_fiter,data_path, unique_column=PERSON_ID_, num_field='Value
     return result[num_field].sum(), unique_patients
 
 
-def create_column_chart(query_fiter,data_path, x_col, y_col, title, x_title, y_title,
+def _build_column_figure(query_fiter,data_path, x_col, y_col, title, x_title, y_title,
                         unique_column=PERSON_ID_, legend_title=None,
                         color=None, filter_col1=None, filter_value1=None,
                         filter_col2=None, filter_value2=None,
-                        filter_col3=None, filter_value3=None, aggregation='count', 
+                        filter_col3=None, filter_value3=None, aggregation='count',
                         custom_fields=None, height=400, responsive=True,
                         show_values=True, sort_by_value=True, max_categories=None):
     """
@@ -716,7 +717,7 @@ def create_column_chart(query_fiter,data_path, x_col, y_col, title, x_title, y_t
         
         # Apply theme single-color
         fig.update_traces(
-            marker_color=THEME["single"],
+            marker_color=THEME["chart_fill"],
             marker_line_color="#004a01",
             marker_line_width=1,
             opacity=0.85
@@ -825,7 +826,146 @@ def create_column_chart(query_fiter,data_path, x_col, y_col, title, x_title, y_t
     
     return fig
 
-def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_title, 
+
+def _normalize_filter_headers(filter_headers):
+    """filter_headers can be a single {"column": ..., "default": ...} dict or
+    a list of them; normalize to a list of valid entries (skip anything
+    without a "column")."""
+    if not filter_headers:
+        return []
+    headers = filter_headers if isinstance(filter_headers, list) else [filter_headers]
+    return [h for h in headers if isinstance(h, dict) and h.get("column")]
+
+
+def _column_filter_where(column_value_pairs):
+    """Build 'AND'-joined 'col = value' conditions for the truthy pairs."""
+    parts = []
+    for col, val in column_value_pairs:
+        if col and val:
+            escaped = str(val).replace("'", "''")
+            parts.append(f"{col} = '{escaped}'")
+    return " AND ".join(parts)
+
+
+def create_column_chart(query_fiter, data_path, x_col, y_col, title, x_title, y_title,
+                        unique_column=PERSON_ID_, legend_title=None,
+                        color=None, filter_col1=None, filter_value1=None,
+                        filter_col2=None, filter_value2=None,
+                        filter_col3=None, filter_value3=None, aggregation='count',
+                        custom_fields=None, height=400, responsive=True,
+                        show_values=True, sort_by_value=True, max_categories=None,
+                        filter_headers=None):
+    """
+    Column chart, optionally with header dropdown filters (filter_headers),
+    following the same design as create_crosstab_table's index/columns
+    filters. Each header is {"column": ..., "default": ...}: "default"
+    pre-filters the chart to that value; with no default, the dropdown still
+    lets the user pick any value from that column but nothing is filtered up
+    front. With no filter_headers at all, this returns a plain figure exactly
+    as before -- no wrapper, no filter UI.
+    """
+    headers = _normalize_filter_headers(filter_headers)
+    rest_args = (data_path, x_col, y_col, title, x_title, y_title,
+                 unique_column, legend_title, color, filter_col1, filter_value1,
+                 filter_col2, filter_value2, filter_col3, filter_value3, aggregation,
+                 custom_fields, height, responsive, show_values, sort_by_value, max_categories)
+
+    if not headers:
+        return _build_column_figure(query_fiter, *rest_args)
+
+    default_where = _column_filter_where([(h["column"], h.get("default")) for h in headers])
+    initial_query_fiter = f"{query_fiter} AND {default_where}" if default_where else query_fiter
+    initial_figure = _build_column_figure(initial_query_fiter, *rest_args)
+
+    dropdown_specs = []
+    for h in headers:
+        col = h["column"]
+        try:
+            opts_df = DataStorage.query_duckdb(
+                f"SELECT DISTINCT {col} FROM '{data_path}' WHERE {query_fiter} AND {col} IS NOT NULL ORDER BY {col}"
+            )
+            options = opts_df[col].dropna().astype(str).tolist() if not opts_df.empty else []
+        except Exception:
+            options = []
+        dropdown_specs.append({"column": col, "default": h.get("default"), "options": options})
+
+    uid = uuid.uuid4().hex[:8]
+
+    filter_controls = [
+        dcc.Dropdown(
+            id={"type": "column-chart-filter", "index": uid, "col": spec["column"]},
+            options=[{"label": v, "value": v} for v in spec["options"]],
+            value=spec["default"] or None,
+            placeholder=f"Filter {spec['column']}",
+            clearable=True,
+            style={"width": "170px", "fontSize": "12px"},
+        )
+        for spec in dropdown_specs
+    ]
+
+    return html.Div([
+        html.Div(
+            [
+                html.H4(title, style={
+                    "margin": "0", "fontFamily": "Arial, sans-serif", "fontSize": "16px",
+                    "fontWeight": "bold", "color": "#2c3e50",
+                }),
+                html.Div(filter_controls, style={
+                    "display": "flex", "gap": "8px", "alignItems": "center",
+                    "justifyContent": "flex-end", "flexWrap": "wrap",
+                }),
+            ],
+            style={
+                "display": "flex", "justifyContent": "space-between", "alignItems": "center",
+                "flexWrap": "wrap", "gap": "8px", "marginBottom": "8px",
+            },
+        ),
+        dcc.Store(id={"type": "column-chart-store", "index": uid}, data={
+            "query_fiter": query_fiter, "data_path": data_path, "x_col": x_col, "y_col": y_col,
+            "title": title, "x_title": x_title, "y_title": y_title, "unique_column": unique_column,
+            "legend_title": legend_title, "color": color,
+            "filter_col1": filter_col1, "filter_value1": filter_value1,
+            "filter_col2": filter_col2, "filter_value2": filter_value2,
+            "filter_col3": filter_col3, "filter_value3": filter_value3,
+            "aggregation": aggregation, "custom_fields": custom_fields,
+            "height": height, "responsive": responsive, "show_values": show_values,
+            "sort_by_value": sort_by_value, "max_categories": max_categories,
+        }),
+        dcc.Graph(id={"type": "column-chart-graph", "index": uid}, figure=initial_figure),
+    ], className="card-2")
+
+
+@callback(
+    Output({"type": "column-chart-graph", "index": MATCH}, "figure"),
+    Input({"type": "column-chart-filter", "index": MATCH, "col": ALL}, "value"),
+    State({"type": "column-chart-filter", "index": MATCH, "col": ALL}, "id"),
+    State({"type": "column-chart-store", "index": MATCH}, "data"),
+    prevent_initial_call=True,
+)
+def _filter_column_chart(values, ids, store_data):
+    """Re-run the column chart's SQL with the dropdown-selected column=value
+    filters applied, mirroring create_crosstab_table's filter design."""
+    if not store_data:
+        return dash.no_update
+
+    extra_where = _column_filter_where([(id_dict.get("col"), val) for val, id_dict in zip(values, ids)])
+    base_where = store_data["query_fiter"]
+    effective_where = f"{base_where} AND {extra_where}" if extra_where else base_where
+
+    return _build_column_figure(
+        effective_where, store_data["data_path"], store_data["x_col"], store_data["y_col"],
+        store_data["title"], store_data["x_title"], store_data["y_title"],
+        store_data["unique_column"], store_data["legend_title"], store_data["color"],
+        store_data["filter_col1"], store_data["filter_value1"],
+        store_data["filter_col2"], store_data["filter_value2"],
+        store_data["filter_col3"], store_data["filter_value3"],
+        store_data["aggregation"], store_data["custom_fields"],
+        store_data["height"], store_data["responsive"], store_data["show_values"],
+        store_data["sort_by_value"], store_data["max_categories"],
+    )
+
+
+def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_title,
                       y_title, unique_column=PERSON_ID_, 
                       legend_title=None, color=None, filter_col1=None, 
                       filter_value1=None, filter_col2=None, 
@@ -974,7 +1114,7 @@ def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_titl
             summary,
             x='date_trunc',
             y='count',
-            color_discrete_sequence=[THEME["single"]],
+            color_discrete_sequence=[THEME["chart_fill"]],
             template='plotly_white',
             title=None
         )
@@ -1664,7 +1804,149 @@ def create_pivot_table(query_fiter,data_path, index_col, columns_col, values_col
     )
 
     return table, pivot
- 
+
+
+def create_time_range_table(
+    query_fiter, data_path, index_col, datetime_col, title,
+    start_label="Start Time", end_label="End Time",
+    unique_column=PERSON_ID_,
+    filter_col1=None, filter_value1=None,
+    filter_col2=None, filter_value2=None,
+    filter_col3=None, filter_value3=None,
+    rename={}, replace={}, custom_fields=None,
+    page_size=5,
+):
+    """
+    Group by index_col and show the time-of-day (not the date) of the
+    earliest and latest datetime_col value in each group -- e.g. "what time
+    does each User's first/last recorded activity fall at" (Start Time / End
+    Time). MIN/MAX of the same column as two named columns doesn't fit
+    create_pivot_table's single values_col + aggfunc + pivot shape, so this
+    is its own function; same table look otherwise. Returns (html.Div, DataFrame).
+    """
+    isSet = False
+    filter_pairs = [
+        (filter_col1, filter_value1),
+        (filter_col2, filter_value2),
+        (filter_col3, filter_value3),
+    ]
+    conditions = []
+    for col, val in filter_pairs:
+        if col is not None and val is not None:
+            col = _normalize_filter_value(col)
+            if isinstance(col, list):
+                col = col[0]
+            val = _normalize_filter_value(val)
+            conditions.append(build_filter_query(col, val, data_path, unique_column, isSet, None, None))
+
+    where_clause = query_fiter + ((" AND " + " AND ".join(conditions)) if conditions else "")
+
+    index_cols = list(index_col) if isinstance(index_col, (list, tuple)) else [index_col]
+    group_sql = ", ".join(index_cols)
+
+    joined_query = (
+        f"SELECT {group_sql}, MIN({datetime_col}) AS __start_dt__, MAX({datetime_col}) AS __end_dt__"
+        f" FROM '{data_path}'"
+        f" WHERE {where_clause}"
+        f" GROUP BY {group_sql}"
+    )
+    data = DataStorage.query_duckdb(joined_query)
+    data = apply_calculated_fields(data, custom_fields)
+
+    data[start_label] = pd.to_datetime(data["__start_dt__"]).dt.strftime('%H:%M:%S')
+    data[end_label] = pd.to_datetime(data["__end_dt__"]).dt.strftime('%H:%M:%S')
+    data = data.drop(columns=["__start_dt__", "__end_dt__"])
+
+    data = _apply_replace(data.rename(columns=rename), replace)
+    data.columns = [str(c) for c in data.columns]
+
+    num_index_cols = len(index_cols)
+    index_col_ids = [str(c) for c in data.columns[:num_index_cols]]
+
+    dash_columns = [{"name": col, "id": col} for col in data.columns]
+    data_records = data.to_dict("records")
+
+    style_data_conditional = [
+        {"if": {"row_index": "odd"}, "backgroundColor": THEME["table_row_alt"]},
+        {"if": {"state": "active"}, "backgroundColor": THEME["table_active_bg"], "border": f"1px solid {THEME['table_active_border']}", "color": "#2c3e50"},
+    ]
+    for col_id in index_col_ids:
+        style_data_conditional.append({
+            "if": {"column_id": col_id},
+            "fontWeight": "bold",
+            "backgroundColor": THEME["table_index_bg"],
+            "color": "#2c3e50",
+            "textAlign": "left",
+        })
+
+    table = html.Div(
+        [
+            html.H4(
+                title,
+                style={
+                    "textAlign": "center",
+                    "marginBottom": "16px",
+                    "marginTop": "12px",
+                    "fontFamily": "Arial, sans-serif",
+                    "fontSize": "15px",
+                    "fontWeight": "bold"
+                },
+            ),
+            html.Div(
+                dash_table.DataTable(
+                    columns=dash_columns,
+                    data=data_records,
+                    page_size=page_size,
+                    page_action="native",
+                    sort_action="native",
+                    sort_mode="multi",
+                    style_header={
+                        "backgroundColor": THEME["table_header"],
+                        "color": THEME["table_header_text"],
+                        "fontWeight": "bold",
+                        "fontFamily": "Arial, sans-serif",
+                        "textAlign": "center",
+                        "fontSize": "13px",
+                        "height": "22px",
+                        "lineHeight": "22px",
+                        "whiteSpace": "normal",
+                        "borderBottom": "2px solid #ffffff",
+                        "cursor": "pointer",
+                        "textTransform": "uppercase",
+                    },
+                    style_cell={
+                        "padding": "10px 14px",
+                        "textAlign": "center",
+                        "fontSize": "13px",
+                        "fontFamily": "Arial, sans-serif",
+                        "color": "#2c3e50",
+                        "whiteSpace": "normal",
+                        "border": "1px solid #dee2e6",
+                        "backgroundColor": "#ffffff",
+                    },
+                    style_data_conditional=style_data_conditional,
+                    style_table={
+                        "overflowX": "auto",
+                        "marginTop": "8px",
+                        "borderRadius": "8px",
+                        "border": f"1px solid {THEME['table_active_border']}",
+                        "boxShadow": "0 1px 3px rgba(0,100,1,0.10)",
+                    },
+                )
+            ),
+        ],
+        style={
+            "width": "100%",
+            "fontFamily": "Arial, sans-serif",
+            "backgroundColor": "#ffffff",
+            "padding": "8px",
+            "borderRadius": "8px",
+        },
+    )
+
+    return table, data
+
+
 def create_crosstab_table(
     query_fiter,
     data_path,
@@ -1786,12 +2068,12 @@ def create_crosstab_table(
     for col in ct.columns:
         if isinstance(col, tuple):
             dash_columns.append({
-                "name": [str(c) for c in col],
+                "name": [str(c).upper() for c in col],
                 "id": "|".join([str(c) for c in col])
             })
         else:
             dash_columns.append({
-                "name": [str(col)],
+                "name": [str(col).upper()],
                 "id": str(col)
             })
 
@@ -1857,7 +2139,7 @@ def create_crosstab_table(
                 "border": "1px solid #d1d5db",
                 "borderRadius": "4px",
                 "background": "#ffffff",
-                "color": THEME["table_header"],
+                "color": "grey",
                 "cursor": "pointer",
                 "display": "flex",
                 "alignItems": "center",
@@ -1874,9 +2156,8 @@ def create_crosstab_table(
                         style={
                             "margin": "0",
                             "fontFamily": "Arial, sans-serif",
-                            "fontSize": "18px",
+                            "fontSize": "15px",
                             "fontWeight": "bold",
-                            "color": THEME["table_header"],
                         },
                     ),
                     html.Div(
@@ -1928,7 +2209,7 @@ def create_crosstab_table(
                         "height": "15px",
                         "lineHeight": "15px",
                         "whiteSpace": "normal",
-                        "borderBottom": "2px solid #004a01",
+                        "borderBottom": "2px solid #ffffff",
                     },
 
                     style_cell={
@@ -2380,7 +2661,7 @@ def create_horizontal_bar_chart(
 
     if not color:
         fig.update_traces(
-            marker_color=THEME["single"],
+            marker_color=THEME["chart_fill"],
             marker_line_color="#004a01",
             marker_line_width=1,
             opacity=0.85,

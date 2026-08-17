@@ -10,6 +10,7 @@ from helpers.visualizations import (create_column_chart,
                           create_age_gender_histogram,
                           create_horizontal_bar_chart,
                           create_pivot_table,
+                          create_time_range_table,
                           create_crosstab_table,
                           create_line_list,
                           create_sankey_diagram,
@@ -60,6 +61,9 @@ def build_metrics_section(filtered, filtered_data_range, delta_days, data_path, 
         drill_down      = count_config.get("drill_down", False)
         flag      = count_config.get("flag", "")
         measure   = count_config.get("filters", {}).get("measure", "count")
+
+        if count_config.get("display") == "False":
+            continue
 
         if measure == "calculated":
             try:
@@ -194,6 +198,8 @@ def build_charts_section(filtered, data_opd, delta_days, data_path, sections_con
 
     
     for section_config in sections_config:
+        if section_config.get("display")=="False":
+            continue
         chart_items_per_row = section_config.get('chart_items_per_row') or 3 #default number of charts per section
         section = html.Div([
             html.H3(section_config["section_name"].upper(), style={'textAlign': 'left', 'color': 'grey'}),
@@ -214,7 +220,7 @@ def build_section_items(filtered, data_opd, delta_days,data_path, items_config, 
                         "gap": "15px", "marginBottom": "30px","overflowX": "auto"},
             children=[
                 build_single_chart(filtered, data_opd, delta_days,data_path, item_config)
-                for item_config in pair_items
+                for item_config in pair_items if item_config.get("display")!="False"
             ]
         )
         items.append(card_container)
@@ -238,6 +244,8 @@ def build_single_chart(filtered, data_opd, delta_days,data_path, item_config,use
         figure = create_histogram_from_config(filtered,data_path, filters)
     elif chart_type == "PivotTable":
         figure, data = create_pivot_table_from_config(filtered,data_path, filters)
+    elif chart_type == "TimeRange":
+        figure, data = create_time_range_from_config(filtered,data_path, filters)
     elif chart_type == "CrossTab":
         figure, data = create_crosstab_from_config(filtered,data_path, filters)
     elif chart_type == "LineList":
@@ -250,7 +258,11 @@ def build_single_chart(filtered, data_opd, delta_days,data_path, item_config,use
         # Default empty figure for unknown chart types
         figure = create_empty_figure()
     figure = apply_figure_theme(figure, chart_type, theme_name)
-    if chart_type in ["Line","Pie","Column","Bar","Histogram","NewReturningSplit"]:
+    # Column charts with filter_headers build their own self-contained
+    # html.Div (title + filter dropdowns + graph, mirroring CrossTab) instead
+    # of a plain figure -- hasattr check tells the two cases apart since only
+    # a real plotly figure has update_layout.
+    if chart_type in ["Line","Pie","Column","Bar","Histogram","NewReturningSplit"] and hasattr(figure, "update_layout"):
         return dcc.Graph(
             id=item_config["filters"]["unique"],
             figure=figure,
@@ -472,11 +484,13 @@ def create_column_chart_from_config(filtered,data_path, filters):
     filter_val3    = parse_filter_value(filters.get('filter_val3'))
     aggregation   = filters.get('measure') or 'count'
     custom_fields = filters.get('custom_fields') or None
+    filter_headers = filters.get('filter_headers') or None
 
-    return create_column_chart(filtered,data_path, x_col, y_col, title, x_title, y_title, 
-                               unique_column, legend_title, color, filter_col1, 
-                               filter_val1, filter_col2, filter_val2, filter_col3, 
-                               filter_val3, aggregation, custom_fields)
+    return create_column_chart(filtered,data_path, x_col, y_col, title, x_title, y_title,
+                               unique_column, legend_title, color, filter_col1,
+                               filter_val1, filter_col2, filter_val2, filter_col3,
+                               filter_val3, aggregation, custom_fields,
+                               filter_headers=filter_headers)
 
 def create_bar_chart_from_config(filtered,data_path, filters):
     """
@@ -646,10 +660,57 @@ def create_pivot_table_from_config(filtered,data_path, filters):
 
     table, data = create_pivot_table(
         filtered,data_path, index_col, columns, values_co, title, unique_column, aggfunc,
-        filter_col1, filter_val1, filter_col2, filter_val2, filter_col3, 
+        filter_col1, filter_val1, filter_col2, filter_val2, filter_col3,
         filter_val3, aggregation, rename, replace, custom_fields
     )
     return table, data
+
+
+def create_time_range_from_config(filtered, data_path, filters):
+    """
+    Create a Start Time / End Time table from JSON configuration.
+    Config:
+                "measure": "time_range",
+                "unique": "any",
+                "duration_default": "any",
+                "index_col1": ["Facility", "User"],
+                "datetime_col": "Date",
+                "start_label": "Start Time",
+                "end_label": "End Time",
+                "title": "Time a User Starts and Ends Clinical Tasks",
+                "unique_column": "person_id",
+                "filter_col1": "",
+                "filter_val1": "",
+                "filter_col2": "",
+                "filter_val2": "",
+                "filter_col3": "",
+                "filter_val3": ""
+    """
+    index_col     = filters.get("index_col1")
+    datetime_col  = filters.get("datetime_col") or "Date"
+    start_label   = filters.get("start_label") or "Start Time"
+    end_label     = filters.get("end_label") or "End Time"
+    title         = filters.get("title")
+    unique_column = filters.get("unique_column") or "person_id"
+    filter_col1    = filters.get('filter_col1') or None
+    filter_val1    = parse_filter_value(filters.get('filter_val1'))
+    filter_col2    = filters.get('filter_col2') or None
+    filter_val2    = parse_filter_value(filters.get('filter_val2'))
+    filter_col3    = filters.get('filter_col3') or None
+    filter_val3    = parse_filter_value(filters.get('filter_val3'))
+    rename        = filters.get("rename") or {}
+    replace       = filters.get("replace") or {}
+    custom_fields = filters.get('custom_fields') or None
+
+    return create_time_range_table(
+        filtered, data_path, index_col, datetime_col, title,
+        start_label=start_label, end_label=end_label,
+        unique_column=unique_column,
+        filter_col1=filter_col1, filter_value1=filter_val1,
+        filter_col2=filter_col2, filter_value2=filter_val2,
+        filter_col3=filter_col3, filter_value3=filter_val3,
+        rename=rename, replace=replace, custom_fields=custom_fields,
+    )
 
 
 def create_crosstab_from_config(filtered,data_path, filters):
