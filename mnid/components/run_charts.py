@@ -76,6 +76,50 @@ _EXEC_DEFAULT_GRAINS = {
 }
 
 
+def _bake_chart_title(fig: go.Figure, title: str, scope_label: str | None = None) -> go.Figure:
+    """Put the chart's title (and current filter scope, e.g. "All Facilities"
+    or a selected district/facility) into the figure's own layout, not just
+    as separate HTML text rendered above it. Plotly's PNG export button only
+    ever captures the figure itself -- a title living outside it is silently
+    dropped from every downloaded image, which is exactly why exports were
+    coming out as an untitled, generically-named "chart.png"."""
+    text = f"<b>{title}</b>"
+    if scope_label:
+        text += f'<span style="font-size:10px;font-weight:400;color:#94a3b8">  ·  {scope_label}</span>'
+    existing_margin = fig.layout.margin
+    top = (existing_margin.t or 0) if existing_margin else 0
+    fig.update_layout(
+        title=dict(
+            text=text, x=0.01, xanchor="left", y=0.98, yanchor="top",
+            font=dict(size=13, color="#0f172a", family=_GEIST),
+        ),
+        margin=dict(t=top + 24),
+    )
+    return fig
+
+
+def _export_filename(title: str, scope_label: str | None = None) -> str:
+    """Slugify a chart title (+ optional filter scope) into a PNG export
+    filename, e.g. "Total Births" + "All Facilities" -> "total_births_all_facilities"."""
+    text = " ".join(part for part in (title, scope_label) if part)
+    slug = re.sub(r"[^\w\s-]", "", text).strip().lower()
+    slug = re.sub(r"[\s_-]+", "_", slug)
+    return slug or "chart"
+
+
+def _export_config(title: str, scope_label: str | None = None) -> dict:
+    return {
+        "displayModeBar": True,
+        "responsive": True,
+        "modeBarButtonsToRemove": ["select2d", "lasso2d", "autoScale2d"],
+        "toImageButtonOptions": {
+            "format": "png",
+            "scale": 2,
+            "filename": _export_filename(title, scope_label),
+        },
+    }
+
+
 def _exec_chart_layout(
     height: int = 300,
     xaxis: dict | None = None,
@@ -263,6 +307,7 @@ def _run_chart(
     target: float | None = None,
     grain: str = "monthly",
     measure: str = "median",
+    scope_label: str | None = None,
 ) -> go.Figure:
     fig = go.Figure()
     if series.empty:
@@ -283,7 +328,7 @@ def _run_chart(
                 font=dict(size=13, color=MUTED, family=_GEIST),
             )],
         )
-        return fig
+        return _bake_chart_title(fig, title, scope_label)
 
     plot_series = series.copy()
     x_values = (
@@ -369,7 +414,7 @@ def _run_chart(
         ),
     ))
     fig.update_layout(showlegend=False, transition={"duration": 260, "easing": "cubic-in-out"})
-    return fig
+    return _bake_chart_title(fig, title, scope_label)
 
 
 def _multi_run_chart(
@@ -379,6 +424,7 @@ def _multi_run_chart(
     target: float | None = None,
     grain: str = "monthly",
     measure: str = "median",
+    scope_label: str | None = None,
 ) -> go.Figure:
     fig = go.Figure()
     if series_df.empty:
@@ -399,7 +445,7 @@ def _multi_run_chart(
                 font=dict(size=13, color=MUTED, family=_GEIST),
             )],
         )
-        return fig
+        return _bake_chart_title(fig, title, scope_label)
 
     measure_label = "Median" if measure == "median" else "Moving avg"
     value_format = ".1f" if _is_percentage_axis(y_title) else ",.0f"
@@ -473,7 +519,7 @@ def _multi_run_chart(
         ),
         transition={"duration": 260, "easing": "cubic-in-out"},
     )
-    return fig
+    return _bake_chart_title(fig, title, scope_label)
 
 
 def _trend_chart_card(
@@ -487,7 +533,13 @@ def _trend_chart_card(
     caption_id: str | dict | None = None,
     graph_config: dict | None = None,
     graph_style: dict | None = None,
+    scope_label: str | None = None,
 ) -> dmc.Paper:
+    # The bold title used to render here as separate HTML, redundant with
+    # (and invisible to) the figure's own title -- now baked directly into
+    # `figure` by _bake_chart_title before it reaches this function, so the
+    # PNG export button actually captures it. Only the descriptive subtitle
+    # stays as on-screen-only HTML.
     return dmc.Paper(
         withBorder=True,
         radius="md",
@@ -501,19 +553,11 @@ def _trend_chart_card(
         },
         children=[
             html.Div([
-                html.Div([
-                    html.Div(title, style={
-                        "fontSize": "13px",
-                        "fontWeight": "800",
-                        "color": "#0f172a",
-                        "lineHeight": "1.2",
-                        "marginBottom": "4px",
-                    }),
-                    html.Div(subtitle, style={
-                        "fontSize": "11px",
-                        "color": "#64748b",
-                    }),
-                ], style={"flex": "1", "minWidth": "0"}),
+                html.Div(subtitle, style={
+                    "fontSize": "11px",
+                    "color": "#64748b",
+                    "flex": "1", "minWidth": "0",
+                }),
                 *([header_right] if header_right is not None else []),
             ], style={
                 "padding": "2px 4px 6px 4px",
@@ -526,7 +570,7 @@ def _trend_chart_card(
             dcc.Graph(
                 **({"id": graph_id} if graph_id is not None else {}),
                 figure=figure,
-                config=graph_config or {"displayModeBar": True, "responsive": True},
+                config=graph_config or _export_config(title, scope_label),
                 style=graph_style or {"height": "240px"},
             ),
             *([html.Div(
@@ -555,6 +599,7 @@ def _trend_chart_payload(
     series_df: pd.DataFrame,
     multi: bool = False,
     measure: str = "median",
+    scope_label: str | None = None,
 ) -> dict:
     default_grain = _EXEC_DEFAULT_GRAINS.get(chart_key, "monthly")
     bucketed = (
@@ -563,9 +608,9 @@ def _trend_chart_payload(
         else bucket_time_series(series_df, default_grain)
     )
     figure = (
-        _multi_run_chart(bucketed, title, y_title, grain=default_grain, measure=measure)
+        _multi_run_chart(bucketed, title, y_title, grain=default_grain, measure=measure, scope_label=scope_label)
         if multi
-        else _run_chart(bucketed, title, accent, y_title, grain=default_grain, measure=measure)
+        else _run_chart(bucketed, title, accent, y_title, grain=default_grain, measure=measure, scope_label=scope_label)
     )
     return {
         "card": _trend_chart_card(
@@ -573,6 +618,7 @@ def _trend_chart_payload(
             subtitle,
             figure,
             accent,
+            scope_label=scope_label,
             header_right=html.Div([
                 dmc.SegmentedControl(
                     id={"type": "mnid-cp-grain", "chart": chart_key},
@@ -611,6 +657,7 @@ def _trend_chart_payload(
                         "accent": accent,
                         "y_title": y_title,
                         "multi": multi,
+                        "scope_label": scope_label,
                     },
                 ),
             ], style={"display": "flex", "alignItems": "center", "gap": "8px"}),
