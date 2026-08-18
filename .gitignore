@@ -70,7 +70,7 @@ data/dcc_dropdown_json
 demo_parquet/
 scripts/
 docs/
- generate_demo_parquet.py
+generate_demo_parquet.py
 scripts/generate_demo_mnid_data.py
 data/mnid_aggregates/
 data/default/single_tables
