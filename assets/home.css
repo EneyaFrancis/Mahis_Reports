@@ -564,7 +564,7 @@
     border: 0 !important;
 }
 
-/* ── Dashboard loading overlay ───────────────────────────────────── */
+/* Dashboard loading overlay */
 @keyframes homeSpinner {
     to { transform: rotate(360deg); }
 }

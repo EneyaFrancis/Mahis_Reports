@@ -722,18 +722,19 @@ def _update_country_profile_chart_grain(grain, measure, stored_rows, meta):
     meta = meta or {}
     if 'month' in series_df.columns:
         series_df['month'] = pd.to_datetime(series_df['month'], errors='coerce')
-    grain    = (grain or 'monthly').strip().lower()
-    measure  = (measure or 'median').strip().lower()
-    title    = meta.get('title') or 'Chart'
-    accent   = meta.get('accent') or '#15803D'
-    y_title  = meta.get('y_title') or 'Cases'
-    is_multi = bool(meta.get('multi'))
+    grain       = (grain or 'monthly').strip().lower()
+    measure     = (measure or 'median').strip().lower()
+    title       = meta.get('title') or 'Chart'
+    accent      = meta.get('accent') or '#15803D'
+    y_title     = meta.get('y_title') or 'Cases'
+    is_multi    = bool(meta.get('multi'))
+    scope_label = meta.get('scope_label')
     if is_multi:
         bucketed = bucket_multi_series(series_df.copy(), grain)
-        figure   = _multi_run_chart(bucketed, title, y_title, grain=grain, measure=measure)
+        figure   = _multi_run_chart(bucketed, title, y_title, grain=grain, measure=measure, scope_label=scope_label)
     else:
         bucketed = bucket_time_series(series_df.copy(), grain)
-        figure   = _run_chart(bucketed, title, accent, y_title, grain=grain, measure=measure)
+        figure   = _run_chart(bucketed, title, accent, y_title, grain=grain, measure=measure, scope_label=scope_label)
     caption = describe_grain_window(bucketed, grain)
     return figure, caption
 

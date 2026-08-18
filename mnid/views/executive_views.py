@@ -234,10 +234,22 @@ def _hierarchy_scope(df: pd.DataFrame, scope_meta: dict | None, period_label: st
     scope_meta = scope_meta or {}
     district_values = sorted({str(v) for v in scope_meta.get("selected_districts") or [] if v})
     facility_values = sorted({str(v) for v in scope_meta.get("selected_facilities") or [] if v})
+    # Only trust a value derived from df's own column when it's unambiguous
+    # (exactly one district/facility present, i.e. df itself is genuinely
+    # scoped to that one place) -- at National level with nothing selected,
+    # df carries every district/facility nationwide, and this used to
+    # silently report the first alphabetically-sorted district/facility
+    # name (e.g. "Area 18 Health Centre") as if it were the selected scope,
+    # rather than correctly falling through to "All districts"/"All
+    # facilities" below.
     if not district_values and "District" in df.columns:
-        district_values = sorted(df["District"].dropna().astype(str).unique().tolist())
+        unique_districts = sorted(df["District"].dropna().astype(str).unique().tolist())
+        if len(unique_districts) == 1:
+            district_values = unique_districts
     if not facility_values and "Facility" in df.columns and len(df):
-        facility_values = sorted(df["Facility"].dropna().astype(str).unique().tolist())[:1]
+        unique_facilities = sorted(df["Facility"].dropna().astype(str).unique().tolist())
+        if len(unique_facilities) == 1:
+            facility_values = unique_facilities
 
     regions = []
     zones = []
@@ -253,6 +265,26 @@ def _hierarchy_scope(df: pd.DataFrame, scope_meta: dict | None, period_label: st
         {"label": "District", "value": ", ".join(district_values[:2]) + (f" +{len(district_values)-2}" if len(district_values) > 2 else "") if district_values else "All districts"},
         {"label": "Facility", "value": ", ".join(facility_values[:1]) + (f" +{len(facility_values)-1}" if len(facility_values) > 1 else "") if facility_values else "All facilities"},
     ]
+
+
+def _chart_scope_label(scope_meta: dict | None) -> str:
+    """Short human-readable scope suffix for a chart title/export filename,
+    e.g. "Total Births" + this -> "Total Births · All Facilities" on screen,
+    "total_births_all_facilities.png" on download. Mirrors the same
+    selected-vs-nothing-selected logic as _hierarchy_scope, just condensed
+    to one string instead of a District/Facility row pair."""
+    scope_meta = scope_meta or {}
+    facilities = sorted({str(v) for v in scope_meta.get("selected_facilities") or [] if v})
+    districts = sorted({str(v) for v in scope_meta.get("selected_districts") or [] if v})
+    if facilities:
+        if len(facilities) == 1:
+            return facilities[0]
+        return f"{len(facilities)} Facilities"
+    if districts:
+        if len(districts) == 1:
+            return districts[0]
+        return f"{len(districts)} Districts"
+    return "All Facilities"
 
 
 def _profile_scope_name(scope_meta: dict | None) -> dict:
@@ -1057,6 +1089,7 @@ def render_country_profile(
             ),
         }, df)
 
+    chart_scope_label = _chart_scope_label(scope_meta)
     maternal_complication_specs = [
         ("Pre-eclampsia and Eclampsia", MORTALITY_ROSE, _yn_mask(df, "mnid_labour_eclampsia") | _contains_mask(df, "obs_value_coded", ["Pre-eclampsia", "Pre eclampsia", "Preeclampsia", "Eclampsia"])),
         ("Postpartum Haemorrhage", WARNING_AMBER, _yn_mask(df, "mnid_labour_pph")),
@@ -1093,6 +1126,7 @@ def render_country_profile(
             "Rate (%)",
             series_df,
             multi=False,
+            scope_label=chart_scope_label,
         )["card"])
     neonatal_complication_cards = []
     for title, color, mask in neonatal_complication_specs:
@@ -1113,6 +1147,7 @@ def render_country_profile(
             "Rate (%)",
             series_df,
             multi=False,
+            scope_label=chart_scope_label,
         )["card"])
 
     total_births_chart = _trend_chart_payload(
@@ -1123,6 +1158,7 @@ def render_country_profile(
         "Births",
         total_births_series,
         multi=False,
+        scope_label=chart_scope_label,
     )["card"]
     maternal_mortality_chart = _trend_chart_payload(
         "maternal-mortality",
@@ -1132,6 +1168,7 @@ def render_country_profile(
         "Deaths",
         maternal_death_series,
         multi=False,
+        scope_label=chart_scope_label,
     )["card"]
     neonatal_mortality_chart = _trend_chart_payload(
         "neonatal-mortality",
@@ -1141,6 +1178,7 @@ def render_country_profile(
         "Deaths",
         neonatal_death_series,
         multi=False,
+        scope_label=chart_scope_label,
     )["card"]
     stillbirths_chart = _trend_chart_payload(
         "stillbirths",
@@ -1150,6 +1188,7 @@ def render_country_profile(
         "Cases",
         stillbirth_trend_series,
         multi=True,
+        scope_label=chart_scope_label,
     )["card"]
 
     hero = dmc.Paper(

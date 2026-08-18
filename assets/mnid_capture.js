@@ -9,7 +9,7 @@
 (function () {
   "use strict";
 
-  // ── Layout constants ────────────────────────────────────────────────────
+  // Layout constants
   var PAD = 14;
   var DIVIDER_Y_GAP = 10;
   var HEADER_WIDTH = 640;
@@ -29,7 +29,15 @@
     '<line x1="12" y1="15" x2="12" y2="3"/>' +
     "</svg>";
 
-  // ── Data helpers ─────────────────────────────────────────────────────────
+  // Data helpers
+
+  function stripHtml(text) {
+    // Plotly figure titles can carry HTML (<b>, <span style="..."> etc.) for
+    // in-plot styling -- this canvas/filename code draws plain text, so any
+    // tag that leaks through here shows up literally (e.g. "<b>Total
+    // Births</b>") instead of being rendered.
+    return (text || "").replace(/<[^>]*>/g, "").trim();
+  }
 
   function readStoreData() {
     var storeEl = document.getElementById("mnid-capture-store");
@@ -68,14 +76,22 @@
     var cardTitle = card.querySelector(".mnid-card-title");
     if (cardTitle) return cardTitle.textContent.trim();
 
-    var gd = card.querySelector(".js-plotly-plot");
+    // `card` is sometimes the .js-plotly-plot div itself (callers that found
+    // no .mnid-chart-card ancestor pass `gd` straight through) -- querySelector
+    // only matches descendants, never the element itself, so that case used to
+    // silently find nothing here and fall through to the literal "Chart"
+    // below even when the figure has a real title baked into its own layout.
+    var gd =
+      card.classList && card.classList.contains("js-plotly-plot")
+        ? card
+        : card.querySelector(".js-plotly-plot");
     if (
       gd &&
       gd._fullLayout &&
       gd._fullLayout.title &&
       gd._fullLayout.title.text
     ) {
-      var t = gd._fullLayout.title.text;
+      var t = stripHtml(gd._fullLayout.title.text);
       if (t && t !== "Click to enter Plot title") return t;
     }
 
@@ -88,7 +104,7 @@
     return "Chart";
   }
 
-  // ── Canvas drawing ───────────────────────────────────────────────────────
+  // Canvas drawing
 
   function textWidth(ctx, text, font) {
     ctx.save();
@@ -211,7 +227,7 @@
     "mnid-pill-blue": { fg: "#475569" },
   };
 
-  // ── CSV export ────────────────────────────────────────────────────────────
+  // CSV export
 
   function isLineChart(gd) {
     if (!gd || !gd.data) return false;
@@ -392,7 +408,7 @@
         }
       }
     } else {
-      // ── Line / run chart layout ──
+      // Line / run chart layout
 
       // Column headers
       var xTrace = traces[0];
@@ -511,7 +527,7 @@
     }, 100);
   }
 
-  // ── Capture & download ───────────────────────────────────────────────────
+  // Capture & download
 
   function captureCardByGd(gd) {
     var data = readStoreData();
@@ -526,6 +542,13 @@
     var catInfo = card
       ? findCategoryInfo(card)
       : { title: fallbackTitle(gd), pills: [] };
+    // getIndicatorName checks the figure's own trace names / baked-in title
+    // first -- more reliable than the DOM-scraping fallback chain above for
+    // cards (like run charts) that don't wrap in .mnid-chart-card at all.
+    var resolvedIndicatorName = getIndicatorName(gd);
+    if (resolvedIndicatorName && (!catInfo.title || catInfo.title === "Chart")) {
+      catInfo.title = resolvedIndicatorName;
+    }
 
     // Use the actual chart DOM size to preserve aspect ratio
     var domW = gd.offsetWidth || 540;
@@ -591,7 +614,7 @@
       });
   }
 
-  // ── Modebar injection ────────────────────────────────────────────────────
+  // Modebar injection
 
   function createModebarButton() {
     var btn = document.createElement("a");
@@ -638,7 +661,7 @@
       gd._fullLayout.title &&
       gd._fullLayout.title.text
     ) {
-      var t = gd._fullLayout.title.text;
+      var t = stripHtml(gd._fullLayout.title.text);
       if (t && t !== "Click to enter Plot title") return t;
     }
     // 3. DOM: first text child of the chart card (run chart indicator label)

@@ -458,19 +458,26 @@ def _resolve_topbar_context(facility, facility_df=None, network_df=None,
     if source_df is not None and len(source_df):
         if facility and 'Facility_CODE' in source_df.columns:
             fac_rows = source_df[source_df['Facility_CODE'].astype(str) == str(facility)]
+            # Only derive facility_name/district from fac_rows' most common
+            # value when a specific facility was actually requested -- with
+            # no facility selected (the 'else' branch below, National-level
+            # view), fac_rows is the *entire* unfiltered dataset, and taking
+            # its .mode() used to silently report whichever facility/district
+            # happens to be most common nationwide as if it were the
+            # selected scope, overwriting the correct 'Network view'/'All
+            # districts' set just below.
+            if len(fac_rows):
+                if 'Facility' in fac_rows.columns:
+                    names = fac_rows['Facility'].dropna().astype(str)
+                    if not names.empty:
+                        facility_name = names.mode().iloc[0]
+                if 'District' in fac_rows.columns:
+                    dists = fac_rows['District'].dropna().astype(str)
+                    if not dists.empty:
+                        district = dists.mode().iloc[0]
         else:
-            fac_rows = source_df
             facility_name = 'Network view' if len(source_df) else facility_name
             district = 'All districts' if len(source_df) else district
-        if len(fac_rows):
-            if 'Facility' in fac_rows.columns:
-                names = fac_rows['Facility'].dropna().astype(str)
-                if not names.empty:
-                    facility_name = names.mode().iloc[0]
-            if 'District' in fac_rows.columns:
-                dists = fac_rows['District'].dropna().astype(str)
-                if not dists.empty:
-                    district = dists.mode().iloc[0]
 
     selected_program = 'Neonatal Care' if theme == 'newborn' else 'All'
     if facility_df is not None:

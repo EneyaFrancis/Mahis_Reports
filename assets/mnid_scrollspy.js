@@ -16,7 +16,7 @@
     var _lastActive   = null;
     var _attached     = false;
 
-    /* ── pick the deepest section whose top has passed ACTIVATION_Y ────────── */
+    /* Pick the deepest section whose top has passed ACTIVATION_Y. */
     function activeSection() {
         var best = null;
         var bestTop = -Infinity;
@@ -40,7 +40,7 @@
         return best;
     }
 
-    /* ── update nav button classes ─────────────────────────────────────────── */
+    /* Update nav button classes. */
     function setActive(id) {
         if (!id || id === _lastActive) return;
         _lastActive = id;
@@ -52,7 +52,7 @@
 
     function onScroll() { setActive(activeSection()); }
 
-    /* ── attach / detach ───────────────────────────────────────────────────── */
+    /* Attach / detach the scroll listeners. */
     function attach() {
         var count = SECTION_IDS.filter(function (id) { return !!document.getElementById(id); }).length;
         if (!count || _attached) return;
@@ -71,7 +71,7 @@
         window.removeEventListener('scroll', onScroll);
     }
 
-    /* ── nav click → update immediately without waiting for scroll ─────────── */
+    /* Nav click updates immediately, without waiting for a scroll event. */
     document.addEventListener('click', function (e) {
         var btn = e.target && e.target.closest && e.target.closest('.mnid-nav-btn');
         if (!btn) return;
@@ -79,7 +79,7 @@
         if (href) { _lastActive = null; setActive(href); }
     }, true);
 
-    /* ── re-attach whenever Dash re-renders the dashboard ──────────────────── */
+    /* Re-attach whenever Dash re-renders the dashboard. */
     new MutationObserver(function () {
         var has = SECTION_IDS.some(function (id) { return !!document.getElementById(id); });
         if (has) { _attached = false; attach(); }  /* force re-attach on re-render */

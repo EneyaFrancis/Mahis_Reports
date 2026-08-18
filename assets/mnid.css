@@ -1107,7 +1107,7 @@ html { scroll-behavior: smooth; }
   transition: box-shadow 0.15s, transform 0.15s;
 }
 
-/* ── MNID capture modebar button ────────────────────────────────────── */
+/* MNID capture modebar button */
 .mnid-capture-modebar-btn svg {
   display: block;
   margin: 0 auto;
