@@ -15,6 +15,7 @@ from mnid.components.run_charts import (
     _EXEC_CHART_LAYOUT,
     _chart_key_slug,
     _trend_chart_payload,
+    _bucket_start,
 )
 from mnid.charts.layout import _capture_store
 from mnid.core.constants import BG, BORDER, DIM, FONT, GRID_C, MUTED, OK_C, TEXT, WARN_C
@@ -474,13 +475,21 @@ def _agg_metric_snapshot(
     }
 
 
-def _monthly_series(df: pd.DataFrame, mask: pd.Series, unique_col: str = "person_id") -> pd.DataFrame:
+# How many trailing points to keep per grain -- roughly "the last 12 months
+# of context" at whatever resolution is actually requested, so switching the
+# base fetch to daily doesn't turn "last 12 months" into "last 12 days".
+_TREND_TAIL_BY_GRAIN = {'daily': 365, 'weekly': 52, 'monthly': 12, 'quarterly': 8, 'yearly': 5}
+_TREND_GAP_FILL_FREQ = {'daily': 'D', 'weekly': 'W-MON', 'monthly': 'MS', 'quarterly': 'QS', 'yearly': 'YS'}
+
+
+def _monthly_series(df: pd.DataFrame, mask: pd.Series, unique_col: str = "person_id", grain: str = "monthly") -> pd.DataFrame:
     if df is None or df.empty or "Date" not in df.columns or unique_col not in df.columns:
         return pd.DataFrame(columns=["month", "value"])
     working = df.loc[mask, ["Date", unique_col]].dropna().copy()
     if working.empty:
         return pd.DataFrame(columns=["month", "value"])
-    working["month"] = pd.to_datetime(working["Date"], errors="coerce").dt.to_period("M").dt.to_timestamp()
+    grain = (grain or "monthly").strip().lower()
+    working["month"] = _bucket_start(working["Date"], grain)
     summary = (
         working.dropna(subset=["month"])
         .groupby("month")[unique_col]
@@ -488,22 +497,25 @@ def _monthly_series(df: pd.DataFrame, mask: pd.Series, unique_col: str = "person
         .reset_index(name="value")
         .sort_values("month")
     )
-    summary = summary.tail(12)
+    summary = summary.tail(_TREND_TAIL_BY_GRAIN.get(grain, 12))
     if summary.empty:
         return summary
-    full_months = pd.date_range(summary["month"].min(), summary["month"].max(), freq="MS")
+    full_periods = pd.date_range(
+        summary["month"].min(), summary["month"].max(),
+        freq=_TREND_GAP_FILL_FREQ.get(grain, 'MS'),
+    )
     return (
         summary.set_index("month")
-        .reindex(full_months, fill_value=0)
+        .reindex(full_periods, fill_value=0)
         .rename_axis("month")
         .reset_index()
     )
 
 
-def _monthly_multiseries(series_map: dict[str, tuple[pd.Series, str]], df: pd.DataFrame, unique_col: str = "person_id") -> pd.DataFrame:
+def _monthly_multiseries(series_map: dict[str, tuple[pd.Series, str]], df: pd.DataFrame, unique_col: str = "person_id", grain: str = "monthly") -> pd.DataFrame:
     frames = []
     for label, (mask, color) in series_map.items():
-        series_df = _monthly_series(df, mask, unique_col)
+        series_df = _monthly_series(df, mask, unique_col, grain=grain)
         if series_df.empty:
             continue
         frames.append(series_df.assign(series=label, color=color))
@@ -521,6 +533,7 @@ def _agg_monthly_series(
     districts: list[str] | None = None,
     value_field: str = "numerator",
     include_counts: bool = False,
+    grain: str = "monthly",
 ) -> pd.DataFrame:
     """DHIS2-aggregate equivalent of _monthly_series -- same ['month', 'value'] shape.
 
@@ -529,10 +542,12 @@ def _agg_monthly_series(
     PCT_DENOMINATOR pair (the mapped complication charts) -- see
     mnid/dhis2/mnid_publish.py::PCT_DENOMINATOR. When include_counts=True (only
     meaningful for value_field='pct'), also carries 'numerator'/'denominator'
-    for the run-chart hover's "Clients: N / D" line.
+    for the run-chart hover's "Clients: N / D" line. grain='daily' degrades
+    gracefully to monthly via query_time_series's own grain fallback chain,
+    since the DHIS2 aggregate only ever has monthly-grain rows.
     """
     series = _agg_time_series(
-        agg_df, mnid_id, grain='monthly',
+        agg_df, mnid_id, grain=grain,
         facility_codes=facility_codes, districts=districts,
         start_date=start_date, end_date=end_date,
     )
@@ -551,11 +566,12 @@ def _agg_monthly_multiseries(
     end_date,
     facility_codes: list[str] | None = None,
     districts: list[str] | None = None,
+    grain: str = "monthly",
 ) -> pd.DataFrame:
     """DHIS2-aggregate equivalent of _monthly_multiseries. series_map: {label: (mnid_id, color)}."""
     frames = []
     for label, (mnid_id, color) in series_map.items():
-        series_df = _agg_monthly_series(agg_df, mnid_id, start_date, end_date, facility_codes, districts)
+        series_df = _agg_monthly_series(agg_df, mnid_id, start_date, end_date, facility_codes, districts, grain=grain)
         if series_df.empty:
             continue
         frames.append(series_df.assign(series=label, color=color))
@@ -571,12 +587,13 @@ def _monthly_rate_series(
     unique_col: str = "person_id",
     scale: float = 100.0,
     include_counts: bool = False,
+    grain: str = "monthly",
 ) -> pd.DataFrame:
     cols = ["month", "value", "numerator", "denominator"] if include_counts else ["month", "value"]
     if df is None or df.empty or "Date" not in df.columns or unique_col not in df.columns:
         return pd.DataFrame(columns=cols)
-    numerator = _monthly_series(df, numerator_mask, unique_col)
-    denominator = _monthly_series(df, denominator_mask, unique_col)
+    numerator = _monthly_series(df, numerator_mask, unique_col, grain=grain)
+    denominator = _monthly_series(df, denominator_mask, unique_col, grain=grain)
     if denominator.empty:
         return pd.DataFrame(columns=cols)
     merged = denominator.rename(columns={"value": "denominator"}).merge(
@@ -1006,19 +1023,19 @@ def render_country_profile(
     ]
 
     if use_dhis2:
-        total_births_series = _agg_monthly_series(agg_df, "mnid_lab_core_totalbirths", start, end, facility_codes, districts)
-        maternal_death_series = _agg_monthly_series(agg_df, "mnid_pnc_overview_004", start, end, facility_codes, districts)
-        neonatal_death_series = _agg_monthly_series(agg_df, "mnid_nb_overview_002", start, end, facility_codes, districts)
+        total_births_series = _agg_monthly_series(agg_df, "mnid_lab_core_totalbirths", start, end, facility_codes, districts, grain="daily")
+        maternal_death_series = _agg_monthly_series(agg_df, "mnid_pnc_overview_004", start, end, facility_codes, districts, grain="daily")
+        neonatal_death_series = _agg_monthly_series(agg_df, "mnid_nb_overview_002", start, end, facility_codes, districts, grain="daily")
         stillbirth_trend_series = _agg_monthly_multiseries({
             "Total stillbirths": ("mnid_lab_overview_005", STILLBIRTH_BLUE),
             "Fresh stillbirths": ("mnid_lab_core_freshstillbirths", "#DB2777"),
             "Macerated stillbirths": ("mnid_lab_core_maceratedstillbirths", "#7C3AED"),
-        }, agg_df, start, end, facility_codes, districts)
+        }, agg_df, start, end, facility_codes, districts, grain="daily")
         # Only used by the row-level maternal/neonatal complication loops below.
         live_birth_denominator_mask = total_birth_denominator_mask = None
     else:
-        maternal_death_series = _monthly_series(df, _yn_mask(df, "mnid_pnc_maternal_death"), "person_id")
-        neonatal_death_series = _monthly_series(df, _contains_mask(df, "obs_value_coded", ["Died", "Dead", "Death", "Neonatal death"]), "person_id")
+        maternal_death_series = _monthly_series(df, _yn_mask(df, "mnid_pnc_maternal_death"), "person_id", grain="daily")
+        neonatal_death_series = _monthly_series(df, _contains_mask(df, "obs_value_coded", ["Died", "Dead", "Death", "Neonatal death"]), "person_id", grain="daily")
         live_birth_denominator_mask = (
             _contains_mask(df, "concept_name", ["Outcome of the delivery"])
             & _contains_mask(df, "obs_value_coded", ["Live birth", "Live births", "Alive"])
@@ -1043,7 +1060,7 @@ def render_country_profile(
         total_births_series = _monthly_multiseries({"Total births": (
             _contains_mask(df, "concept_name", ["Outcome of the delivery", "Status of baby", "Admission outcome"]),
             PRIMARY_GREEN,
-        )}, df)
+        )}, df, grain="daily")
         total_births_series = total_births_series[["month", "value"]].copy() if not total_births_series.empty else pd.DataFrame(columns=["month", "value"])
         stillbirth_trend_series = _monthly_multiseries({
             "Total stillbirths": (_yn_mask(df, "mnid_labour_stillbirth"), STILLBIRTH_BLUE),
@@ -1055,7 +1072,7 @@ def render_country_profile(
                 _contains_mask(df, "obs_value_coded", ["Macerated stillbirth", "Macerated still birth"]),
                 "#7C3AED",
             ),
-        }, df)
+        }, df, grain="daily")
 
     maternal_complication_specs = [
         ("Pre-eclampsia and Eclampsia", MORTALITY_ROSE, _yn_mask(df, "mnid_labour_eclampsia") | _contains_mask(df, "obs_value_coded", ["Pre-eclampsia", "Pre eclampsia", "Preeclampsia", "Eclampsia"])),
@@ -1080,11 +1097,11 @@ def render_country_profile(
         if use_dhis2:
             mnid_id = _AGG_MATERNAL_COMPLICATION_IDS.get(title)
             series_df = (
-                _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct", include_counts=True)
+                _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct", include_counts=True, grain="daily")
                 if mnid_id else pd.DataFrame(columns=["month", "value", "numerator", "denominator"])
             )
         else:
-            series_df = _monthly_rate_series(df, mask, total_birth_denominator_mask, "person_id", include_counts=True)
+            series_df = _monthly_rate_series(df, mask, total_birth_denominator_mask, "person_id", include_counts=True, grain="daily")
         maternal_complication_cards.append(_trend_chart_payload(
             chart_key,
             title,
@@ -1100,11 +1117,11 @@ def render_country_profile(
         if use_dhis2:
             mnid_id = _AGG_NEONATAL_COMPLICATION_IDS.get(title)
             series_df = (
-                _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct", include_counts=True)
+                _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct", include_counts=True, grain="daily")
                 if mnid_id else pd.DataFrame(columns=["month", "value", "numerator", "denominator"])
             )
         else:
-            series_df = _monthly_rate_series(df, mask, live_birth_denominator_mask, "person_id", include_counts=True)
+            series_df = _monthly_rate_series(df, mask, live_birth_denominator_mask, "person_id", include_counts=True, grain="daily")
         neonatal_complication_cards.append(_trend_chart_payload(
             chart_key,
             title,
