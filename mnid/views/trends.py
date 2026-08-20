@@ -74,7 +74,10 @@ def _trend_period_context(plot_df: pd.DataFrame, grain: str) -> tuple[pd.DataFra
     working = plot_df.copy()
     dates = pd.to_datetime(working['Date'], errors='coerce')
     grain = (grain or 'monthly').strip().lower()
-    if grain == 'weekly':
+    if grain == 'daily':
+        tickfmt, hfmt = '%d %b', '%d %b %Y'
+        working['_p'] = dates.dt.normalize()
+    elif grain == 'weekly':
         tickfmt, hfmt = '%d %b', '%d %b %Y'
         working['_p'] = dates.dt.to_period('W').dt.start_time
     elif grain == 'quarterly':
@@ -500,7 +503,14 @@ def _trend_switcher(
                         ),
                         dcc.Dropdown(
                             id='mnid-trend-grain',
-                            options=[
+                            options=(
+                                # DHIS2's aggregate only ever has monthly-grain rows --
+                                # offering "Daily" there would silently show monthly
+                                # data under a misleading label instead of a real
+                                # day-level view, so only offer it in MAHIS mode.
+                                [{'label': 'Daily', 'value': 'daily'}]
+                                if (scope_meta or {}).get('route') != 'dhis2' else []
+                            ) + [
                                 {'label': 'Weekly',    'value': 'weekly'},
                                 {'label': 'Monthly',   'value': 'monthly'},
                                 {'label': 'Quarterly', 'value': 'quarterly'},

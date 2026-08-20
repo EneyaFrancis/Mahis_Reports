@@ -54,6 +54,7 @@ _EXEC_CHART_LAYOUT = dict(
 )
 
 _EXEC_GRAIN_OPTIONS = [
+    {"label": "Daily", "value": "daily"},
     {"label": "Weekly", "value": "weekly"},
     {"label": "Monthly", "value": "monthly"},
     {"label": "Quarterly", "value": "quarterly"},
@@ -111,6 +112,8 @@ def _hex_to_rgba(color: str, alpha: float) -> str:
 def _bucket_start(series: pd.Series, grain: str) -> pd.Series:
     dt = pd.to_datetime(series, errors="coerce")
     grain = str(grain or "monthly").strip().lower()
+    if grain == "daily":
+        return dt.dt.normalize()
     if grain == "weekly":
         return dt.dt.to_period("W-SUN").dt.start_time
     if grain == "quarterly":
@@ -158,6 +161,7 @@ def bucket_time_series(series_df: pd.DataFrame, grain: str, value_col: str = "va
             bucketed["period_start"].min(),
             bucketed["period_start"].max(),
             freq={
+                "daily": "D",
                 "weekly": "W-MON",
                 "monthly": "MS",
                 "quarterly": "QS",
@@ -555,8 +559,16 @@ def _trend_chart_payload(
     series_df: pd.DataFrame,
     multi: bool = False,
     measure: str = "median",
+    include_daily: bool = True,
 ) -> dict:
     default_grain = _EXEC_DEFAULT_GRAINS.get(chart_key, "monthly")
+    # DHIS2's aggregate only ever has monthly-grain rows -- offering "Daily"
+    # there would silently show monthly data under a misleading label instead
+    # of a real day-level view, so only offer it in MAHIS mode (include_daily
+    # is False when the caller is rendering from the DHIS2 aggregate).
+    grain_options = _EXEC_GRAIN_OPTIONS if include_daily else [
+        opt for opt in _EXEC_GRAIN_OPTIONS if opt["value"] != "daily"
+    ]
     bucketed = (
         bucket_multi_series(series_df, default_grain)
         if multi
@@ -577,7 +589,7 @@ def _trend_chart_payload(
                 dmc.SegmentedControl(
                     id={"type": "mnid-cp-grain", "chart": chart_key},
                     value=default_grain,
-                    data=_EXEC_GRAIN_OPTIONS,
+                    data=grain_options,
                     radius="xl",
                     size="xs",
                     color="green",
