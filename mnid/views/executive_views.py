@@ -1110,6 +1110,7 @@ def render_country_profile(
             "Rate (%)",
             series_df,
             multi=False,
+            include_daily=not use_dhis2,
         )["card"])
     neonatal_complication_cards = []
     for title, color, mask in neonatal_complication_specs:
@@ -1130,6 +1131,7 @@ def render_country_profile(
             "Rate (%)",
             series_df,
             multi=False,
+            include_daily=not use_dhis2,
         )["card"])
 
     total_births_chart = _trend_chart_payload(
@@ -1140,6 +1142,7 @@ def render_country_profile(
         "Births",
         total_births_series,
         multi=False,
+        include_daily=not use_dhis2,
     )["card"]
     maternal_mortality_chart = _trend_chart_payload(
         "maternal-mortality",
@@ -1149,6 +1152,7 @@ def render_country_profile(
         "Deaths",
         maternal_death_series,
         multi=False,
+        include_daily=not use_dhis2,
     )["card"]
     neonatal_mortality_chart = _trend_chart_payload(
         "neonatal-mortality",
@@ -1158,6 +1162,7 @@ def render_country_profile(
         "Deaths",
         neonatal_death_series,
         multi=False,
+        include_daily=not use_dhis2,
     )["card"]
     stillbirths_chart = _trend_chart_payload(
         "stillbirths",
@@ -1167,6 +1172,7 @@ def render_country_profile(
         "Cases",
         stillbirth_trend_series,
         multi=True,
+        include_daily=not use_dhis2,
     )["card"]
 
     hero = dmc.Paper(

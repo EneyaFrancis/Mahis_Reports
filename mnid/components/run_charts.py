@@ -559,8 +559,16 @@ def _trend_chart_payload(
     series_df: pd.DataFrame,
     multi: bool = False,
     measure: str = "median",
+    include_daily: bool = True,
 ) -> dict:
     default_grain = _EXEC_DEFAULT_GRAINS.get(chart_key, "monthly")
+    # DHIS2's aggregate only ever has monthly-grain rows -- offering "Daily"
+    # there would silently show monthly data under a misleading label instead
+    # of a real day-level view, so only offer it in MAHIS mode (include_daily
+    # is False when the caller is rendering from the DHIS2 aggregate).
+    grain_options = _EXEC_GRAIN_OPTIONS if include_daily else [
+        opt for opt in _EXEC_GRAIN_OPTIONS if opt["value"] != "daily"
+    ]
     bucketed = (
         bucket_multi_series(series_df, default_grain)
         if multi
@@ -581,7 +589,7 @@ def _trend_chart_payload(
                 dmc.SegmentedControl(
                     id={"type": "mnid-cp-grain", "chart": chart_key},
                     value=default_grain,
-                    data=_EXEC_GRAIN_OPTIONS,
+                    data=grain_options,
                     radius="xl",
                     size="xs",
                     color="green",

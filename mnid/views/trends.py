@@ -503,8 +503,14 @@ def _trend_switcher(
                         ),
                         dcc.Dropdown(
                             id='mnid-trend-grain',
-                            options=[
-                                {'label': 'Daily',     'value': 'daily'},
+                            options=(
+                                # DHIS2's aggregate only ever has monthly-grain rows --
+                                # offering "Daily" there would silently show monthly
+                                # data under a misleading label instead of a real
+                                # day-level view, so only offer it in MAHIS mode.
+                                [{'label': 'Daily', 'value': 'daily'}]
+                                if (scope_meta or {}).get('route') != 'dhis2' else []
+                            ) + [
                                 {'label': 'Weekly',    'value': 'weekly'},
                                 {'label': 'Monthly',   'value': 'monthly'},
                                 {'label': 'Quarterly', 'value': 'quarterly'},
