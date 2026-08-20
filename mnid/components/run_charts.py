@@ -62,18 +62,18 @@ _EXEC_GRAIN_OPTIONS = [
 ]
 
 _EXEC_DEFAULT_GRAINS = {
-    "total-births": "monthly",
-    "maternal-mortality": "monthly",
-    "neonatal-mortality": "monthly",
-    "stillbirths": "monthly",
-    "pre-eclampsia-and-eclampsia": "monthly",
-    "postpartum-haemorrhage": "monthly",
-    "maternal-sepsis": "monthly",
-    "obstructed-or-prolonged-labour": "monthly",
-    "ruptured-uterus": "monthly",
-    "birth-asphyxia": "monthly",
-    "preterm-birth": "monthly",
-    "neonatal-sepsis": "monthly",
+    "total-births": "daily",
+    "maternal-mortality": "daily",
+    "neonatal-mortality": "daily",
+    "stillbirths": "daily",
+    "pre-eclampsia-and-eclampsia": "daily",
+    "postpartum-haemorrhage": "daily",
+    "maternal-sepsis": "daily",
+    "obstructed-or-prolonged-labour": "daily",
+    "ruptured-uterus": "daily",
+    "birth-asphyxia": "daily",
+    "preterm-birth": "daily",
+    "neonatal-sepsis": "daily",
 }
 
 
@@ -565,7 +565,11 @@ def _trend_chart_payload(
     # DHIS2's aggregate only ever has monthly-grain rows -- offering "Daily"
     # there would silently show monthly data under a misleading label instead
     # of a real day-level view, so only offer it in MAHIS mode (include_daily
-    # is False when the caller is rendering from the DHIS2 aggregate).
+    # is False when the caller is rendering from the DHIS2 aggregate). Guard
+    # the default the same way, since "daily" wouldn't even be in the
+    # SegmentedControl's data when include_daily is False.
+    if not include_daily and default_grain == "daily":
+        default_grain = "monthly"
     grain_options = _EXEC_GRAIN_OPTIONS if include_daily else [
         opt for opt in _EXEC_GRAIN_OPTIONS if opt["value"] != "daily"
     ]

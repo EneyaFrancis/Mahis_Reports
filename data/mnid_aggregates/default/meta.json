@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-19T14:51:00.651994",
-  "elapsed_sec": 267.5,
-  "rows": 474984,
+  "generated_at": "2026-08-20T13:35:42.655648",
+  "elapsed_sec": 71.2,
+  "rows": 810,
   "indicators": 162,
   "grains": [
     "daily",
@@ -11,6 +11,6 @@
     "yearly"
   ],
   "data_source": "data/default/parquet",
-  "use_demo_data": true,
+  "use_demo_data": false,
   "last_run_status": "ok"
 }

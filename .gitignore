@@ -18,6 +18,7 @@ venv
 data/parquet/
 data/archive/
 data/uploads/
+data/default/parquet.backup-20260819-134817
 data/single_tables/
 data/dcc_dropdown_json/
 data/mnid_aggregates/
