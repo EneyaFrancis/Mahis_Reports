@@ -9,6 +9,9 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Git Bash / MSYS2 crash dumps (local artifact, not app-generated)
+*.stackdump
+
 # Virtual environments
 venv/
 venv
