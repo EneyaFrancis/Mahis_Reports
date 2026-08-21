@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-08-19T14:51:00.651994",
-  "elapsed_sec": 267.5,
-  "rows": 474984,
+  "generated_at": "2026-08-20T18:31:59.590268",
+  "elapsed_sec": 705.8,
+  "rows": 466236,
   "indicators": 162,
   "grains": [
     "daily",
