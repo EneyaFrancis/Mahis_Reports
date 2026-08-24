@@ -1544,13 +1544,11 @@
     },
     {
       "id": "b9022b9a",
-      "report_name": "TEST IMAM OTS/SFP PROGRAM",
+      "report_name": "TEST OS PROGRAM",
       "authorized_user": "Any",
       "message": "",
       "enable_api": "True",
-      "routes_api": [
-        "mahisuat"
-      ],
+      "routes_api": [],
       "program": "UNDER 5 PROGRAM",
       "type": "LineList",
       "unique_col": "person_id",
@@ -1562,18 +1560,23 @@
         "Gender",
         "Program",
         "location_id",
-        "District"
+        "District",
+        "Patient_Program",
+        "program_workflow_state",
+        "Patient_State",
+        "Program_Workflow",
+        "Facility"
       ],
       "group1_filters": {
         "Program": [
-          "OTS/SFP PROGRAM"
+          "OS PROGRAM"
         ]
       },
       "group_cols2": [
         "ValueN"
       ],
       "group2_filters": {
-        "Program": "OTS/SFP PROGRAM",
+        "Program": "OS PROGRAM",
         "Encounter": "Vitals",
         "concept_name": "Weight"
       },
@@ -1587,7 +1590,7 @@
         "ValueN"
       ],
       "group3_filters": {
-        "Program": "OTS/SFP PROGRAM",
+        "Program": "OS PROGRAM",
         "Encounter": "Vitals",
         "concept_name": "MUAC"
       },
@@ -1601,7 +1604,7 @@
         "obs_value_coded"
       ],
       "group4_filters": {
-        "Program": "OTS/SFP PROGRAM",
+        "Program": "OS PROGRAM",
         "Encounter": "Vitals",
         "concept_name": "Oedema"
       },
@@ -1615,7 +1618,7 @@
         "obs_value_coded"
       ],
       "group5_filters": {
-        "Program": "OTS/SFP PROGRAM",
+        "Program": "OS PROGRAM",
         "Encounter": "Medical Assessment",
         "concept_name": "Appetite test"
       },
@@ -1629,7 +1632,7 @@
         "ValueN"
       ],
       "group6_filters": {
-        "Program": "OTS/SFP PROGRAM",
+        "Program": "OS PROGRAM",
         "Encounter": "Dispensing",
         "concept_name": "Amount dispensed",
         "DrugName": [
@@ -1646,7 +1649,7 @@
         "ValueN"
       ],
       "group7_filters": {
-        "Program": "OTS/SFP PROGRAM",
+        "Program": "OS PROGRAM",
         "Encounter": "Dispensing",
         "concept_name": "Amount dispensed",
         "DrugName": [
@@ -1663,7 +1666,7 @@
         "DrugName"
       ],
       "group8_filters": {
-        "Program": "OTS/SFP PROGRAM",
+        "Program": "OS PROGRAM",
         "Encounter": "Dispensing",
         "concept_name": "Amount dispensed",
         "DrugName": [
@@ -1677,7 +1680,21 @@
       "group8_rename": {
         "DrugName": "medication_given"
       },
-      "cols_order": "MAHIS ID|Patient ID|Date of Enrollment|Date of Birth|Gender|Program|Location|weight_kg|height_cm|muac_cm|oedema_present|appetite_test|rutf_sachets_dispensed|csb_kg_dispensed|medication_given",
+      "group_cols9": [
+        "ValueN"
+      ],
+      "group9_filters": {
+        "Program": "OS PROGRAM",
+        "Encounter": "Vitals",
+        "concept_name": "Height (cm)"
+      },
+      "group9_aggr": {
+        "ValueN": "max"
+      },
+      "group9_rename": {
+        "ValueN": "height_cm"
+      },
+      "cols_order": "MAHIS ID|Patient ID|Date of Enrollment|Date of Birth|Gender|Program| Patient_State | Program_Workflow | Patient_Program | program_workflow_state|Location|Facility|weight_kg|height_cm|muac_cm|oedema_present|appetite_test|rutf_sachets_dispensed|csb_kg_dispensed|medication_given",
       "merge_methods": [
         "left",
         "left",
@@ -1693,24 +1710,10 @@
         "Date": "Date of Enrollment",
         "birthdate": "Date of Birth",
         "location_id": "Location",
-        "identifier":"MAHIS ID"
+        "identifier": "MAHIS ID"
       },
       "filters": {
         "unique": "any"
-      },
-      "group_cols9": [
-        "ValueN"
-      ],
-      "group9_filters": {
-        "Program": "OTS/SFP PROGRAM",
-        "Encounter": "Vitals",
-        "concept_name": "Height (cm)"
-      },
-      "group9_aggr": {
-        "ValueN": "max"
-      },
-      "group9_rename": {
-        "ValueN": "height_cm"
       }
     },
     {
