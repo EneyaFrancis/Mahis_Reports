@@ -1,1 +1,1 @@
-"""Offline configuration tools for the MNID DHIS2 package."""
+"""DHIS2 Tools Package."""
