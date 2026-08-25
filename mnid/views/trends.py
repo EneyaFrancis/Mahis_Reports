@@ -27,7 +27,7 @@ from mnid.core.data_utils import _remember_ui_payload, _restore_ui_dataframe
 from mnid.components.run_charts import _format_grain_label, _hex_to_rgba
 
 _LOGGER = logging.getLogger(__name__)
-_DEFAULT_TREND_INDICATOR_LIMIT = 6
+_DEFAULT_TREND_INDICATOR_LIMIT = 4
 
 
 _MNID_SCROLLSPY_CLIENTSIDE = """
@@ -158,9 +158,19 @@ def _indicator_run_fig(
             d_vals.append(d_val)
 
     period_labels = [_format_grain_label(pd.Timestamp(x), grain) for x in xs]
-    smoothed, _   = _moving_average_values(ys, grain, method=measure)
-    measure_label = 'Median' if measure == 'median' else 'Moving avg'
-    valid_ys      = [y for y in smoothed if y is not None]
+    # Median mode plots the real values as the line itself (not a rolling
+    # median hiding the actual trend) and gets its own flat median reference
+    # line instead -- same idea as the target line. Moving average keeps its
+    # existing behavior: the smoothed rolling mean IS the line.
+    if measure == 'median':
+        plotted = ys
+        median_value = pd.Series([y for y in ys if y is not None], dtype='float64').median()
+        median_value = None if pd.isna(median_value) else float(median_value)
+    else:
+        plotted, _ = _moving_average_values(ys, grain, method=measure)
+        median_value = None
+    measure_label = 'Moving avg'
+    valid_ys      = [y for y in plotted if y is not None]
     if not valid_ys:
         return go.Figure(layout={
             'paper_bgcolor': 'white', 'plot_bgcolor': 'white', 'height': 220,
@@ -181,8 +191,15 @@ def _indicator_run_fig(
             showlegend=False,
             hovertemplate=f'Target: {target}%<extra></extra>',
         ))
+    if median_value is not None:
+        traces.append(go.Scatter(
+            x=period_labels, y=[median_value] * len(period_labels), mode='lines',
+            line={'color': '#6366F1', 'width': 1.4, 'dash': 'dot'},
+            showlegend=False,
+            hovertemplate=f'Median: {median_value:.1f}%<extra></extra>',
+        ))
 
-    valid_pts = [(x, label, y, raw) for x, label, y, raw in zip(xs, period_labels, smoothed, ys) if y is not None]
+    valid_pts = [(x, label, y, raw) for x, label, y, raw in zip(xs, period_labels, plotted, ys) if y is not None]
     kp_set, key_pts = set(), []
     for pt in [valid_pts[0], valid_pts[-1]]:
         if pt[1] not in kp_set:
@@ -198,35 +215,55 @@ def _indicator_run_fig(
         showlegend=False,
         hovertemplate='%{x}: %{y:.0f}%<extra></extra>',
     ))
-    traces.append(go.Scatter(
-        x=period_labels, y=smoothed, mode='lines+markers',
-        line={'color': color, 'width': 3.2, 'shape': 'spline', 'smoothing': 0.45},
-        marker={'size': 6, 'color': color, 'line': {'color': '#fff', 'width': 1.2}},
-        fill='tozeroy', fillcolor=_hex_to_rgba(color, 0.08),
-        connectgaps=False, showlegend=False,
-        customdata=list(zip(period_labels, n_vals, d_vals, ys)),
-        hovertemplate=(
+    if measure == 'median':
+        main_hovertemplate = (
+            '<b>%{customdata[0]}</b><br>'
+            'Actual: <b>%{y:.1f}%</b><br>'
+            'Clients: %{customdata[1]} / %{customdata[2]}'
+            '<extra></extra>'
+        )
+    else:
+        main_hovertemplate = (
             '<b>%{customdata[0]}</b><br>'
             f'{measure_label}: ' '<b>%{y:.1f}%</b><br>'
             'Actual: <b>%{customdata[3]:.1f}%</b><br>'
             'Clients: %{customdata[1]} / %{customdata[2]}'
             '<extra></extra>'
-        ),
+        )
+    traces.append(go.Scatter(
+        x=period_labels, y=plotted, mode='lines+markers',
+        line={'color': color, 'width': 3.2, 'shape': 'spline', 'smoothing': 0.45},
+        marker={'size': 6, 'color': color, 'line': {'color': '#fff', 'width': 1.2}},
+        fill='tozeroy', fillcolor=_hex_to_rgba(color, 0.08),
+        connectgaps=False, showlegend=False,
+        customdata=list(zip(period_labels, n_vals, d_vals, ys)),
+        hovertemplate=main_hovertemplate,
     ))
 
+    # x=1 + xshift is a *fixed pixel* offset from the plot's right edge,
+    # unlike x=1.03 (a fraction of the plot's own width) which shrinks on a
+    # narrower plot and ate into the margin before the text could render --
+    # that's why "Target 80%" kept clipping even after widening the margin.
     layout_annotations = []
     if target is not None:
         layout_annotations.append({
-            'x': 1.005, 'y': target / 112, 'xref': 'paper', 'yref': 'paper',
-            'text': f'target {target:.0f}%', 'showarrow': False,
+            'x': 1, 'xshift': 8, 'y': target / 112, 'xref': 'paper', 'yref': 'paper',
+            'text': f'Target {target:.0f}%', 'showarrow': False,
             'font': {'size': 10, 'color': '#64748B', 'family': 'Geist, system-ui, sans-serif'},
+            'xanchor': 'left', 'yanchor': 'middle',
+        })
+    if median_value is not None:
+        layout_annotations.append({
+            'x': 1, 'xshift': 8, 'y': median_value / 112, 'xref': 'paper', 'yref': 'paper',
+            'text': f'Median {median_value:.0f}%', 'showarrow': False,
+            'font': {'size': 10, 'color': '#6366F1', 'family': 'Geist, system-ui, sans-serif'},
             'xanchor': 'left', 'yanchor': 'middle',
         })
     tick_angle = -28 if grain in {'daily', 'weekly', 'monthly'} else 0
     return go.Figure(data=traces, layout={
         'paper_bgcolor': 'white', 'plot_bgcolor': 'white',
         'font': {'family': 'Geist, system-ui, sans-serif', 'color': '#64748b', 'size': 11},
-        'height': 220, 'margin': {'l': 42, 'r': 24, 't': 16, 'b': 44},
+        'height': 220, 'margin': {'l': 42, 'r': 92, 't': 16, 'b': 44},
         'showlegend': False, 'hovermode': 'x unified',
         'hoverlabel': {
             'bgcolor': '#0f172a', 'bordercolor': '#0f172a',

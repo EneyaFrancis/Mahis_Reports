@@ -660,16 +660,6 @@
     border-radius: 18px;
 }
 
-/* dashboardSkeletonShift keyframe still lives here -- mnid.css's
-   .mnid-loading-surface-* (a separate, unrelated skeleton used only for the
-   MNID tab-switch placeholder, not this dashboard container) references it
-   by name. The dashboard-loading-* classes that used it here are gone; this
-   container's own skeleton was removed in favor of dcc.Loading's spinner. */
-@keyframes dashboardSkeletonShift {
-    0% { background-position: 100% 50%; }
-    100% { background-position: 0 50%; }
-}
-
 /* Loading pulse on the Apply Filters button while callback runs */
 @keyframes btn-loading-pulse {
     0%, 100% { opacity: 1; }

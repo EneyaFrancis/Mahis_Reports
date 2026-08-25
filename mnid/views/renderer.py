@@ -56,24 +56,6 @@ def _render_mnh_placeholder(label: str) -> html.Div:
     )
 
 
-def _mnid_loading_placeholder() -> html.Div:
-    return html.Div(
-        className='mnid-loading-surface',
-        children=[
-            html.Div(className='mnid-loading-surface-hero'),
-            html.Div(
-                className='mnid-loading-surface-grid',
-                children=[
-                    html.Div(className='mnid-loading-surface-card'),
-                    html.Div(className='mnid-loading-surface-card'),
-                    html.Div(className='mnid-loading-surface-card'),
-                ],
-            ),
-            html.Div(className='mnid-loading-surface-wide'),
-        ],
-    )
-
-
 def prewarm_cache(dataset_version: str | None = None, route: str = 'default') -> bool:
     """
     Pre-compute and cache the prepared MNID network DataFrame so the first
@@ -347,7 +329,7 @@ def _render_beginnings_shell(initial_tab: str, hidden_mnid_tabs: set[str], newbo
             html.Div(
                 id='mnid-executive-content',
                 className='mnid-executive-content',
-                children=initial_children if initial_children is not None else [_mnid_loading_placeholder()],
+                children=initial_children if initial_children is not None else [html.Div()],
             ),
         ],
     )
@@ -362,7 +344,7 @@ def _render_mnh_dashboard_view(selected_view: str, state: dict, views: dict):
             initial_tab=state.get('beginnings_initial_tab') or 'country-profile',
             hidden_mnid_tabs=hidden_mnid_tabs,
             newborn_config=state.get('newborn_config'),
-            initial_children=[_mnid_loading_placeholder()],
+            initial_children=[html.Div()],
             scope_meta=state.get('scope_meta'),
         )
 
@@ -551,7 +533,7 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
         executive_content['country-profile'] = cp_cached
         _initial_ec = [executive_content['country-profile']]
     else:
-        _initial_ec = [_mnid_loading_placeholder()]
+        _initial_ec = [html.Div()]
 
     executive_content['beginnings-shell'] = _render_beginnings_shell(
         initial_tab=_target_tab,
