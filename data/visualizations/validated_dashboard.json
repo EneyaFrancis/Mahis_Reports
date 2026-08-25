@@ -3680,6 +3680,14 @@
         }
       },
       {
+        "id": "mnid_nb_core_admissions",
+        "label": "Neonatal Admissions",
+        "category": "Newborn",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
         "id": "mnid_nb_overview_004",
         "label": "iKMC Initiated",
         "category": "Newborn",
@@ -5801,6 +5809,14 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         }
+      },
+      {
+        "id": "mnid_nb_core_admissions",
+        "label": "Neonatal Admissions",
+        "category": "Newborn",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
       },
       {
         "id": "mnid_nb_overview_004",
