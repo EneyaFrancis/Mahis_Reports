@@ -530,48 +530,62 @@ def _topbar(facility, period, n_tracked, n_await, facility_df=None, network_df=N
             ]),
         ])
 
-    return html.Div(className=f'mnid-topbar{" mnid-topbar-newborn" if theme == "newborn" else ""}', children=[
+    # Same two-block pattern as Country Profile/Operational Readiness: a
+    # "hero" card (eyebrow, title, subtitle, Live/period badges) followed by
+    # a separate metadata row below it -- previously this was one block with
+    # the metadata pills squeezed inline beside the title, which is why it
+    # read as visually different from those other two tabs. All the same
+    # metadata (Facility/District/Period/Program/Indicators) is still here,
+    # just repositioned into its own row to match.
+    hero_card = html.Div(className=f'mnid-topbar{" mnid-topbar-newborn" if theme == "newborn" else ""}', children=[
         html.Div(className='mnid-topbar-copy', children=[
             html.Div(topbar_label, className='mnid-topbar-label'),
             html.H1(title),
             html.P(subtitle),
+            html.Div(className='mnid-topbar-badges', children=[
+                html.Span('Live', className='mnid-topbar-badge live'),
+                html.Span(period, className='mnid-topbar-badge'),
+                html.Span(facility_name if facility else district, className='mnid-topbar-badge'),
+            ]),
             newborn_focus,
         ]),
-        html.Div(className='mnid-info-pills', children=[
-            html.Div(className='mnid-info-pill', children=[
-                html.Div('Facility', className='mnid-info-pill-label'),
-                html.Div(facility_name, className='mnid-info-pill-value'),
-            ]),
-            html.Div(className='mnid-info-pill', children=[
-                html.Div('District', className='mnid-info-pill-label'),
-                html.Div(district, className='mnid-info-pill-value'),
-            ]),
-            html.Div(className='mnid-info-pill', children=[
-                html.Div('Period', className='mnid-info-pill-label'),
-                html.Div([
-                    html.Div(period,
-                             style={'fontSize': '11px', 'fontWeight': '700',
-                                    'color': TEXT, 'lineHeight': '1.2'}),
-                    html.Div(period_note,
-                             style={'fontSize': '10px', 'color': MUTED, 'lineHeight': '1.3', 'marginTop': '4px'})
-                    if period_note else None,
-                ]),
-            ]),
-            html.Div(className='mnid-info-pill', children=[
-                html.Div('Program', className='mnid-info-pill-label'),
-                html.Div(
-                    'Labour & Delivery' if selected_program == 'Labour' else selected_program,
-                    className='mnid-info-pill-value mnid-info-pill-value-compact',
-                ),
-            ]),
-            html.Div(className='mnid-info-pill', children=[
-                html.Div('Indicators', className='mnid-info-pill-label'),
-                html.Div(f'{n_tracked} available / {n_await} pending',
+    ])
+
+    meta_row = html.Div(className='mnid-topbar-meta', children=[
+        html.Div(className='mnid-topbar-meta-item', children=[
+            html.Span('Facility', className='mnid-topbar-meta-label'),
+            html.Span(facility_name, className='mnid-topbar-meta-value'),
+        ]),
+        html.Div(className='mnid-topbar-meta-item', children=[
+            html.Span('District', className='mnid-topbar-meta-label'),
+            html.Span(district, className='mnid-topbar-meta-value'),
+        ]),
+        html.Div(className='mnid-topbar-meta-item', children=[
+            html.Span('Period', className='mnid-topbar-meta-label'),
+            html.Div([
+                html.Div(period,
                          style={'fontSize': '11px', 'fontWeight': '700',
                                 'color': TEXT, 'lineHeight': '1.2'}),
+                html.Div(period_note,
+                         style={'fontSize': '10px', 'color': MUTED, 'lineHeight': '1.3', 'marginTop': '4px'})
+                if period_note else None,
             ]),
         ]),
+        html.Div(className='mnid-topbar-meta-item', children=[
+            html.Span('Program', className='mnid-topbar-meta-label'),
+            html.Div(
+                'Labour & Delivery' if selected_program == 'Labour' else selected_program,
+                className='mnid-info-pill-value-compact',
+                style={'fontSize': '11px', 'fontWeight': '600', 'color': TEXT},
+            ),
+        ]),
+        html.Div(className='mnid-topbar-meta-item', style={'borderRight': 'none'}, children=[
+            html.Span('Indicators', className='mnid-topbar-meta-label'),
+            html.Span(f'{n_tracked} available / {n_await} pending', className='mnid-topbar-meta-value'),
+        ]),
     ])
+
+    return html.Div([hero_card, meta_row])
 
 
 def _sidebar(facility_code: str, theme: str = 'default') -> html.Div:

@@ -1750,16 +1750,19 @@ html { scroll-behavior: smooth; }
 }
 
 .mnid-main {
-  max-width: 1440px;
+  /* 90%, matching .mnid-executive-page (Country Profile / Operational
+     Readiness) so all 4 tabs share the same width convention. */
+  max-width: 90%;
   margin: 0 auto;
   padding: 18px 20px 36px;
 }
 
 .mnid-topbar {
-  padding: 18px 22px;
-  border-radius: 16px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.98) 100%);
+  padding: 20px 24px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
 .mnid-topbar-copy {
@@ -1768,8 +1771,8 @@ html { scroll-behavior: smooth; }
 }
 
 .mnid-topbar h1 {
-  font-size: 28px;
-  margin: 0 0 4px;
+  font-size: 26px;
+  margin: 0 0 6px;
 }
 
 .mnid-topbar p {
@@ -1778,7 +1781,58 @@ html { scroll-behavior: smooth; }
 
 .mnid-topbar-label {
   color: #0f766e;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.mnid-topbar-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.mnid-topbar-badge {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 99px;
+}
+.mnid-topbar-badge.live {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.mnid-topbar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.mnid-topbar-meta-item {
+  padding: 8px 14px;
+  border-right: 1px solid #e2e8f0;
+}
+.mnid-topbar-meta-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  display: block;
+  margin-bottom: 2px;
+}
+.mnid-topbar-meta-value {
   font-size: 11px;
+  font-weight: 600;
+  color: #0f172a;
 }
 
 .mnid-topbar-highlight {
@@ -2071,8 +2125,12 @@ html { scroll-behavior: smooth; }
   box-shadow: var(--shadow-md) !important;
 }
 
-/* Executive page layout */
+/* Executive page layout -- shared by Country Profile and Operational
+   Readiness (both render this same class). Capped at 90% width, centered,
+   to match .mnid-main below (Maternal/Newborn) rather than running full-bleed. */
 .mnid-executive-page {
+  max-width: 90%;
+  margin: 0 auto;
   padding-bottom: 24px;
 }
 
