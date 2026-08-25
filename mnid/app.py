@@ -50,7 +50,7 @@ from mnid.views.callbacks import (  # noqa: F401
 )
 
 from mnid.views.renderer import (  # noqa: F401
-    _mnid_loading_placeholder, prewarm_cache, _prewarm_country_profile,
+    prewarm_cache, _prewarm_country_profile,
     render_mnid_dashboard, _build_executive_tab_view,
     _render_mnid_executive_tab, _update_country_profile_chart_grain,
     _preload_mnid_executive_tabs,
