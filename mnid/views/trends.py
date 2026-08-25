@@ -27,7 +27,7 @@ from mnid.core.data_utils import _remember_ui_payload, _restore_ui_dataframe
 from mnid.components.run_charts import _format_grain_label, _hex_to_rgba
 
 _LOGGER = logging.getLogger(__name__)
-_DEFAULT_TREND_INDICATOR_LIMIT = 4
+_DEFAULT_TREND_INDICATOR_LIMIT = 6
 
 
 _MNID_SCROLLSPY_CLIENTSIDE = """

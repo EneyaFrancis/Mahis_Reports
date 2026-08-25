@@ -667,7 +667,11 @@ html { scroll-behavior: smooth; }
 
 .mnid-performance-shell {
   display: grid;
-  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 2.1fr);
+  /* Table column gets relatively more room than before -- the page itself
+     is narrower now (90% width, see .mnid-main/.mnid-executive-page), so
+     keeping the old 0.72fr gauge column made the table side feel squeezed
+     against its own 980px min-width sooner than it used to. */
+  grid-template-columns: minmax(220px, 0.55fr) minmax(0, 2.4fr);
   gap: 16px;
   align-items: start;
 }
@@ -745,7 +749,12 @@ html { scroll-behavior: smooth; }
   border-collapse: separate;
   border-spacing: 0;
   min-width: 980px;
-  width: max-content;
+  /* Fills the wrap instead of shrinking to content -- with max-width capped
+     on every indicator column below, a handful of selected indicators used
+     to leave a large blank gap on the right instead of spreading out to
+     use the space. Still scrolls (via .mnid-performance-table-wrap's
+     overflow-x) once enough columns are selected to exceed min-width. */
+  width: 100%;
   background: #FFFFFF;
 }
 
@@ -754,7 +763,6 @@ html { scroll-behavior: smooth; }
   top: 0;
   z-index: 2;
   min-width: 86px;
-  max-width: 86px;
   padding: 10px 8px;
   background: #F8FAFC;
   border-bottom: 1px solid #DCE7EE;
@@ -793,7 +801,6 @@ html { scroll-behavior: smooth; }
 
 .mnid-performance-value-cell {
   min-width: 86px;
-  max-width: 86px;
   padding: 9px 6px;
   border-right: 1px solid rgba(255,255,255,0.6);
   border-bottom: 1px solid rgba(255,255,255,0.6);
