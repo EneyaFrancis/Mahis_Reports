@@ -1,16 +1,17 @@
 {
-  "generated_at": "2026-08-18T10:38:07.909355",
-  "rows": 76814,
+  "generated_at": "2026-08-25T13:17:39.282472",
+  "rows": 73273,
   "indicators": 67,
   "grains": [
     "monthly"
   ],
-  "data_source": "dhis2",
+  "data_source": "dhis2_excel_merged",
   "use_demo_data": false,
   "last_run_status": "ok",
-  "sync_run_id": "db454f2989d5412f9131251273fd3754",
+  "sync_run_id": "94a4f966c12147ba9a279d7506fcbb9f",
   "mapping_version": "2026-08-04",
   "period_start": "202501",
-  "period_end": "202608",
-  "skipped_unmapped_dhis2_indicators": 0
+  "period_end": "202606",
+  "skipped_unmapped_dhis2_indicators": 0,
+  "excel_records_merged": 1164
 }
