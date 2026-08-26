@@ -81,26 +81,44 @@ METRIC_TO_DHIS2 = {
         "value_type": "count",
         "dx": "hA4cT9rD8yN",
     },
+    # --- The 6 entries below were corrected 2026-08-26. They previously
+    # pointed at semantically unrelated indicators (e.g. the raw "KMC" count
+    # was being written into "Low birthweight newborns", "Bilirubin
+    # Measurement" into "Vitamin K at birth") -- each excel column now maps
+    # to the indicator whose label actually matches its raw column name.
+    # indicator_name is the exact label already used by
+    # mnid/dhis2/config/indicators.json / the rest of the dashboard, so
+    # resolve_indicator_id()'s label-fallback lookup finds it regardless of
+    # mnid_id. mnid_id follows the existing mnid_nb_core_* convention used
+    # by every other DHIS2-route Newborn indicator in this table; these
+    # indicators have never been populated from a live DHIS2 pull (all
+    # flagged "review_required"/excluded in indicators.json), so there's no
+    # existing _core_ id to collide with.
     "KMC": {
-        "dhis2_id": "low_birthweight_newborns",
-        "indicator_name": "Low birthweight newborns",
+        "dhis2_id": "kmc_support_recorded",
+        "indicator_name": "KMC support recorded",
         "indicator_group": "Neonatal care",
-        "mnid_id": "mnid_nb_core_lowbirthweight",
+        "mnid_id": "mnid_nb_core_kmc",
         "category": "Newborn",
-        "target": 0,
+        "target": 80,
         "value_type": "count",
         "dx": "z7nL2kK9rM0",
     },
     "Prophy CPAP": {
-        "dhis2_id": "resuscitation_intervention_recorded",
-        "indicator_name": "Resuscitation intervention recorded",
+        "dhis2_id": "babies_between_1500_1999g_who_receive_prophylactic_cpap",
+        "indicator_name": "Babies between 1500-1999g who receive prophylactic CPAP",
         "indicator_group": "Neonatal care",
-        "mnid_id": "mnid_nb_core_resuscitation",
+        "mnid_id": "mnid_nb_core_cpap1500_1999",
         "category": "Newborn",
         "target": 0,
         "value_type": "count",
         "dx": "d8J2xK8vM1s",
     },
+    # "Sympt CPAP" (symptomatic, as opposed to "Prophy"/prophylactic CPAP
+    # above) has no dedicated indicator in either catalog -- left mapped to
+    # its prior target (bag-mask ventilation for newborns not breathing at
+    # birth) as the closest existing proxy for symptomatic respiratory
+    # support. Flagged for the data team rather than guessed at further.
     "Sympt CPAP": {
         "dhis2_id": "newborns_not_breathing_at_birth_receiving_bag_mask_ventilation",
         "indicator_name": "Newborns not breathing at birth receiving bag-mask ventilation",
@@ -112,50 +130,71 @@ METRIC_TO_DHIS2 = {
         "dx": "tN5uV8rQ1zO",
     },
     "Bilirubin Measurement": {
-        "dhis2_id": "vitamin_k_at_birth",
-        "indicator_name": "Vitamin K at birth",
-        "indicator_group": "Delivery and newborn care",
-        "mnid_id": "mnid_pnc_prog_011",
-        "category": "PNC",
+        "dhis2_id": "babies_who_had_bilirubin_measured",
+        "indicator_name": "Babies who had bilirubin measured",
+        "indicator_group": "Neonatal care",
+        "mnid_id": "mnid_nb_core_bilirubin",
+        "category": "Newborn",
         "target": 80,
         "value_type": "count",
         "dx": "w2M8n4bV6zP",
     },
     "Phototherapty": {
-        "dhis2_id": "rhd_mat_newborn_complications_weight_2500g",
-        "indicator_name": "Newborn complication: Weight < 2500g",
-        "indicator_group": "Newborn complications at birth (2026-08 breakdown)",
-        "mnid_id": "mnid_nb_core_complicationweight2500g",
+        "dhis2_id": "babies_with_clinical_jaundice_who_receive_phototherapy",
+        "indicator_name": "Babies with clinical jaundice who receive phototherapy",
+        "indicator_group": "Neonatal care",
+        "mnid_id": "mnid_nb_core_phototherapy",
         "category": "Newborn",
-        "target": 0,
+        "target": 80,
         "value_type": "count",
         "dx": "m3B9n5vC7xQ",
+        # The dashboard config (data/visualizations/validated_dashboard.json)
+        # carries a near-duplicate entry for this same concept under
+        # different wording/id ("Babies with jaundice receiving
+        # phototherapy", mnid_nb_prog_014) -- without this alias it silently
+        # shows "no data" next to this one showing real data, even though
+        # they're the same clinical fact. Emitting a second row set under
+        # that id/label too so both resolve.
+        "aliases": [
+            {"mnid_id": "mnid_nb_prog_014", "indicator_name": "Babies with jaundice receiving phototherapy"},
+        ],
     },
     "Antibiotics": {
-        "dhis2_id": "signal_parenteral_antibiotics",
-        "indicator_name": "Signal: Parenteral antibiotics",
-        "indicator_group": "Obstetric complications and signal functions",
-        "mnid_id": "mnid_lab_core_signalantibiotics",
-        "category": "Labour",
-        "target": 0,
+        "dhis2_id": "babies_with_suspected_sepsis_who_receive_parenteral_antibiotics",
+        "indicator_name": "Babies with suspected sepsis who receive parenteral antibiotics",
+        "indicator_group": "Neonatal care",
+        "mnid_id": "mnid_nb_core_sepsisantibiotics",
+        "category": "Newborn",
+        "target": 80,
         "value_type": "count",
         "dx": "k1L7n3mP9vS",
     },
+    # "Hypo on Admin"/"Hypo during Stay" sit in the same baseline-column
+    # group as baseline_sepsis_rate/baseline_jaund_rate/baseline_RDS_rate
+    # (all unambiguous problem-rates -- babies WHO HAD sepsis/jaundice/RDS),
+    # so by the same naming convention these are hypothermia CASE counts
+    # (babies who WERE hypothermic), not the indicators.json "not
+    # hypothermic" success-framed indicators. Mapping the raw count directly
+    # into "babies not hypothermic" would show a hypothermia problem as a
+    # 100% success rate -- backwards. Given as its own honestly-named
+    # problem-count indicator instead (no denominator to invert against
+    # here, so a true "not hypothermic" rate isn't computable from this
+    # sheet alone).
     "Hypo on Admin": {
-        "dhis2_id": "rhd_mat_newborn_complications_prematurity",
-        "indicator_name": "Newborn complication: Prematurity",
-        "indicator_group": "Newborn complications at birth (2026-08 breakdown)",
-        "mnid_id": "mnid_nb_core_complicationprematurity",
+        "dhis2_id": "neonatal_hypothermia_on_admission",
+        "indicator_name": "Neonatal hypothermia on admission",
+        "indicator_group": "Neonatal care",
+        "mnid_id": "mnid_nb_core_hypothermiaadmission",
         "category": "Newborn",
         "target": 0,
         "value_type": "count",
         "dx": "x9K3b7nV1zR",
     },
     "Hypo during Stay": {
-        "dhis2_id": "babies_with_postnatal_complications",
-        "indicator_name": "Babies with postnatal complications",
-        "indicator_group": "Postnatal care",
-        "mnid_id": "mnid_nb_core_babiescomplications",
+        "dhis2_id": "neonatal_hypothermia_during_stay",
+        "indicator_name": "Neonatal hypothermia during stay",
+        "indicator_group": "Neonatal care",
+        "mnid_id": "mnid_nb_core_hypothermiastay",
         "category": "Newborn",
         "target": 0,
         "value_type": "count",
@@ -282,6 +321,18 @@ def get_excel_mnid_records(input_file: Path | str = DEFAULT_INPUT_FILE) -> list[
             "pct": 100.0 if val else 0.0,
         }
         mnid_records.append(mnid_row)
+
+        # Emit the same row again under any alias id/label -- see the
+        # "aliases" comment on METRIC_TO_DHIS2 entries that have one -- so a
+        # near-duplicate indicator elsewhere in the dashboard config (same
+        # clinical fact, different wording/id) resolves to the same data
+        # instead of showing "no data" next to the one that does.
+        for alias in dhis2_meta.get("aliases", []):
+            mnid_records.append({
+                **mnid_row,
+                "indicator_id": alias["mnid_id"],
+                "indicator_label": alias["indicator_name"],
+            })
 
     return mnid_records
 
