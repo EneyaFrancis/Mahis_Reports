@@ -589,6 +589,10 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
                 ]
             elif default_cat == 'Newborn':
                 _activity_stats = [
+                    # Moved here from Country Profile's summary row -- was
+                    # "Neonatal Care Unit Admissions" there, same underlying
+                    # indicator, now shown on the tab it actually belongs to.
+                    _indicator_activity('Neonatal Admissions', override_label='Neonatal Care Unit Admissions'),
                     _indicator_activity('Outborn babies'),
                     _indicator_activity('Neonatal Complications at Birth'),
                     _indicator_activity('Birth asphyxia among newborn admissions'),
