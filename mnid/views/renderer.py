@@ -19,6 +19,7 @@ from mnid.core.cache import (
     _MNID_EXECUTIVE_DISK_CACHE, _MNID_UI_CACHE_TTL_SECONDS,
     _network_df_cache, _NETWORK_DF_CACHE_MAX,
     _worker_view_cache, _WORKER_VIEW_CACHE_MAX,
+    _EXECUTIVE_RENDER_VERSION,
 )
 from mnid.views.kpi_engine import (
     _build_mnid_indicator_content,
@@ -481,7 +482,20 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
         newborn_config = None
 
     executive_content = {}
-    _tok_data         = (_opd_key, str(start_date), str(end_date), config.get('report_name'), selected_programs)
+    # _tok_data seeds executive_token, which keys the OUTER per-session tab
+    # cache (views, at 'ec:{token}') read back in _render_mnid_executive_tab.
+    # That cache is checked before anything else in _build_executive_tab_view
+    # ("if selected in views: return views[selected]") -- bypassing the INNER
+    # per-tab cache's own render-version check entirely. Without
+    # _agg_version_stamp/_EXECUTIVE_RENDER_VERSION here, a token computed
+    # before a data republish or a code fix keeps resolving to the same
+    # stale cached tab content for this token's whole TTL, silently ignoring
+    # every subsequent fix -- this is what actually happened investigating
+    # the "0 available" Newborn coverage bug (2026-08-26).
+    _tok_data         = (
+        _opd_key, str(start_date), str(end_date), config.get('report_name'), selected_programs,
+        _agg_version_stamp(route), _EXECUTIVE_RENDER_VERSION,
+    )
     executive_token   = hashlib.md5(pickle.dumps(_tok_data, protocol=4)).hexdigest()
     _MNID_EXECUTIVE_DISK_CACHE.set(
         f'ec:{executive_token}', executive_content, expire=_MNID_UI_CACHE_TTL_SECONDS

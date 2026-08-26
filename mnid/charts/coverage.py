@@ -542,6 +542,16 @@ def _coverage_phase_fig(
                 num, den, pct = precomputed[ind['id']]
             else:
                 num, den, pct = _get_cov(ind)
+            if not _has_coverage_data((num, den, pct)):
+                # Tracked (configured) but nothing reported for this
+                # window/scope yet -- same placeholder treatment as
+                # awaiting_baseline rather than a misleading 0% bar, but
+                # distinguishable via the sub-label (it IS wired up, just
+                # empty right now, not "not yet built").
+                rows.append({'label': lbl, 'pct': None,
+                             'target': ind['target'], 'cls': 'await',
+                             'sub': 'No data'})
+                continue
             cls = _css(pct, ind['target'])
             rows.append({'label': lbl, 'pct': pct,
                          'target': ind['target'], 'cls': cls,
@@ -683,25 +693,32 @@ def _coverage_charts_section(
         awaiting = [i for i in inds if i.get('status') == 'awaiting_baseline']
         computed = [_compute(i) for i in tracked]
 
-        # Aggregation intentionally emits all-zero rows for configured DHIS2
-        # indicators with no observations.  Do not turn those into misleading
-        # 0% bars; remove the rows before sizing the Plotly chart so no blank
-        # vertical space is reserved for them.
+        # A tracked indicator that comes back all-zero (no observations
+        # anywhere in the selected window/scope, and genuinely no data
+        # source behind it yet) is hidden rather than shown as an empty
+        # row -- a brief experiment showing them as "No data" placeholders
+        # turned out to just be noise once most of them were confirmed to
+        # have no source at all (as opposed to awaiting_baseline, which
+        # means "not configured yet" and stays visible as a placeholder).
         available = [
             (ind, coverage)
             for ind, coverage in zip(tracked, computed)
             if _has_coverage_data(coverage)
         ]
+        no_data_tracked = [
+            ind for ind, coverage in zip(tracked, computed)
+            if not _has_coverage_data(coverage)
+        ]
         visible_inds = [ind for ind, _ in available] + awaiting
         if not visible_inds:
             continue
-        visible_phases.append((cat_key, cat_title, available, awaiting, visible_inds))
+        visible_phases.append((cat_key, cat_title, available, awaiting, no_data_tracked, visible_inds))
 
     single_card = len(visible_phases) == 1
     row_height = 52 if single_card else 38
     cards = []
 
-    for cat_key, cat_title, available, awaiting, visible_inds in visible_phases:
+    for cat_key, cat_title, available, awaiting, no_data_tracked, visible_inds in visible_phases:
         cov_by_id = {ind['id']: coverage for ind, coverage in available}
         avg_pct = (
             round(sum(coverage[2] for _, coverage in available) / len(available), 0)
@@ -709,6 +726,8 @@ def _coverage_charts_section(
         )
 
         pills = [html.Span(f'{len(available)} available', className='mnid-pill mnid-pill-green')]
+        if no_data_tracked:
+            pills.append(html.Span(f'{len(no_data_tracked)} no data', className='mnid-pill mnid-pill-amber'))
         if awaiting:
             pills.append(html.Span(f'{len(awaiting)} awaiting', className='mnid-pill mnid-pill-amber'))
         if avg_pct is not None:

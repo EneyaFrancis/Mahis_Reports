@@ -195,10 +195,16 @@ def load_aggregate(route: str = _DEFAULT_ROUTE, output_dir: str | None = None) -
 
 
 def get_aggregate(route: str = _DEFAULT_ROUTE, output_dir: str | None = None) -> pd.DataFrame | None:
-    """Return the in-memory aggregate for one route, loading it on first call."""
-    if route not in _LOADED_ROUTES:
-        return load_aggregate(route, output_dir)
-    return _AGG_DF_BY_ROUTE.get(route)
+    """Return the in-memory aggregate for one route, loading it on first call.
+
+    Always delegates to load_aggregate() -- even once a route is cached --
+    so its cheap meta.json stamp check (see _current_meta_stamp) runs on
+    every call and a fresh publish/merge is picked up without a server
+    restart. A prior shortcut here (returning the cached df directly once
+    the route was in _LOADED_ROUTES) skipped that check entirely, so a
+    republish never got noticed for the rest of the process's life.
+    """
+    return load_aggregate(route, output_dir)
 
 
 def invalidate_cache(route: str | None = None) -> None:
