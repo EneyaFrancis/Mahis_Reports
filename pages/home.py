@@ -78,24 +78,6 @@ _DASHBOARD_TAB_CONFIG_DEFAULTS = {
 }
 
 
-def _dashboard_loading_placeholder():
-    return html.Div(
-        className="dashboard-loading-placeholder",
-        children=[
-            html.Div(className="dashboard-loading-hero"),
-            html.Div(
-                className="dashboard-loading-grid",
-                children=[
-                    html.Div(className="dashboard-loading-card"),
-                    html.Div(className="dashboard-loading-card"),
-                    html.Div(className="dashboard-loading-card"),
-                ],
-            ),
-            html.Div(className="dashboard-loading-wide"),
-        ],
-    )
-
-
 def _trim_cache(cache: dict, max_entries: int) -> None:
     while len(cache) > max_entries:
         try:
@@ -1028,7 +1010,12 @@ layout = html.Div(
                     children=html.Div(
                         id='dashboard-container',
                         className="dashboard-content-modern",
-                        children=_dashboard_loading_placeholder(),
+                        # Was the skeleton placeholder -- redundant with this
+                        # dcc.Loading's own custom_spinner overlay above,
+                        # which already covers this exact container. Having
+                        # both meant the shimmering skeleton showed *under*
+                        # the spinner at the same time, on every load.
+                        children=html.Div(),
                     )
                 ),
             ]
