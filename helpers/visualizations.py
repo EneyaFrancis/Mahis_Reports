@@ -3006,7 +3006,7 @@ def create_line_list_basic_modal(
     """
     try:
         result = DataStorage.query_duckdb(query)
-        return result.drop_duplicates(subset='unique_column').drop(columns='unique_column').iloc[:1000]
+        return result.drop_duplicates(subset='unique_column').drop(columns='unique_column').iloc[:100]
     except Exception:
         return pd.DataFrame()
 
