@@ -9,6 +9,9 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Git Bash / MSYS2 crash dumps (local artifact, not app-generated)
+*.stackdump
+
 # Virtual environments
 venv/
 venv
@@ -18,6 +21,7 @@ venv
 data/parquet/
 data/archive/
 data/uploads/
+data/default/parquet.backup-20260819-134817
 data/single_tables/
 data/dcc_dropdown_json/
 data/mnid_aggregates/
@@ -70,7 +74,7 @@ data/dcc_dropdown_json
 demo_parquet/
 scripts/
 docs/
- generate_demo_parquet.py
+generate_demo_parquet.py
 scripts/generate_demo_mnid_data.py
 data/mnid_aggregates/
 data/default/single_tables

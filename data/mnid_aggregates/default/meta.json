@@ -1,12 +1,16 @@
 {
-  "generated_at": "2026-07-21T18:55:25.875759",
-  "elapsed_sec": 141.0,
-  "rows": 55404,
+  "generated_at": "2026-08-20T18:31:59.590268",
+  "elapsed_sec": 705.8,
+  "rows": 466236,
   "indicators": 162,
   "grains": [
-    "monthly"
+    "daily",
+    "weekly",
+    "monthly",
+    "quarterly",
+    "yearly"
   ],
   "data_source": "data/default/parquet",
-  "use_demo_data": false,
+  "use_demo_data": true,
   "last_run_status": "ok"
 }
