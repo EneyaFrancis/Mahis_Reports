@@ -3802,7 +3802,8 @@
           "value1": "Newborn",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        }
+        },
+        "measure": "Counts babies who received Kangaroo Mother Care during their stay, over admitted babies in the eligible weight band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_prog_008",
@@ -3893,7 +3894,8 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Tracked using pulse oximeter or oxygen saturation documentation captured at neonatal admission."
+        "note": "Tracked using pulse oximeter or oxygen saturation documentation captured at neonatal admission.",
+        "measure": "Counts babies who had blood-oxygen measured at admission, over all admitted babies. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_prog_012",
@@ -3915,7 +3917,8 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Tracked from bilirubin-related measurement concepts documented in newborn care."
+        "note": "Tracked from bilirubin-related measurement concepts documented in newborn care.",
+        "measure": "Counts babies who had bilirubin tested, over babies with a clinical diagnosis of pathological jaundice. Coverage trend line chart (no QI control chart for this one)."
       },
       {
         "id": "mnid_nb_prog_013",
@@ -3959,7 +3962,8 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Uses clinical jaundice and phototherapy treatment documentation as the newborn jaundice care pathway proxy."
+        "note": "Uses clinical jaundice and phototherapy treatment documentation as the newborn jaundice care pathway proxy.",
+        "measure": "Counts babies who required AND received phototherapy, over babies who required phototherapy. QI control chart (program & multi-country) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_prog_015",
@@ -4047,15 +4051,26 @@
           "value1": "1000-1499g",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        }
+        },
+        "measure": "ALL babies 1000-1499g should receive CPAP regardless of symptoms. Counts babies in this band who got CPAP, over admitted babies in this band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
+      },
+      {
+        "id": "mnid_nb_core_cpap1000_1499",
+        "label": "Babies between 1000-1499g who receive prophylactic CPAP",
+        "category": "Newborn",
+        "target": 100,
+        "status": "tracked",
+        "note": "Per NEST-IT Indicators Guide: ALL babies 1000-1499g should receive CPAP regardless of symptoms (unlike the 1500-1999g band, which only needs it if symptomatic). Sourced from the NEST360 excel workbook (Prophy CPAP column).",
+        "measure": "ALL babies 1000-1499g should receive CPAP regardless of symptoms. Counts babies in this band who got CPAP, over admitted babies in this band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_core_004",
         "label": "Babies between 1500-1999g who receive prophylactic CPAP",
         "category": "Newborn",
-        "target": 80,
+        "target": 100,
         "status": "tracked",
-        "note": "Tracked from birth-weight bands plus newborn CPAP treatment observations already normalized into the parquet. This remains a weight-band proxy because respiratory distress syndrome is not modeled separately."
+        "note": "Tracked from birth-weight bands plus newborn CPAP treatment observations already normalized into the parquet. This remains a weight-band proxy because respiratory distress syndrome is not modeled separately.",
+        "measure": "Babies 1500-1999g only need CPAP if symptomatic (RDS + hypoxia). Counts babies who got CPAP, over admitted babies in this band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_core_005",
@@ -4077,7 +4092,8 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Jaundice identification used as phototherapy proxy (MAHIS clinical jaundice \u2192 phototherapy care pathway)."
+        "note": "Jaundice identification used as phototherapy proxy (MAHIS clinical jaundice \u2192 phototherapy care pathway).",
+        "measure": "Counts babies who required AND received phototherapy, over babies who required phototherapy. QI control chart (program & multi-country) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_core_006",
@@ -4098,7 +4114,8 @@
           "value1": "Yes",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        }
+        },
+        "measure": "ALL babies with a clinical sepsis diagnosis should start antibiotics. Counts babies who got antibiotics, over babies diagnosed with sepsis. QI control chart (program & multi-country) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_core_007",
@@ -4119,7 +4136,8 @@
           "value1": "Newborn",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        }
+        },
+        "measure": "Counts babies with body temp >=36.5C at admission, over admitted babies who had temperature taken at admission. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_core_008",
@@ -4141,7 +4159,8 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Proxy from admission thermal status \u2014 longitudinal stay temperature not yet in extract."
+        "note": "Proxy from admission thermal status \u2014 longitudinal stay temperature not yet in extract.",
+        "measure": "Counts babies with body temp >=36.5C at any point after admission (excluding the admission reading itself), over admitted babies who had temperature taken during their stay. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "nest360_pulse_oximeter_used_at_admission",
@@ -4161,7 +4180,8 @@
           "unique": "person_id",
           "variable1": "Service_Area",
           "value1": "Newborn"
-        }
+        },
+        "measure": "Counts babies who had blood-oxygen measured at admission, over all admitted babies. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "nest360_temperature_taken_at_admission",
@@ -5933,7 +5953,8 @@
           "value1": "Newborn",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        }
+        },
+        "measure": "Counts babies who received Kangaroo Mother Care during their stay, over admitted babies in the eligible weight band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_prog_008",
@@ -6024,7 +6045,8 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Tracked using pulse oximeter or oxygen saturation documentation captured at neonatal admission."
+        "note": "Tracked using pulse oximeter or oxygen saturation documentation captured at neonatal admission.",
+        "measure": "Counts babies who had blood-oxygen measured at admission, over all admitted babies. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_prog_012",
@@ -6046,7 +6068,8 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Tracked from bilirubin-related measurement concepts documented in newborn care."
+        "note": "Tracked from bilirubin-related measurement concepts documented in newborn care.",
+        "measure": "Counts babies who had bilirubin tested, over babies with a clinical diagnosis of pathological jaundice. Coverage trend line chart (no QI control chart for this one)."
       },
       {
         "id": "mnid_nb_prog_013",
@@ -6090,7 +6113,8 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Uses clinical jaundice and phototherapy treatment documentation as the newborn jaundice care pathway proxy."
+        "note": "Uses clinical jaundice and phototherapy treatment documentation as the newborn jaundice care pathway proxy.",
+        "measure": "Counts babies who required AND received phototherapy, over babies who required phototherapy. QI control chart (program & multi-country) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_prog_015",
@@ -6178,15 +6202,26 @@
           "value1": "1000-1499g",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        }
+        },
+        "measure": "ALL babies 1000-1499g should receive CPAP regardless of symptoms. Counts babies in this band who got CPAP, over admitted babies in this band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
+      },
+      {
+        "id": "mnid_nb_core_cpap1000_1499",
+        "label": "Babies between 1000-1499g who receive prophylactic CPAP",
+        "category": "Newborn",
+        "target": 100,
+        "status": "tracked",
+        "note": "Per NEST-IT Indicators Guide: ALL babies 1000-1499g should receive CPAP regardless of symptoms (unlike the 1500-1999g band, which only needs it if symptomatic). Sourced from the NEST360 excel workbook (Prophy CPAP column).",
+        "measure": "ALL babies 1000-1499g should receive CPAP regardless of symptoms. Counts babies in this band who got CPAP, over admitted babies in this band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_core_004",
         "label": "Babies between 1500-1999g who receive prophylactic CPAP",
         "category": "Newborn",
-        "target": 80,
+        "target": 100,
         "status": "tracked",
-        "note": "Tracked from birth-weight bands plus newborn CPAP treatment observations already normalized into the parquet. This remains a weight-band proxy because respiratory distress syndrome is not modeled separately."
+        "note": "Tracked from birth-weight bands plus newborn CPAP treatment observations already normalized into the parquet. This remains a weight-band proxy because respiratory distress syndrome is not modeled separately.",
+        "measure": "Babies 1500-1999g only need CPAP if symptomatic (RDS + hypoxia). Counts babies who got CPAP, over admitted babies in this band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_core_005",
@@ -6208,7 +6243,8 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Jaundice identification used as phototherapy proxy (MAHIS clinical jaundice \u2192 phototherapy care pathway)."
+        "note": "Jaundice identification used as phototherapy proxy (MAHIS clinical jaundice \u2192 phototherapy care pathway).",
+        "measure": "Counts babies who required AND received phototherapy, over babies who required phototherapy. QI control chart (program & multi-country) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_core_006",
@@ -6229,7 +6265,8 @@
           "value1": "Yes",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        }
+        },
+        "measure": "ALL babies with a clinical sepsis diagnosis should start antibiotics. Counts babies who got antibiotics, over babies diagnosed with sepsis. QI control chart (program & multi-country) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_core_007",
@@ -6250,7 +6287,8 @@
           "value1": "Newborn",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        }
+        },
+        "measure": "Counts babies with body temp >=36.5C at admission, over admitted babies who had temperature taken at admission. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_nb_core_008",
@@ -6272,7 +6310,8 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Proxy from admission thermal status \u2014 longitudinal stay temperature not yet in extract."
+        "note": "Proxy from admission thermal status \u2014 longitudinal stay temperature not yet in extract.",
+        "measure": "Counts babies with body temp >=36.5C at any point after admission (excluding the admission reading itself), over admitted babies who had temperature taken during their stay. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
       },
       {
         "id": "mnid_lab_core_totalbirths",

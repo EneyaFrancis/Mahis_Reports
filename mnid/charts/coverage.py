@@ -533,10 +533,16 @@ def _coverage_phase_fig(
     rows = []
     for ind in indicators:
         lbl = _wrap(ind['label'])
+        # Official numerator/denominator/visualization definition from the
+        # NEST-IT Indicators Guide, where this indicator has a confident
+        # match -- shown on hover so "what counts" is one hover away
+        # instead of only living in a config file. Not every indicator has
+        # one; guessed matches weren't added.
+        measure = ind.get('measure') or ''
         if ind.get('status') == 'awaiting_baseline':
             rows.append({'label': lbl, 'pct': None,
                          'target': ind['target'], 'cls': 'await',
-                         'sub': 'Awaiting baseline'})
+                         'sub': 'Awaiting baseline', 'measure': measure})
         else:
             if precomputed is not None and ind['id'] in precomputed:
                 num, den, pct = precomputed[ind['id']]
@@ -550,12 +556,12 @@ def _coverage_phase_fig(
                 # empty right now, not "not yet built").
                 rows.append({'label': lbl, 'pct': None,
                              'target': ind['target'], 'cls': 'await',
-                             'sub': 'No data'})
+                             'sub': 'No data', 'measure': measure})
                 continue
             cls = _css(pct, ind['target'])
             rows.append({'label': lbl, 'pct': pct,
                          'target': ind['target'], 'cls': cls,
-                         'sub': f'{num}/{den}'})
+                         'sub': f'{num}/{den}', 'measure': measure})
 
     if not rows:
         return go.Figure()
@@ -568,6 +574,15 @@ def _coverage_phase_fig(
     colors  = [{'ok': OK_C, 'warn': WARN_C, 'danger': DANGER_C}.get(r['cls'], MUTED)
                for r in rows]
     text_vals = [f"{r['pct']:.0f}%" if r['pct'] is not None else 'No data' for r in rows]
+    # _wrap() already added <br> line breaks inside the label; textwrap
+    # again at a wider width for the hover box so long measure text doesn't
+    # render as one unbroken line.
+    measure_vals = [_wrap(r['measure'], width=48) if r['measure'] else '' for r in rows]
+    # The actual numerator/denominator behind the percentage, e.g. "78/95"
+    # -- for "Awaiting baseline"/"No data" rows this is already that text,
+    # not a fraction, which reads fine either way.
+    sub_vals = [r['sub'] for r in rows]
+    hover_customdata = list(zip(measure_vals, sub_vals))
 
     wide = row_height > 38
     # Increase row height for wrapped (multi-line) labels
@@ -587,7 +602,17 @@ def _coverage_phase_fig(
         textposition='outside',
         textfont=dict(size=11 if wide else 10, color=TEXT, family=FONT),
         cliponaxis=False,
-        hovertemplate='<b>%{y}</b><br>Coverage: %{x:.1f}%<extra></extra>',
+        customdata=hover_customdata,
+        # customdata[0] = measure text (blank for indicators with no
+        # guide-matched measure -- renders as an empty trailing line, an
+        # acceptable tradeoff for one shared hovertemplate across all bars).
+        # customdata[1] = the actual numerator/denominator behind the
+        # percentage, e.g. "78/95", so the hover shows the real counts a
+        # coverage rate is easy to otherwise take on faith.
+        hovertemplate=(
+            '<b>%{y}</b><br>Coverage: %{x:.1f}% (%{customdata[1]})'
+            '<br>%{customdata[0]}<extra></extra>'
+        ),
         showlegend=False,
     ))
 
@@ -1359,7 +1384,22 @@ def _comparative_analysis_section(indicators: list, facility_code: str,
     )
     dist_opts = [{'label': d, 'value': d} for d in all_dists]
     ind_opts = [{'label': ind['label'], 'value': ind['id']} for ind in tracked]
-    default_facs = ([facility_code] if facility_code in all_facs else all_facs[:2]) or []
+    # `facility_code` is NOT "the facility currently selected in the scope
+    # filter" -- it traces back to the logged-in user's own assigned home
+    # location (pages/home.py's user-registry lookup), a different concept
+    # that rarely matches what's actually being viewed. That made this
+    # section's default selection silently fall back to `all_facs[:2]`
+    # (two arbitrary facilities) instead of the one the user picked.
+    # scope_meta's own selected_facilities, resolved the same way the rest
+    # of this dashboard resolves it, is the real "currently viewed" answer.
+    from mnid.core.cache import _resolve_scope_filters
+    _, _scope_fac_codes, _ = _resolve_scope_filters(mch_full, scope_meta or {})
+    _scope_facs_in_universe = [f for f in _scope_fac_codes if f in all_facs]
+    default_facs = (
+        _scope_facs_in_universe
+        or ([facility_code] if facility_code in all_facs else all_facs[:2])
+        or []
+    )
     default_dists = ([current_dist] if current_dist in all_dists else all_dists[:2]) or []
     default_inds = [ind['id'] for ind in tracked[:2]]
     compare_date_min = pd.to_datetime(start_date, errors='coerce')

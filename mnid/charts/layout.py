@@ -93,10 +93,20 @@ def _hero_donut_card(label, pct, target, color, mode='max', delta_pct=None,
                 'display': 'flex', 'flexDirection': 'column',
                 'alignItems': 'center', 'justifyContent': 'center', 'gap': '1px',
             }, children=[
-                html.Span(f'{_display_pct(p):.0f}%', style={
-                    'fontSize': '23px', 'fontWeight': '800',
-                    'color': color, 'lineHeight': '1',
-                }),
+                html.Span(
+                    # A bare percentage reads as more precise/complete than
+                    # it is (100% of a denominator of 1 looks identical to
+                    # 100% of 1000) -- show the actual counts instead, ring
+                    # color/traffic-light status stays driven by pct/target
+                    # exactly as before, only the center text changed.
+                    f'{numerator:,} of {denominator:,}' if numerator is not None and denominator is not None
+                    else f'{_display_pct(p):.0f}%',
+                    style={
+                        'fontSize': '17px' if numerator is not None and denominator is not None else '23px',
+                        'fontWeight': '800',
+                        'color': color, 'lineHeight': '1.15', 'textAlign': 'center',
+                    },
+                ),
                 html.Span(f'Target {target}%', style={
                     'fontSize': '7.5px', 'color': MUTED,
                     'lineHeight': '1.2', 'marginTop': '2px',

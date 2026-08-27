@@ -105,29 +105,43 @@ METRIC_TO_DHIS2 = {
         "dx": "z7nL2kK9rM0",
     },
     "Prophy CPAP": {
+        # NEW indicator (2026-08-26, per NEST-IT Indicators Guide) -- the
+        # guide defines "CPAP for babies 1000-1499g (prophylactic for all)"
+        # as its own indicator, distinct from the 1500-1999g one below: ALL
+        # babies 1000-1499g should get CPAP regardless of symptoms, target
+        # 100%. Not yet added to indicators.json/validated_dashboard.json,
+        # so it populates the aggregate but won't show as "tracked" in the
+        # Coverage panel until that catalog wiring is added too.
+        "dhis2_id": "babies_between_1000_1499g_who_receive_prophylactic_cpap",
+        "indicator_name": "Babies between 1000-1499g who receive prophylactic CPAP",
+        "indicator_group": "Neonatal care",
+        "mnid_id": "mnid_nb_core_cpap1000_1499",
+        "category": "Newborn",
+        "target": 100,
+        "value_type": "count",
+        "dx": "e9K3y1wN2rP",
+    },
+    # CORRECTED (2026-08-26, per NEST-IT Indicators Guide): "Sympt CPAP" is
+    # the guide's "CPAP 1500-1999g (with symptoms)" -- babies in this
+    # weight band only need CPAP if they show RDS + hypoxia, unlike the
+    # 1000-1499g band above where every baby should get it. This is the
+    # SAME weight band as the pre-existing "Babies between 1500-1999g who
+    # receive prophylactic CPAP" indicator (mnid_nb_core_cpap1500_1999) --
+    # reused rather than renamed, since that label is already wired into
+    # indicators.json/validated_dashboard.json/mnid/core/indicators.py and
+    # a full rename to reflect "symptomatic" would need to touch all of
+    # those; the weight-band match is what matters functionally. Previously
+    # this raw column was wrongly routed to bag-mask ventilation, an
+    # unrelated intervention.
+    "Sympt CPAP": {
         "dhis2_id": "babies_between_1500_1999g_who_receive_prophylactic_cpap",
         "indicator_name": "Babies between 1500-1999g who receive prophylactic CPAP",
         "indicator_group": "Neonatal care",
         "mnid_id": "mnid_nb_core_cpap1500_1999",
         "category": "Newborn",
-        "target": 0,
+        "target": 100,
         "value_type": "count",
         "dx": "d8J2xK8vM1s",
-    },
-    # "Sympt CPAP" (symptomatic, as opposed to "Prophy"/prophylactic CPAP
-    # above) has no dedicated indicator in either catalog -- left mapped to
-    # its prior target (bag-mask ventilation for newborns not breathing at
-    # birth) as the closest existing proxy for symptomatic respiratory
-    # support. Flagged for the data team rather than guessed at further.
-    "Sympt CPAP": {
-        "dhis2_id": "newborns_not_breathing_at_birth_receiving_bag_mask_ventilation",
-        "indicator_name": "Newborns not breathing at birth receiving bag-mask ventilation",
-        "indicator_group": "Delivery and newborn care",
-        "mnid_id": "mnid_lab_prog_012",
-        "category": "Labour",
-        "target": 80,
-        "value_type": "count",
-        "dx": "tN5uV8rQ1zO",
     },
     "Bilirubin Measurement": {
         "dhis2_id": "babies_who_had_bilirubin_measured",
