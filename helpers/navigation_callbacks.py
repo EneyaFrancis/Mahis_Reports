@@ -57,6 +57,11 @@ def register_navigation_callbacks(app, pathname_prefix):
         try:
             if not isinstance(url_params, dict):
                 url_params = {}
+            # ?...&selected_only=true hides the top nav entirely, so a shared
+            # link (paired with &dashboard_id=...) shows only that one
+            # dashboard with none of the surrounding navigation chrome.
+            if str(url_params.get("selected_only", ["false"])[0]).strip().lower() == "true":
+                return html.Div()
             location = (url_params.get("Location") or url_params.get("?Location") or [None])[0]
             uuid = url_params.get("uuid", [None])[0]
             user_level = url_params.get("user_level", [None])[0]

@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import dash
 import operator
 from dash import dash_table, html, dcc, callback, Input, Output, State, MATCH, ALL
+from dash.exceptions import PreventUpdate
 from dash_iconify import DashIconify
 import re
 from datetime import datetime, timedelta
@@ -19,8 +20,9 @@ from data_storage import DataStorage
 
 pd.options.mode.chained_assignment = None
 
-from config import (PERSON_ID_, ENCOUNTER_ID_, DATE_, CONCEPT_NAME_,DATA_PATH_,FIRST_NAME_, LAST_NAME_, 
-                    VALUE_DATETIME_, AGE_, GENDER_, HOME_DISTRICT_, TA_, VILLAGE_, IDENTIFIER_)
+from config import (PERSON_ID_, ENCOUNTER_ID_, DATE_, CONCEPT_NAME_,DATA_PATH_,FIRST_NAME_, LAST_NAME_,
+                    VALUE_DATETIME_, AGE_, GENDER_, HOME_DISTRICT_, TA_, VILLAGE_, IDENTIFIER_,PROGRAM_,
+                    DISTRICT_, FACILITY_)
 
 
 THEME = {
@@ -449,7 +451,8 @@ def build_filter_query(cols, vals,data_path, unique_column, isSet, start_date, e
         return f"SELECT DISTINCT {unique_column_str} FROM '{data_path}' WHERE {query_filter} AND {where_clause}"
     return f"{where_clause}"
 
-def create_count(query_fiter,data_path, aggregation='count', unique_column=PERSON_ID_, *filters, start_date=None, end_date=None):
+def create_count(query_fiter,data_path, aggregation='count', unique_column=PERSON_ID_, *filters,
+                  start_date=None, end_date=None, group_by=None, custom_sql=None):
 
     isSet = False
     unique_column = _normalize_filter_value(unique_column)
@@ -472,10 +475,26 @@ def create_count(query_fiter,data_path, aggregation='count', unique_column=PERSO
         query = build_filter_query(col, val,data_path, unique_column, isSet, start_date, end_date)
         queries.append(query)
 
-
-    joined_query =f"SELECT DISTINCT {unique_column}, {DATE_}::DATE FROM '{data_path}' WHERE {query_fiter} AND "  + " AND ".join(queries)
-    if not queries:
-        joined_query = f"SELECT DISTINCT {unique_column}, {DATE_}::DATE FROM '{data_path}' WHERE {query_fiter}"
+    if custom_sql:
+        custom_sql = custom_sql.replace("data", data_path)
+        # Full escape hatch: the JSON author owns the entire query from here,
+        # built on top of the same query_fiter every other count uses.
+        joined_query =  f"{custom_sql} AND {query_fiter}"
+    elif group_by:
+        # Adds the group_by column to the select/group-by so the query stays
+        # correct per-group, without changing what gets returned below --
+        # unique_column is still a plain column in the result (it's part of
+        # the GROUP BY key), Value is just along for the ride, unused here.
+        where_clause = query_fiter + ((" AND " + " AND ".join(queries)) if queries else "")
+        joined_query = (
+            f"SELECT {unique_column}, {DATE_}::DATE, {group_by}, COUNT(*) AS Value"
+            f" FROM '{data_path}' WHERE {where_clause}"
+            f" GROUP BY {unique_column}, {DATE_}::DATE, {group_by}"
+        )
+    else:
+        joined_query =f"SELECT DISTINCT {unique_column}, {DATE_}::DATE FROM '{data_path}' WHERE {query_fiter} AND "  + " AND ".join(queries)
+        if not queries:
+            joined_query = f"SELECT DISTINCT {unique_column}, {DATE_}::DATE FROM '{data_path}' WHERE {query_fiter}"
     if aggregation == "time_diff_mins":
         joined_query = (joined_query.replace(unique_column, 
                                             f"({unique_column}), DATEDIFF('minute', MIN({DATE_}), MAX({DATE_})) AS patient_session_minutes")
@@ -484,7 +503,7 @@ def create_count(query_fiter,data_path, aggregation='count', unique_column=PERSO
     result = DataStorage.query_duckdb(joined_query)
     unique_patients = result[unique_column].unique().tolist()
     if aggregation == 'count':
-        return len(result.drop_duplicates()), unique_patients
+        return len(result), unique_patients
     elif aggregation == 'nunique':
         return len(result[unique_column].unique().tolist()), unique_patients
     elif aggregation == 'list':
@@ -506,6 +525,8 @@ def create_count_sets(
     start_date=None,
     end_date=None,
     same_day=False,
+    group_by=None,
+    custom_sql=None,
 ):
     isSet = True
     unique_column = _normalize_filter_value(unique_column)
@@ -515,6 +536,14 @@ def create_count_sets(
 
     # Scalar ID column: strip any ", Date::DATE" suffix and SQL casts (e.g. "person_id, Date::DATE" → "person_id")
     pid_col = unique_column.split(",")[0].split("::")[0].strip()
+
+    if custom_sql:
+        # Full escape hatch, same convention as create_count: the JSON author
+        # owns the entire query from here, built on the same query_fiter.
+        joined_query = query_fiter + custom_sql
+        result = DataStorage.query_duckdb(joined_query)
+        unique_patients = result[unique_column].unique().tolist()
+        return result[pid_col].nunique(), unique_patients
 
     set_filters = []
     non_set_filters = []
@@ -558,15 +587,22 @@ def create_count_sets(
         return result[pid_col].nunique(), unique_patients
 
     # Default: conditions may live on different rows / different dates.
-    outer = f"SELECT DISTINCT {pid_col} FROM '{data_path}' WHERE {query_fiter}"
     in_clauses = [
         f"{pid_col} IN (SELECT DISTINCT {pid_col} FROM '{data_path}' WHERE {q.split('WHERE ', 1)[1]})"
         for q in queries
     ]
-    if in_clauses:
-        final_query = outer + " AND " + " AND ".join(in_clauses)
+    where_full = query_fiter + ((" AND " + " AND ".join(in_clauses)) if in_clauses else "")
+    if group_by:
+        # Same principle as create_count: adds the column to select/group-by
+        # without changing what's returned -- pid_col stays a plain column
+        # in the result (it's part of the GROUP BY key), Value is unused here.
+        final_query = (
+            f"SELECT {pid_col}, {group_by}, COUNT(*) AS Value"
+            f" FROM '{data_path}' WHERE {where_full}"
+            f" GROUP BY {pid_col}, {group_by}"
+        )
     else:
-        final_query = outer
+        final_query = f"SELECT DISTINCT {pid_col} FROM '{data_path}' WHERE {where_full}"
     # print("Create countset", final_query, "\n\n")
     result = DataStorage.query_duckdb(final_query)
     unique_patients = result[unique_column].unique().tolist()
@@ -971,7 +1007,8 @@ def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_titl
                       filter_value1=None, filter_col2=None, 
                       filter_value2=None, filter_col3=None, 
                       filter_value3=None, aggregation='count', 
-                      custom_fields=None, *args, height=400, responsive=True,
+                      custom_fields=None,group_by=None, 
+                      *args, height=400, responsive=True,
                       show_avg_line=True, show_trend_line=False,
                       date_granularity='day', smooth_lines=False,
                       show_annotations=True, forecast_periods=0):
@@ -1040,6 +1077,23 @@ def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_titl
             f" GROUP BY {date_expr}, {color}"
             f" ORDER BY date_trunc"
         )
+    elif group_by:
+        sub_query = (
+                f"SELECT {date_expr} AS date_trunc, {group_by}, {agg_expr} AS metric_value"
+                f" FROM '{data_path}'"
+                f" WHERE {where_clause}"
+                f" GROUP BY {date_expr}, {group_by}"
+                f" ORDER BY date_trunc"
+            )
+        joined_query = f"""
+                        SELECT 
+                            date_trunc,
+                            SUM(metric_value) AS metric_value
+                        FROM (
+                                {sub_query}
+                            )
+                        GROUP BY date_trunc
+                    """
     else:
         joined_query = (
             f"SELECT {date_expr} AS date_trunc, {agg_expr} AS metric_value"
@@ -1092,19 +1146,18 @@ def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_titl
     summary = summary.rename(columns={'metric_value': 'count'})
 
     # Create figure
-    # template='plotly_white' is passed explicitly (not left to plotly's
-    # global default) because apply_default_cascade() only reads the shared
-    # pio.templates.default singleton when template=None -- under concurrent
-    # Dash requests, two threads building a chart at the same instant can
-    # race on that singleton's lazily-built _props and crash with
-    # "ValueError: Invalid value" deep in plotly's basedatatypes internals.
-    # Passing template explicitly skips that shared-state read entirely.
-    if color:
+    # group_by shapes the SQL the same way color does (one row per
+    # date_trunc x category, not one row per date) whenever color itself
+    # isn't set -- the figure has to split into one line per category the
+    # same way, or plotly just connects every category's point at each date
+    # in row order, drawing one distorted zigzag "line" instead of several.
+    series_col = color
+    if series_col:
         fig = px.line(
             summary,
             x='date_trunc',
             y='count',
-            color=color,
+            color=series_col,
             color_discrete_sequence=THEME["primary"],
             template='plotly_white',
             title=None  # Title added in layout
@@ -1252,7 +1305,7 @@ def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_titl
         ),
         'template': 'plotly_white',
         'legend_title': dict(
-            text=legend_title if legend_title else (color if color else ""),
+            text=legend_title if legend_title else (series_col if series_col else ""),
             font=dict(size=12, color='#2c3e50')
         ),
         'legend': dict(
@@ -1336,9 +1389,9 @@ def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_titl
 
 
 def create_new_returning_chart(
-    query_fiter,data_path,
+    query_fiter, data_path,
     title,
-    chart_mode='pie',           # 'pie' | 'line'
+    chart_mode='pie',
     date_col=DATE_,
     unique_column=PERSON_ID_,
     filter_col1=None, filter_value1=None,
@@ -1347,17 +1400,13 @@ def create_new_returning_chart(
     custom_fields=None,
     height=400,
     hole_size=0.45,
+    group_by=None,
 ):
     """
     Classify patients in the filtered window as 'New' or 'Returning'.
 
-    'New'       = the person_id has no record anywhere in the dataset before
-                  the earliest date found in the current filtered window.
-    'Returning' = the person_id has at least one earlier record.
-
-    Uses a CTE so only two DuckDB passes are needed:
-      1. Find prior patients (Date < range start, no scope filter needed).
-      2. LEFT JOIN against the filtered window, count distinct person_ids.
+    'New'       = patient's first ever visit falls within the filtered window
+    'Returning' = patient has at least one visit BEFORE the filtered window
     """
     isSet = False
     filter_pairs = [
@@ -1372,39 +1421,43 @@ def create_new_returning_chart(
             if isinstance(col, list):
                 col = col[0]
             val = _normalize_filter_value(val)
-            conditions.append(build_filter_query(col, val,data_path, unique_column, isSet, None, None))
+            conditions.append(build_filter_query(col, val, data_path, unique_column, isSet, None, None))
 
     where_clause = query_fiter + ((" AND " + " AND ".join(conditions)) if conditions else "")
 
-    # ── CTE: find patients with any record before the current range start ─────
-    prior_cte = f"""
-        WITH range_start AS (
-            SELECT MIN({date_col}) AS min_date
+    # ── CTE: Find first visit date for each patient ──────────────────────────
+    # This finds the absolute first visit date for each patient across ALL data
+    first_visits_cte = f"""
+        WITH first_visits AS (
+            SELECT DISTINCT {unique_column}, MIN({date_col}) AS first_visit_date
             FROM '{data_path}'
-            WHERE {where_clause}
-        ),
-        prior_patients AS (
-            SELECT DISTINCT {unique_column}
-            FROM '{data_path}', range_start
-            WHERE {date_col} < range_start.min_date
+            GROUP BY {unique_column}
         )
     """
 
     if chart_mode == 'line':
-        sql = prior_cte + f"""
+        group_by_select = f", {group_by}" if group_by else ""
+        group_by_groupby = f", {group_by}" if group_by else ""
+        
+        sql = first_visits_cte + f"""
         SELECT
             CAST(f.{date_col} AS DATE)                                       AS date_trunc,
-            CASE WHEN p.{unique_column} IS NOT NULL THEN 'Returning'
-                 ELSE 'New' END                                               AS patient_type,
+            CASE WHEN f.{date_col} = fv.first_visit_date THEN 'New'
+                 ELSE 'Returning' END                                         AS patient_type{group_by_select},
             COUNT(DISTINCT f.{unique_column})                                 AS metric_value
         FROM '{data_path}' f
-        LEFT JOIN prior_patients p ON f.{unique_column} = p.{unique_column}
+        INNER JOIN first_visits fv ON f.{unique_column} = fv.{unique_column}
         WHERE {where_clause}
-        GROUP BY date_trunc, patient_type
+        GROUP BY date_trunc, patient_type{group_by_groupby}
         ORDER BY date_trunc
         """
+        
         df = DataStorage.query_duckdb(sql)
         df = apply_calculated_fields(df, custom_fields)
+        
+        if group_by and not df.empty:
+            df = df.groupby(['date_trunc', 'patient_type'], as_index=False)['metric_value'].sum()
+            
         if df.empty:
             return go.Figure().update_layout(title=dict(text=f'<b>{title}</b>', x=0.5),
                                              height=height, paper_bgcolor='#ffffff')
@@ -1431,18 +1484,26 @@ def create_new_returning_chart(
         )
 
     else:  # pie / donut
-        sql = prior_cte + f"""
+        group_by_select = f", {group_by}" if group_by else ""
+        group_by_groupby = f", {group_by}" if group_by else ""
+        
+        sql = first_visits_cte + f"""
         SELECT
-            CASE WHEN p.{unique_column} IS NOT NULL THEN 'Returning'
-                 ELSE 'New' END                       AS patient_type,
-            COUNT(DISTINCT f.{unique_column})          AS metric_value
+            CASE WHEN f.{date_col} = fv.first_visit_date THEN 'New'
+                 ELSE 'Returning' END                                         AS patient_type{group_by_select},
+            COUNT(DISTINCT f.{unique_column})                                 AS metric_value
         FROM '{data_path}' f
-        LEFT JOIN prior_patients p ON f.{unique_column} = p.{unique_column}
+        INNER JOIN first_visits fv ON f.{unique_column} = fv.{unique_column}
         WHERE {where_clause}
-        GROUP BY patient_type
+        GROUP BY patient_type{group_by_groupby}
         """
+        
         df = DataStorage.query_duckdb(sql)
         df = apply_calculated_fields(df, custom_fields)
+        
+        if group_by and not df.empty:
+            df = df.groupby(['patient_type'], as_index=False)['metric_value'].sum()
+            
         if df.empty:
             return go.Figure().update_layout(title=dict(text=f'<b>{title}</b>', x=0.5),
                                              height=height, paper_bgcolor='#ffffff')
@@ -1960,7 +2021,8 @@ def create_crosstab_table(
     filter_col1=None, filter_value1=None,
     filter_col2=None, filter_value2=None,
     filter_col3=None, filter_value3=None,
-    rename={}, replace={}, custom_fields=None
+    rename={}, replace={}, custom_fields=None,
+    group_by=None,
 ):
     """
     Create a crosstab table with multilayer column headers using Dash DataTable.
@@ -2010,11 +2072,26 @@ def create_crosstab_table(
         if values_col:
             needed.append(values_col)
         select_cols = ", ".join(dict.fromkeys(needed))
-        joined_query = (
-            f"SELECT {select_cols}"
-            f" FROM '{data_path}'"
-            f" WHERE {where_clause}"
-        )
+        if group_by and aggfunc in ('nunique', 'count', 'min', 'max'):
+            # Safe to pre-group in SQL only for these aggfuncs -- they only
+            # care about distinct combinations, not row counts, so collapsing
+            # duplicate rows via GROUP BY (fewer rows sent back from DuckDB)
+            # doesn't change what pd.crosstab computes below. Not applied for
+            # sum/mean/concat, where collapsing duplicates first would
+            # silently change the totals.
+            group_cols_full = ", ".join(dict.fromkeys(needed + [group_by]))
+            joined_query = (
+                f"SELECT {group_cols_full}, COUNT(*) AS Value"
+                f" FROM '{data_path}'"
+                f" WHERE {where_clause}"
+                f" GROUP BY {group_cols_full}"
+            )
+        else:
+            joined_query = (
+                f"SELECT {select_cols}"
+                f" FROM '{data_path}'"
+                f" WHERE {where_clause}"
+            )
         data = DataStorage.query_duckdb(joined_query)
         data = apply_calculated_fields(data, custom_fields)
         data = _apply_replace(data.rename(columns=rename), replace)
@@ -2097,6 +2174,21 @@ def create_crosstab_table(
         if index_dash_columns else []
     )
     columns_filter_options = sorted({c["name"][0] for c in group_dash_columns if c["name"][0]})
+
+    # When District and/or Facility are part of the index, clicking a row's
+    # index cell can drill straight into the app's own District/Facility
+    # filters -- home.py's crosstab-drill-down callback reads this mapping
+    # (logical name -> actual flat column id) off the store to know which
+    # columns are clickable and what to look up in the clicked row.
+    # Compare against "id" (untouched, e.g. "District" or "District|" when
+    # padded for a multi-level columns axis), not "name" -- "name" is the
+    # cosmetic display label (upper-cased for the header) and isn't reliable
+    # to match against.
+    index_click_map = {
+        col["id"].split("|")[0]: col["id"]
+        for col in index_dash_columns
+        if col["id"].split("|")[0] in (DISTRICT_, FACILITY_)
+    }
 
     uid = uuid.uuid4().hex[:8]
     table_id = {"type": "crosstab-table", "index": uid}
@@ -2188,6 +2280,7 @@ def create_crosstab_table(
                     "records": data_records,
                     "n_index_levels": n_index_levels,
                     "title": title,
+                    "index_click_map": index_click_map,
                 },
             ),
             dcc.Download(id=download_id),
@@ -2240,6 +2333,13 @@ def create_crosstab_table(
                             "backgroundColor": THEME["table_index_bg"],
                             "color": "#2c3e50",
                         },
+                    ] + [
+                        {
+                            "if": {"column_id": col_id},
+                            "cursor": "pointer",
+                            "textDecoration": "bold",
+                        }
+                        for col_id in index_click_map.values()
                     ],
 
                     style_table={
@@ -2980,18 +3080,29 @@ def create_line_list_basic_modal(
     unique_column: str,
     data_path: str,
     ids_list: List,
+    start_date: List,
+    end_date: List
 ) -> "pd.DataFrame":
     """Return a DataFrame of patient details for the given ID list."""
-    import pandas as pd
     if not ids_list:
         return pd.DataFrame()
 
+    # Handle date logic
+    if start_date and end_date:
+        start_date = f"{start_date[0]} 00:00:00"
+        end_date = f"{end_date[0]} 23:59:59"
+    else:
+        # If lists are empty, use today's date
+        today = datetime.now().strftime('%Y-%m-%d')
+        start_date = f"{today} 00:00:00"
+        end_date = f"{today} 23:59:59"
+
     ids_quoted = ", ".join(f"'{str(i)}'" for i in ids_list)
 
-    # with date strftime('%Y-%m-%d', {DATE_})               AS "Date of Visit",
     query = f"""
         SELECT DISTINCT
             {unique_column}                     AS "unique_column",
+            {PROGRAM_}                          AS "Program",
             {IDENTIFIER_}                       AS "Patient ID",
             {FIRST_NAME_}                       AS "First Name",
             {LAST_NAME_}                        AS "Last Name",
@@ -3001,12 +3112,13 @@ def create_line_list_basic_modal(
             {TA_}                              AS "Traditional Authority",
             {VILLAGE_}                          AS "Village"
         FROM '{data_path}'
-        WHERE {unique_column} IN ({ids_quoted})
+        WHERE {unique_column} IN ({ids_quoted}) AND {DATE_} BETWEEN '{start_date}'::TIMESTAMP and '{end_date}'::TIMESTAMP
         ORDER BY {DATE_}, {LAST_NAME_}, {FIRST_NAME_}
     """
+
     try:
         result = DataStorage.query_duckdb(query)
-        return result.drop_duplicates(subset='unique_column').drop(columns='unique_column').iloc[:100]
+        return result.drop_duplicates(subset=['unique_column', PROGRAM_]).drop(columns='unique_column').iloc[:100]
     except Exception:
         return pd.DataFrame()
 

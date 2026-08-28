@@ -16,7 +16,7 @@
           "href": "program_reports",
           "drill_down": "True",
           "filters": {
-            "measure": "nunique",
+            "measure": "count",
             "unique": "person_id",
             "variable1": "Program",
             "variable2": "Encounter",
@@ -25,7 +25,9 @@
             "variable5": "ValueN",
             "variable6": "Value",
             "variable7": "Gender"
-          }
+          },
+          "group_by": "Program",
+          "custom_sql":""
         },
         {
           "id": "count_62ca9185",
@@ -34,7 +36,7 @@
           "level": "facility",
           "drill_down": "True",
           "filters": {
-            "measure": "nunique",
+            "measure": "count",
             "unique": "person_id",
             "variable1": "Program",
             "variable2": "Encounter",
@@ -45,7 +47,9 @@
             "variable7": "Gender",
             "value7": "Male",
             "variable8": "Age_Group"
-          }
+          },
+          "group_by": "Program",
+          "custom_sql":""
         },
         {
           "id": "count_6668a9a4",
@@ -54,7 +58,7 @@
           "level": "facility",
           "drill_down": "True",
           "filters": {
-            "measure": "nunique",
+            "measure": "count",
             "unique": "person_id",
             "variable1": "Program",
             "variable2": "Encounter",
@@ -65,7 +69,9 @@
             "variable7": "Gender",
             "value7": "Female",
             "variable8": "Age_Group"
-          }
+          },
+          "group_by": "Program",
+          "custom_sql":""
         },
         {
           "id": "count_2cbb623e",
@@ -246,8 +252,10 @@
             "variable6": "Value",
             "variable7": "Gender",
             "variable8": "new_revisit",
-            "value8": "Revisit"
-          }
+            "value8": ""
+          },
+          "group_by":"Program",
+          "custom_sql":"SELECT DISTINCT v.person_id, v.Date FROM 'data' v INNER JOIN (SELECT DISTINCT person_id, MIN(Date) AS first_visit_date FROM 'data' GROUP BY person_id) fv ON v.person_id = fv.person_id WHERE v.date > fv.first_visit_date "
         }
       ],
       "charts": {
@@ -271,13 +279,13 @@
                     "District",
                     "Facility"
                   ],
-                  "columns": ["Program", "Encounter"],
+                  "columns": ["Program"],
                   "values_col": "person_id",
                   "title": "Attendance by Health Facility and Program",
                   "unique_column": "person_id",
                   "aggfunc": "nunique",
-                  "filter_col1": "Encounter",
-                  "filter_val1": ["Registration", "Dispensing"],
+                  "filter_col1": "",
+                  "filter_val1": "",
                   "filter_col2": "",
                   "filter_val2": "",
                   "filter_col3": "",
@@ -352,10 +360,10 @@
               {
                 "id": "chart_3faf4437",
                 "display": "True",
-                "name": "Daily OPD Attendance - Last 7 Days",
+                "name": "Daily Patient Attendance - Last 7 Days",
                 "type": "Line",
                 "filters": {
-                  "measure": "nunique",
+                  "measure": "count",
                   "unique": "any",
                   "duration_default": "7days",
                   "title": "Daily Patient Attendance - Last 7 Days",
@@ -375,7 +383,8 @@
                   "x_title": "Date",
                   "y_title": "Number of Patients",
                   "legend_title": "Legend",
-                  "color": ""
+                  "color": "",
+                  "group_by":"Program"
                 }
               }
             ]
@@ -455,7 +464,7 @@
                 "type": "NewReturningSplit",
                 "level": "facility",
                 "filters": {
-                  "measure": "nunique",
+                  "measure": "count",
                   "unique": "any",
                   "duration_default": "30days",
                   "title": "New vs Returning Patients \u2013 Last 30 Days",
@@ -475,7 +484,8 @@
                   "filter_val4": "",
                   "filter_col5": [],
                   "filter_val5": "",
-                  "chart_mode": "line"
+                  "chart_mode": "line",
+                  "group_by":"Program"
                 }
               },
               {
@@ -600,7 +610,8 @@
                   "filter_col3": "",
                   "filter_val3": "",
                   "rename": {},
-                  "replace": ""
+                  "replace": "",
+                  "group_by":"Program"
                 }
               }
             ]
@@ -8809,6 +8820,451 @@
     "count_items_per_row": 5,
     "associated_programs": [
       "NEONATAL PROGRAM"
+    ],
+    "access": "global"
+  },
+  {
+    "report_id": "report_ipd7c41b9",
+    "report_name": "IPD Summary",
+    "date_created": "2026-08-28",
+    "count_items_per_row": 5,
+    "visualization_types": {
+      "counts": [
+        {
+          "id": "count_ipd_total",
+          "display": "True",
+          "name": "Total Patients Admitted",
+          "level": "facility",
+          "flag": "ok",
+          "display_average": "True",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "variable3": "concept_name",
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "variable7": "Gender",
+            "variable8": "Age_Group"
+          }
+        },
+        {
+          "id": "count_ipd_male",
+          "display": "True",
+          "name": "Male Admissions",
+          "level": "facility",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "variable3": "concept_name",
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "variable7": "Gender",
+            "value7": "Male",
+            "variable8": "Age_Group"
+          }
+        },
+        {
+          "id": "count_ipd_female",
+          "display": "True",
+          "name": "Female Admissions",
+          "level": "facility",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "variable3": "concept_name",
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "variable7": "Gender",
+            "value7": "Female",
+            "variable8": "Age_Group"
+          }
+        },
+        {
+          "id": "count_ipd_under5",
+          "display": "True",
+          "name": "Admissions Under 5",
+          "level": "facility",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "variable3": "concept_name",
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "variable7": "Gender",
+            "variable8": "Age_Group",
+            "value8": "Under 5"
+          }
+        },
+        {
+          "id": "count_ipd_over5",
+          "display": "True",
+          "name": "Admissions Over 5",
+          "level": "facility",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "variable3": "concept_name",
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "variable7": "Gender",
+            "variable8": "Age_Group",
+            "value8": "Over 5"
+          }
+        },
+        {
+          "id": "count_ipd_priority_triage",
+          "display": "True",
+          "name": "Priority Triage Cases",
+          "level": "facility",
+          "flag": "warn",
+          "display_average": "True",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "value2": [
+              "Vitals"
+            ],
+            "variable3": "concept_name",
+            "value3": [
+              "Triage Result"
+            ],
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "value6": "Priority",
+            "variable7": "Gender",
+            "variable8": "Age_Group"
+          }
+        },
+        {
+          "id": "count_ipd_hiv_positive",
+          "display": "True",
+          "name": "HIV Positive Inpatients",
+          "level": "facility",
+          "flag": "warn",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "value2": [
+              "Medical in patient"
+            ],
+            "variable3": "concept_name",
+            "value3": [
+              "HIV"
+            ],
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "value6": "Positive",
+            "variable7": "Gender",
+            "variable8": "Age_Group"
+          }
+        },
+        {
+          "id": "count_ipd_referred_specialty",
+          "display": "True",
+          "name": "Referred to Specialty",
+          "level": "facility",
+          "flag": "ok",
+          "display_average": "True",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "value2": [
+              "Awaiting specialty"
+            ],
+            "variable3": "concept_name",
+            "value3": [
+              "Speciality Department"
+            ],
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "variable7": "Gender",
+            "variable8": "Age_Group"
+          }
+        },
+        {
+          "id": "count_ipd_absconded",
+          "display": "True",
+          "name": "Absconded Patients",
+          "level": "facility",
+          "flag": "danger",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "value2": [
+              "Awaiting specialty"
+            ],
+            "variable3": "concept_name",
+            "value3": [
+              "Date Of Absconding"
+            ],
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "variable7": "Gender",
+            "variable8": "Age_Group"
+          }
+        },
+        {
+          "id": "calculated_ipd_abscond_rate",
+          "display": "True",
+          "name": "% Admissions Absconded",
+          "level": "facility",
+          "flag": "danger",
+          "filters": {
+            "measure": "calculated",
+            "expression": "count_ipd_absconded/count_ipd_total*100"
+          }
+        }
+      ],
+      "charts": {
+        "sections": [
+          {
+            "section_name": "IPD Admissions Overview",
+            "display": "True",
+            "chart_items_per_row": 2,
+            "items": [
+              {
+                "id": "chart_ipd_encounters",
+                "display": "True",
+                "name": "Patient Encounters in IPD",
+                "type": "Column",
+                "level": "facility",
+                "filters": {
+                  "measure": "nunique",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "filter_col1": "Program",
+                  "filter_val1": "IPD Program",
+                  "filter_col2": "",
+                  "filter_val2": "",
+                  "filter_col3": "",
+                  "filter_val3": "",
+                  "title": "Patient Encounters in IPD",
+                  "x_col": "Encounter",
+                  "y_col": "person_id",
+                  "x_title": "Encounter Type",
+                  "y_title": "Patients",
+                  "unique_column": "person_id",
+                  "legend_title": "Legend",
+                  "color": ""
+                }
+              },
+              {
+                "id": "chart_ipd_trend_30",
+                "display": "True",
+                "name": "Daily IPD Admissions – Last 30 Days",
+                "type": "Line",
+                "level": "facility",
+                "filters": {
+                  "measure": "nunique",
+                  "unique": "any",
+                  "duration_default": "30days",
+                  "date_col": "Date",
+                  "filter_col1": [
+                    "Program"
+                  ],
+                  "filter_val1": "IPD Program",
+                  "filter_col2": [],
+                  "filter_val2": "",
+                  "filter_col3": [],
+                  "filter_val3": "",
+                  "title": "Daily IPD Admissions – Last 30 Days",
+                  "y_col": "person_id",
+                  "x_title": "Date",
+                  "y_title": "Patients",
+                  "unique_column": "person_id",
+                  "legend_title": "Legend",
+                  "color": ""
+                }
+              }
+            ]
+          },
+          {
+            "section_name": "Clinical Profile and Case Mix",
+            "display": "True",
+            "chart_items_per_row": 3,
+            "items": [
+              {
+                "id": "chart_ipd_diagnoses",
+                "display": "True",
+                "name": "Top Differential Diagnoses",
+                "type": "Bar",
+                "level": "facility",
+                "filters": {
+                  "measure": "nunique",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "filter_col1": "Program",
+                  "filter_val1": "IPD Program",
+                  "filter_col2": "Encounter",
+                  "filter_val2": "Diagnosis",
+                  "filter_col3": "",
+                  "filter_val3": "",
+                  "title": "Top Differential Diagnoses",
+                  "label_col": "obs_value_coded",
+                  "value_col": "encounter_id",
+                  "x_title": "Encounters",
+                  "y_title": "Diagnosis",
+                  "unique_column": "encounter_id",
+                  "top_n": "10"
+                }
+              },
+              {
+                "id": "chart_ipd_triage_pie",
+                "display": "True",
+                "name": "Triage Result Distribution",
+                "type": "Pie",
+                "level": "facility",
+                "filters": {
+                  "measure": "nunique",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "filter_col1": "Program",
+                  "filter_val1": "IPD Program",
+                  "filter_col2": "Encounter",
+                  "filter_val2": "Vitals",
+                  "filter_col3": "concept_name",
+                  "filter_val3": "Triage Result",
+                  "title": "Triage Result Distribution",
+                  "names_col": "Value",
+                  "values_col": "person_id",
+                  "unique_column": "person_id",
+                  "colormap": {}
+                }
+              },
+              {
+                "id": "chart_ipd_age_gender",
+                "display": "True",
+                "name": "Age and Gender Distribution of Admissions",
+                "type": "Histogram",
+                "level": "facility",
+                "filters": {
+                  "measure": "nunique",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "filter_col1": "Program",
+                  "filter_val1": "IPD Program",
+                  "filter_col2": "",
+                  "filter_val2": "",
+                  "filter_col3": "",
+                  "filter_val3": "",
+                  "title": "Age and Gender Distribution of Admissions",
+                  "age_col": "Age",
+                  "gender_col": "Gender",
+                  "bin_size": 5,
+                  "x_title": "Age Group",
+                  "y_title": "Patients"
+                }
+              }
+            ]
+          },
+          {
+            "section_name": "Inpatient Monitoring",
+            "display": "True",
+            "chart_items_per_row": 1,
+            "items": [
+              {
+                "id": "chart_ipd_fluid_balance",
+                "display": "True",
+                "name": "Recorded Fluid Intake and Output Volumes",
+                "type": "Column",
+                "level": "facility",
+                "filters": {
+                  "measure": "sum",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "filter_col1": "Program",
+                  "filter_val1": "IPD Program",
+                  "filter_col2": "Encounter",
+                  "filter_val2": "Fluid Balance and Stool Monitoring",
+                  "filter_col3": "concept_name",
+                  "filter_val3": [
+                    "IV fluids",
+                    "Oral Fluids",
+                    "Water",
+                    "Phala",
+                    "Urine Volume",
+                    "Vomit Volume"
+                  ],
+                  "title": "Recorded Fluid Intake and Output Volumes (ml)",
+                  "x_col": "concept_name",
+                  "y_col": "ValueN",
+                  "x_title": "Fluid Type",
+                  "y_title": "Volume (ml)",
+                  "unique_column": "person_id",
+                  "legend_title": "Fluid Type",
+                  "color": ""
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "associated_programs": [
+      "IPD Program"
     ],
     "access": "global"
   }
