@@ -61,25 +61,36 @@ METRIC_TO_DHIS2 = {
         "value_type": "count",
         "dx": "c2zR6Z68Ncf",
     },
+    # CORRECTED (2026-08-29): "Jaundice" and "RDS" used to be routed into
+    # "Newborn complication: Other" / "...Asphyxia" as approximate stand-ins.
+    # Those two dhis2_ids (rhd_mat_newborn_complications_othe / _asphyxia)
+    # are real DHIS2 data elements pulled live by mnid_publish.py -- routing
+    # excel data into them meant the excel merge's "high priority" override
+    # was silently overwriting genuine DHIS2-sourced Other/Asphyxia
+    # complication counts with unrelated Jaundice/RDS numbers, for every
+    # facility+period the excel sheet covers. Given each their own
+    # dedicated indicator instead, so both the real DHIS2 complication
+    # categories AND the excel's Jaundice/RDS figures are visible,
+    # uncorrupted, side by side.
     "Jaundice": {
-        "dhis2_id": "rhd_mat_newborn_complications_othe",
-        "indicator_name": "Newborn complication: Other",
-        "indicator_group": "Newborn complications at birth (2026-08 breakdown)",
-        "mnid_id": "mnid_nb_core_complicationother",
+        "dhis2_id": "newborn_complication_jaundice",
+        "indicator_name": "Newborn complication: Jaundice",
+        "indicator_group": "Neonatal care",
+        "mnid_id": "mnid_nb_core_jaundice",
         "category": "Newborn",
         "target": 0,
         "value_type": "count",
-        "dx": "bW26n4wRzV5",
+        "dx": "f4N7p2wT9xK",
     },
     "RDS": {
-        "dhis2_id": "rhd_mat_newborn_complications_asphyxia",
-        "indicator_name": "Newborn complication: Asphyxia",
-        "indicator_group": "Newborn complications at birth (2026-08 breakdown)",
-        "mnid_id": "mnid_nb_core_complicationasphyxia",
+        "dhis2_id": "newborn_complication_rds",
+        "indicator_name": "Newborn complication: RDS",
+        "indicator_group": "Neonatal care",
+        "mnid_id": "mnid_nb_core_rds",
         "category": "Newborn",
         "target": 0,
         "value_type": "count",
-        "dx": "hA4cT9rD8yN",
+        "dx": "g6P8q3xU1yL",
     },
     # --- The 6 entries below were corrected 2026-08-26. They previously
     # pointed at semantically unrelated indicators (e.g. the raw "KMC" count

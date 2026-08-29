@@ -4858,7 +4858,7 @@
         "target": 10,
         "target_mode": "min",
         "status": "tracked",
-        "note": "Lower is better. Approximate mapping: this DHIS2-side category is used as a stand-in for the excel workbook's Jaundice column -- no dedicated jaundice-incidence category exists yet."
+        "note": "Lower is better. Real DHIS2-sourced complication category (no longer an excel Jaundice stand-in -- see mnid_nb_core_jaundice for that)."
       },
       {
         "id": "mnid_nb_core_complicationasphyxia",
@@ -4867,7 +4867,7 @@
         "target": 10,
         "target_mode": "min",
         "status": "tracked",
-        "note": "Lower is better. Approximate mapping: this DHIS2-side category is used as a stand-in for the excel workbook's RDS column -- no dedicated RDS-incidence category exists yet."
+        "note": "Lower is better. Real DHIS2-sourced complication category (no longer an excel RDS stand-in -- see mnid_nb_core_rds for that)."
       },
       {
         "id": "mnid_nb_core_hypothermiaadmission",
@@ -4886,6 +4886,24 @@
         "target_mode": "min",
         "status": "tracked",
         "note": "Lower is better -- this counts hypothermia CASES, not the 'not hypothermic' success rate. Sourced from the NEST360 excel workbook (Hypo during Stay column)."
+      },
+      {
+        "id": "mnid_nb_core_jaundice",
+        "label": "Newborn complication: Jaundice",
+        "category": "Newborn",
+        "target": 10,
+        "target_mode": "min",
+        "status": "tracked",
+        "note": "Lower is better (a complication, not a treatment). Sourced from the NEST360 excel workbook (Jaundice column) -- its own dedicated indicator, not a stand-in for a DHIS2 category."
+      },
+      {
+        "id": "mnid_nb_core_rds",
+        "label": "Newborn complication: RDS",
+        "category": "Newborn",
+        "target": 10,
+        "target_mode": "min",
+        "status": "tracked",
+        "note": "Lower is better. Sourced from the NEST360 excel workbook (RDS column) -- its own dedicated indicator, not a stand-in for a DHIS2 category."
       }
     ],
     "mnid_categories": [
@@ -6574,7 +6592,7 @@
         "target": 10,
         "target_mode": "min",
         "status": "tracked",
-        "note": "Lower is better. Approximate mapping: this DHIS2-side category is used as a stand-in for the excel workbook's Jaundice column -- no dedicated jaundice-incidence category exists yet."
+        "note": "Lower is better. Real DHIS2-sourced complication category (no longer an excel Jaundice stand-in -- see mnid_nb_core_jaundice for that)."
       },
       {
         "id": "mnid_nb_core_complicationasphyxia",
@@ -6583,7 +6601,7 @@
         "target": 10,
         "target_mode": "min",
         "status": "tracked",
-        "note": "Lower is better. Approximate mapping: this DHIS2-side category is used as a stand-in for the excel workbook's RDS column -- no dedicated RDS-incidence category exists yet."
+        "note": "Lower is better. Real DHIS2-sourced complication category (no longer an excel RDS stand-in -- see mnid_nb_core_rds for that)."
       },
       {
         "id": "mnid_nb_core_hypothermiaadmission",
@@ -6602,6 +6620,24 @@
         "target_mode": "min",
         "status": "tracked",
         "note": "Lower is better -- this counts hypothermia CASES, not the 'not hypothermic' success rate. Sourced from the NEST360 excel workbook (Hypo during Stay column)."
+      },
+      {
+        "id": "mnid_nb_core_jaundice",
+        "label": "Newborn complication: Jaundice",
+        "category": "Newborn",
+        "target": 10,
+        "target_mode": "min",
+        "status": "tracked",
+        "note": "Lower is better (a complication, not a treatment). Sourced from the NEST360 excel workbook (Jaundice column) -- its own dedicated indicator, not a stand-in for a DHIS2 category."
+      },
+      {
+        "id": "mnid_nb_core_rds",
+        "label": "Newborn complication: RDS",
+        "category": "Newborn",
+        "target": 10,
+        "target_mode": "min",
+        "status": "tracked",
+        "note": "Lower is better. Sourced from the NEST360 excel workbook (RDS column) -- its own dedicated indicator, not a stand-in for a DHIS2 category."
       }
     ],
     "mnid_categories": [

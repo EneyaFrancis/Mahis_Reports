@@ -1,16 +1,17 @@
 {
-  "generated_at": "2026-08-27T20:22:05.465381+00:00",
-  "rows": 78158,
-  "indicators": 76,
+  "generated_at": "2026-08-29T16:57:11.832091",
+  "rows": 74096,
+  "indicators": 78,
   "grains": [
     "monthly"
   ],
   "data_source": "dhis2_excel_merged",
   "use_demo_data": false,
   "last_run_status": "ok",
+  "sync_run_id": "1c9882c840444c82a6a370fc93e6a899",
+  "mapping_version": "2026-08-04",
   "period_start": "202501",
-  "period_end": "202607",
-  "excel_source": "C:\\dev\\MAHIS-Reports\\Forked\\Mahis_Reports\\data\\excel\\NEST_BF_facilitites.xlsx",
-  "excel_records_merged": 1252,
-  "overridden_dhis2_records": 1156
+  "period_end": "202606",
+  "skipped_unmapped_dhis2_indicators": 0,
+  "excel_records_merged": 1252
 }
