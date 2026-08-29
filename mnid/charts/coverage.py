@@ -571,9 +571,19 @@ def _coverage_phase_fig(
     labels  = [r['label']  for r in rows]
     values  = [r['pct'] if r['pct'] is not None else 0 for r in rows]
     targets = [r['target'] for r in rows]
-    colors  = [{'ok': OK_C, 'warn': WARN_C, 'danger': DANGER_C}.get(r['cls'], MUTED)
+    # "await" (awaiting_baseline / no data) bars get a diagonal-stripe
+    # pattern in this category's own Run-Chart accent color, screened back
+    # with low opacity, instead of flat slate-gray on white -- gray-on-white
+    # read as a dull, disconnected default rather than an intentional
+    # "no data yet" state. Falls back to MUTED for a category with no
+    # defined palette (shouldn't normally happen -- ANC/Labour/Newborn/PNC
+    # all have one).
+    _category = next((i.get('category') for i in indicators if i.get('category')), None)
+    _accent = (CAT_PALETTES.get(_category) or [MUTED])[0]
+    colors  = [{'ok': OK_C, 'warn': WARN_C, 'danger': DANGER_C}.get(r['cls'], _accent)
                for r in rows]
-    text_vals = [f"{r['pct']:.0f}%" if r['pct'] is not None else 'No data' for r in rows]
+    patterns = ['/' if r['cls'] == 'await' else '' for r in rows]
+    opacities = [0.35 if r['cls'] == 'await' else 0.88 for r in rows]
     # _wrap() already added <br> line breaks inside the label; textwrap
     # again at a wider width for the hover box so long measure text doesn't
     # render as one unbroken line.
@@ -582,7 +592,7 @@ def _coverage_phase_fig(
     # -- for "Awaiting baseline"/"No data" rows this is already that text,
     # not a fraction, which reads fine either way.
     sub_vals = [r['sub'] for r in rows]
-    hover_customdata = list(zip(measure_vals, sub_vals))
+    hover_customdata = list(zip(measure_vals, sub_vals, targets))
 
     wide = row_height > 38
     # Increase row height for wrapped (multi-line) labels
@@ -592,15 +602,18 @@ def _coverage_phase_fig(
 
     fig = go.Figure()
 
-    # Bars
+    # Bars. No permanent text label at the bar's end anymore -- the
+    # percentage, real numerator/denominator, target, and measure all show
+    # on hover instead (below), rather than a bare "%" sitting on the chart
+    # with nothing else next to it.
     fig.add_trace(go.Bar(
         x=values, y=labels,
         orientation='h',
-        marker=dict(color=colors, opacity=0.88,
-                    line=dict(color='rgba(0,0,0,0)')),
-        text=text_vals,
-        textposition='outside',
-        textfont=dict(size=11 if wide else 10, color=TEXT, family=FONT),
+        marker=dict(
+            color=colors, opacity=opacities,
+            pattern=dict(shape=patterns, fgcolor=MUTED, bgcolor='rgba(0,0,0,0)', size=6, solidity=0.3),
+            line=dict(color='rgba(0,0,0,0)'),
+        ),
         cliponaxis=False,
         customdata=hover_customdata,
         # customdata[0] = measure text (blank for indicators with no
@@ -609,8 +622,11 @@ def _coverage_phase_fig(
         # customdata[1] = the actual numerator/denominator behind the
         # percentage, e.g. "78/95", so the hover shows the real counts a
         # coverage rate is easy to otherwise take on faith.
+        # customdata[2] = the target, so it doesn't require a separate,
+        # hard-to-hit hover on the thin target-line marker to see it.
         hovertemplate=(
             '<b>%{y}</b><br>Coverage: %{x:.1f}% (%{customdata[1]})'
+            '<br>Target: %{customdata[2]:.0f}%'
             '<br>%{customdata[0]}<extra></extra>'
         ),
         showlegend=False,
