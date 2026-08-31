@@ -25,6 +25,7 @@ from mnid.aggregation.store import (
     query_time_series as _agg_time_series,
 )
 from mnid.core.cache import _resolve_scope_filters
+from mnid.core.data_utils import _remember_ui_payload, _restore_ui_dataframe
 
 PRIMARY_GREEN = "#15803D"
 SUCCESS_GREEN = "#16A34A"
@@ -585,6 +586,106 @@ def _monthly_rate_series(
     return merged[cols]
 
 
+# --- On-demand refetch for Country Profile's grain toggle -------------------
+#
+# The toggle only ever had access to whatever series_df was fetched once at
+# render time, re-bucketed client-side (bucket_time_series/bucket_multi_series)
+# for Weekly/Monthly/Quarterly/Yearly -- fine, since aggregating an
+# already-fetched series *up* to a coarser grain is a lossless reshape. But
+# there's no way to reshape monthly data *down* into real daily detail after
+# the fact -- the day-level information was never fetched, so a client
+# rebucket to "Daily" over monthly-only data just repeats/flattens values,
+# which is exactly the "Daily grain shows monthly data" bug fixed earlier
+# this session. A mask-spec (below) is a small, JSON-serializable description
+# of a raw-row boolean mask (_yn_mask/_contains_mask) that the grain-toggle
+# callback can rebuild from a recalled dataframe and refetch fresh at
+# whatever grain was actually requested -- the same "recompute per grain
+# change" approach Run Charts' own server callback already uses, rather than
+# a client-side reshape of stale data.
+
+def _yn_spec(column: str) -> dict:
+    return {"kind": "yn", "column": column}
+
+
+def _contains_spec(column: str, values: list[str]) -> dict:
+    return {"kind": "contains", "column": column, "values": list(values)}
+
+
+def _or_spec(*specs: dict) -> dict:
+    return {"kind": "or", "specs": list(specs)}
+
+
+def _and_spec(*specs: dict) -> dict:
+    return {"kind": "and", "specs": list(specs)}
+
+
+def _mask_from_spec(df: pd.DataFrame, spec: dict | None) -> pd.Series:
+    if not spec:
+        return pd.Series(False, index=df.index)
+    kind = spec.get("kind")
+    if kind == "yn":
+        return _yn_mask(df, spec["column"])
+    if kind == "contains":
+        return _contains_mask(df, spec["column"], spec["values"])
+    if kind == "or":
+        result = pd.Series(False, index=df.index)
+        for sub in spec.get("specs", []):
+            result = result | _mask_from_spec(df, sub)
+        return result
+    if kind == "and":
+        result = pd.Series(True, index=df.index)
+        for sub in spec.get("specs", []):
+            result = result & _mask_from_spec(df, sub)
+        return result
+    return pd.Series(False, index=df.index)
+
+
+def _refetch_series(recipe: dict, grain: str) -> pd.DataFrame:
+    """Re-run the exact fetch a Country Profile chart used at render time,
+    at a freshly-requested grain -- see the module note above."""
+    route = recipe.get("route")
+    facility_codes = recipe.get("facility_codes")
+    districts = recipe.get("districts")
+    start = pd.to_datetime(recipe.get("start")) if recipe.get("start") else None
+    end = pd.to_datetime(recipe.get("end")) if recipe.get("end") else None
+    kind = recipe.get("kind")
+
+    if route == "dhis2":
+        agg_df = _get_aggregate(route="dhis2")
+        if kind == "agg_single":
+            return _agg_monthly_series(
+                agg_df, recipe["mnid_id"], start, end, facility_codes, districts,
+                value_field=recipe.get("value_field", "numerator"),
+                include_counts=recipe.get("include_counts", False),
+                grain=grain,
+            )
+        if kind == "agg_multi":
+            series_map = {label: tuple(spec) for label, spec in recipe.get("series_map", {}).items()}
+            return _agg_monthly_multiseries(series_map, agg_df, start, end, facility_codes, districts, grain=grain)
+        return pd.DataFrame()
+
+    df = _restore_ui_dataframe(recipe.get("df_key"))
+    if kind == "raw_single":
+        mask = _mask_from_spec(df, recipe.get("mask_spec"))
+        out = _monthly_series(df, mask, recipe.get("unique_col", "person_id"), grain=grain)
+        cols = recipe.get("keep_columns")
+        return out[cols].copy() if cols and not out.empty else out
+    if kind == "raw_multi":
+        series_map = {
+            label: (_mask_from_spec(df, spec), color)
+            for label, (spec, color) in recipe.get("series_map", {}).items()
+        }
+        return _monthly_multiseries(series_map, df, grain=grain)
+    if kind == "raw_rate":
+        num_mask = _mask_from_spec(df, recipe.get("numerator_mask_spec"))
+        den_mask = _mask_from_spec(df, recipe.get("denominator_mask_spec"))
+        return _monthly_rate_series(
+            df, num_mask, den_mask, recipe.get("unique_col", "person_id"),
+            include_counts=recipe.get("include_counts", False), grain=grain,
+        )
+    return pd.DataFrame()
+
+
 def _delta_percent(current: float, previous: float) -> float:
     if previous == 0:
         return 0.0 if current == 0 else 100.0
@@ -955,22 +1056,28 @@ def render_country_profile(
     # into one of these summary charts wouldn't be readable anyway. A narrow
     # window (comparable to "Today"/a few days) fetches daily -- meaningful
     # detail, and still cheap since the window itself is small. "Daily" is
-    # only offered as a chart toggle when this initial fetch is actually
-    # daily-resolution -- the client-side toggle just re-buckets whatever was
-    # fetched, so offering "Daily" over an only-ever-fetched-monthly series
-    # would silently show flat/repeated values, not real day-level movement.
+    # "Daily" is always offered as a chart toggle in MAHIS mode, matching the
+    # Run Charts tab under Maternal/Newborn -- available on demand, never the
+    # default. Selecting it doesn't rely on this initial fetch already being
+    # daily-resolution: the grain-toggle callback (_update_country_profile_
+    # chart_grain in renderer.py) holds a "recipe" (refetch, attached below
+    # per chart) describing exactly how to redo this same fetch at whatever
+    # grain is actually requested, mirroring Run Charts' own per-grain-change
+    # server recompute instead of a client-side reshape of stale data (which
+    # can't turn already-aggregated monthly data into real daily detail).
     #
-    # The cutoff has to sit *below* MAHIS's own default window (a rolling 30
-    # days, see MNIDDataSource.default_window()) -- a completely untouched
-    # page load is by far the most common case, and it must land on the
-    # cheap monthly path, not accidentally qualify as "narrow" and trigger
-    # the expensive scan on every single default visit. 7 days cleanly
-    # separates the genuinely short relative periods (Today, Yesterday,
-    # Last 7 Days, This Week, Last Week) from the 30-day default and
-    # anything coarser.
+    # The cutoff below only controls what this *initial* render fetches by
+    # default -- it has to sit below MAHIS's own default window (a rolling
+    # 30 days, see MNIDDataSource.default_window()), since a completely
+    # untouched page load is by far the most common case and must land on
+    # the cheap monthly path, not accidentally qualify as "narrow" and
+    # trigger the expensive scan on every single default visit. 7 days
+    # cleanly separates the genuinely short relative periods (Today,
+    # Yesterday, Last 7 Days, This Week, Last Week) from the 30-day default
+    # and anything coarser.
     _fetch_window_days = (end - start).days if (start is not None and end is not None) else None
     _fetch_grain = 'daily' if (_fetch_window_days is not None and _fetch_window_days <= 7) else 'monthly'
-    _include_daily_toggle = (not use_dhis2) and _fetch_grain == 'daily'
+    _include_daily_toggle = not use_dhis2
 
     period_label = f"{start.strftime('%d %b %Y') if start is not None else 'N/A'} - {end.strftime('%d %b %Y') if end is not None else 'N/A'}"
     updated_label = end.strftime("%d %b %Y, %H:%M") if end is not None else "Unavailable"
@@ -1032,20 +1139,46 @@ def render_country_profile(
         ),
     ]
 
+    # Shared with every chart's "recipe" below (route/scope don't vary per
+    # chart) -- see _refetch_series's module note for why these exist.
+    _recipe_base = {
+        "route": "dhis2" if use_dhis2 else "default",
+        "facility_codes": facility_codes,
+        "districts": districts,
+        "start": start.isoformat() if start is not None else None,
+        "end": end.isoformat() if end is not None else None,
+    }
+    # A single stable-per-render key so every raw-row recipe below recalls
+    # the exact same dataframe instead of each stashing its own duplicate
+    # copy in the disk cache.
+    _cp_df_key = None if use_dhis2 else _remember_ui_payload("cp", df)
+
     if use_dhis2:
         total_births_series = _agg_monthly_series(agg_df, "mnid_lab_core_totalbirths", start, end, facility_codes, districts, grain=_fetch_grain)
+        total_births_recipe = {**_recipe_base, "kind": "agg_single", "mnid_id": "mnid_lab_core_totalbirths"}
         maternal_death_series = _agg_monthly_series(agg_df, "mnid_pnc_overview_004", start, end, facility_codes, districts, grain=_fetch_grain)
+        maternal_death_recipe = {**_recipe_base, "kind": "agg_single", "mnid_id": "mnid_pnc_overview_004"}
         neonatal_death_series = _agg_monthly_series(agg_df, "mnid_nb_overview_002", start, end, facility_codes, districts, grain=_fetch_grain)
+        neonatal_death_recipe = {**_recipe_base, "kind": "agg_single", "mnid_id": "mnid_nb_overview_002"}
         stillbirth_trend_series = _agg_monthly_multiseries({
             "Total stillbirths": ("mnid_lab_overview_005", STILLBIRTH_BLUE),
             "Fresh stillbirths": ("mnid_lab_core_freshstillbirths", "#DB2777"),
             "Macerated stillbirths": ("mnid_lab_core_maceratedstillbirths", "#7C3AED"),
         }, agg_df, start, end, facility_codes, districts, grain=_fetch_grain)
+        stillbirth_trend_recipe = {**_recipe_base, "kind": "agg_multi", "series_map": {
+            "Total stillbirths": ("mnid_lab_overview_005", STILLBIRTH_BLUE),
+            "Fresh stillbirths": ("mnid_lab_core_freshstillbirths", "#DB2777"),
+            "Macerated stillbirths": ("mnid_lab_core_maceratedstillbirths", "#7C3AED"),
+        }}
         # Only used by the row-level maternal/neonatal complication loops below.
         live_birth_denominator_mask = total_birth_denominator_mask = None
     else:
-        maternal_death_series = _monthly_series(df, _yn_mask(df, "mnid_pnc_maternal_death"), "person_id", grain=_fetch_grain)
-        neonatal_death_series = _monthly_series(df, _contains_mask(df, "obs_value_coded", ["Died", "Dead", "Death", "Neonatal death"]), "person_id", grain=_fetch_grain)
+        maternal_death_mask_spec = _yn_spec("mnid_pnc_maternal_death")
+        maternal_death_series = _monthly_series(df, _mask_from_spec(df, maternal_death_mask_spec), "person_id", grain=_fetch_grain)
+        maternal_death_recipe = {**_recipe_base, "kind": "raw_single", "df_key": _cp_df_key, "mask_spec": maternal_death_mask_spec}
+        neonatal_death_mask_spec = _contains_spec("obs_value_coded", ["Died", "Dead", "Death", "Neonatal death"])
+        neonatal_death_series = _monthly_series(df, _mask_from_spec(df, neonatal_death_mask_spec), "person_id", grain=_fetch_grain)
+        neonatal_death_recipe = {**_recipe_base, "kind": "raw_single", "df_key": _cp_df_key, "mask_spec": neonatal_death_mask_spec}
         live_birth_denominator_mask = (
             _contains_mask(df, "concept_name", ["Outcome of the delivery"])
             & _contains_mask(df, "obs_value_coded", ["Live birth", "Live births", "Alive"])
@@ -1067,35 +1200,48 @@ def render_country_profile(
                 ],
             )
         )
+        total_births_mask_spec = _contains_spec("concept_name", ["Outcome of the delivery", "Status of baby", "Admission outcome"])
         total_births_series = _monthly_multiseries({"Total births": (
-            _contains_mask(df, "concept_name", ["Outcome of the delivery", "Status of baby", "Admission outcome"]),
+            _mask_from_spec(df, total_births_mask_spec),
             PRIMARY_GREEN,
         )}, df, grain=_fetch_grain)
         total_births_series = total_births_series[["month", "value"]].copy() if not total_births_series.empty else pd.DataFrame(columns=["month", "value"])
+        total_births_recipe = {**_recipe_base, "kind": "raw_single", "df_key": _cp_df_key, "mask_spec": total_births_mask_spec, "keep_columns": ["month", "value"]}
+        stillbirth_series_specs = {
+            "Total stillbirths": (_yn_spec("mnid_labour_stillbirth"), STILLBIRTH_BLUE),
+            "Fresh stillbirths": (_contains_spec("obs_value_coded", ["Fresh stillbirth", "Fresh still birth"]), "#DB2777"),
+            "Macerated stillbirths": (_contains_spec("obs_value_coded", ["Macerated stillbirth", "Macerated still birth"]), "#7C3AED"),
+        }
         stillbirth_trend_series = _monthly_multiseries({
-            "Total stillbirths": (_yn_mask(df, "mnid_labour_stillbirth"), STILLBIRTH_BLUE),
-            "Fresh stillbirths": (
-                _contains_mask(df, "obs_value_coded", ["Fresh stillbirth", "Fresh still birth"]),
-                "#DB2777",
-            ),
-            "Macerated stillbirths": (
-                _contains_mask(df, "obs_value_coded", ["Macerated stillbirth", "Macerated still birth"]),
-                "#7C3AED",
-            ),
+            label: (_mask_from_spec(df, spec), color) for label, (spec, color) in stillbirth_series_specs.items()
         }, df, grain=_fetch_grain)
+        stillbirth_trend_recipe = {**_recipe_base, "kind": "raw_multi", "df_key": _cp_df_key, "series_map": stillbirth_series_specs}
 
     chart_scope_label = _chart_scope_label(scope_meta)
+    total_birth_denominator_spec = _and_spec(
+        _contains_spec("concept_name", ["Outcome of the delivery", "Status of baby", "Admission outcome"]),
+        _contains_spec("obs_value_coded", [
+            "Live birth", "Live births", "Alive", "Stillbirth",
+            "Fresh stillbirth", "Macerated stillbirth", "Fresh still birth", "Macerated still birth",
+        ]),
+    ) if not use_dhis2 else None
+    live_birth_denominator_spec = _and_spec(
+        _contains_spec("concept_name", ["Outcome of the delivery"]),
+        _contains_spec("obs_value_coded", ["Live birth", "Live births", "Alive"]),
+    ) if not use_dhis2 else None
     maternal_complication_specs = [
-        ("Pre-eclampsia and Eclampsia", MORTALITY_ROSE, _yn_mask(df, "mnid_labour_eclampsia") | _contains_mask(df, "obs_value_coded", ["Pre-eclampsia", "Pre eclampsia", "Preeclampsia", "Eclampsia"])),
-        ("Postpartum Haemorrhage", WARNING_AMBER, _yn_mask(df, "mnid_labour_pph")),
-        ("Maternal Sepsis", "#B91C1C", _yn_mask(df, "mnid_labour_maternal_sepsis")),
-        ("Obstructed or Prolonged Labour", "#7C3AED", _yn_mask(df, "mnid_labour_obstructed_labour") | _contains_mask(df, "obs_value_coded", ["Obstructed labour", "Prolonged labour", "Prolonged Labor"])),
-        ("Ruptured Uterus", "#475569", _contains_mask(df, "obs_value_coded", ["Ruptured uterus", "Uterine rupture"])),
+        ("Pre-eclampsia and Eclampsia", MORTALITY_ROSE, _yn_mask(df, "mnid_labour_eclampsia") | _contains_mask(df, "obs_value_coded", ["Pre-eclampsia", "Pre eclampsia", "Preeclampsia", "Eclampsia"]),
+         _or_spec(_yn_spec("mnid_labour_eclampsia"), _contains_spec("obs_value_coded", ["Pre-eclampsia", "Pre eclampsia", "Preeclampsia", "Eclampsia"]))),
+        ("Postpartum Haemorrhage", WARNING_AMBER, _yn_mask(df, "mnid_labour_pph"), _yn_spec("mnid_labour_pph")),
+        ("Maternal Sepsis", "#B91C1C", _yn_mask(df, "mnid_labour_maternal_sepsis"), _yn_spec("mnid_labour_maternal_sepsis")),
+        ("Obstructed or Prolonged Labour", "#7C3AED", _yn_mask(df, "mnid_labour_obstructed_labour") | _contains_mask(df, "obs_value_coded", ["Obstructed labour", "Prolonged labour", "Prolonged Labor"]),
+         _or_spec(_yn_spec("mnid_labour_obstructed_labour"), _contains_spec("obs_value_coded", ["Obstructed labour", "Prolonged labour", "Prolonged Labor"]))),
+        ("Ruptured Uterus", "#475569", _contains_mask(df, "obs_value_coded", ["Ruptured uterus", "Uterine rupture"]), _contains_spec("obs_value_coded", ["Ruptured uterus", "Uterine rupture"])),
     ]
     neonatal_complication_specs = [
-        ("Birth Asphyxia", "#D97706", _yn_mask(df, "mnid_newborn_birth_asphyxia")),
-        ("Preterm Birth", PRIMARY_GREEN, _yn_mask(df, "mnid_labour_preterm")),
-        ("Neonatal Sepsis", ADMISSIONS_BLUE, _yn_mask(df, "mnid_newborn_sepsis")),
+        ("Birth Asphyxia", "#D97706", _yn_mask(df, "mnid_newborn_birth_asphyxia"), _yn_spec("mnid_newborn_birth_asphyxia")),
+        ("Preterm Birth", PRIMARY_GREEN, _yn_mask(df, "mnid_labour_preterm"), _yn_spec("mnid_labour_preterm")),
+        ("Neonatal Sepsis", ADMISSIONS_BLUE, _yn_mask(df, "mnid_newborn_sepsis"), _yn_spec("mnid_newborn_sepsis")),
     ]
     # All 5 maternal and all 3 neonatal complications have a real DHIS2
     # mapping now (true percentages already computed against
@@ -1103,7 +1249,7 @@ def render_country_profile(
     # get an empty series -- same "no data" rendering _trend_chart_payload
     # already falls back to for sparse MAHIS periods.
     maternal_complication_cards = []
-    for title, color, mask in maternal_complication_specs:
+    for title, color, mask, mask_spec in maternal_complication_specs:
         chart_key = _chart_key_slug(title)
         if use_dhis2:
             mnid_id = _AGG_MATERNAL_COMPLICATION_IDS.get(title)
@@ -1111,8 +1257,11 @@ def render_country_profile(
                 _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct", include_counts=True, grain=_fetch_grain)
                 if mnid_id else pd.DataFrame(columns=["month", "value", "numerator", "denominator"])
             )
+            recipe = {**_recipe_base, "kind": "agg_single", "mnid_id": mnid_id, "value_field": "pct", "include_counts": True} if mnid_id else None
         else:
             series_df = _monthly_rate_series(df, mask, total_birth_denominator_mask, "person_id", include_counts=True, grain=_fetch_grain)
+            recipe = {**_recipe_base, "kind": "raw_rate", "df_key": _cp_df_key, "include_counts": True,
+                      "numerator_mask_spec": mask_spec, "denominator_mask_spec": total_birth_denominator_spec}
         maternal_complication_cards.append(_trend_chart_payload(
             chart_key,
             title,
@@ -1124,9 +1273,10 @@ def render_country_profile(
             scope_label=chart_scope_label,
             include_daily=_include_daily_toggle,
             default_grain=_fetch_grain,
+            refetch=recipe,
         )["card"])
     neonatal_complication_cards = []
-    for title, color, mask in neonatal_complication_specs:
+    for title, color, mask, mask_spec in neonatal_complication_specs:
         chart_key = _chart_key_slug(title)
         if use_dhis2:
             mnid_id = _AGG_NEONATAL_COMPLICATION_IDS.get(title)
@@ -1134,8 +1284,11 @@ def render_country_profile(
                 _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct", include_counts=True, grain=_fetch_grain)
                 if mnid_id else pd.DataFrame(columns=["month", "value", "numerator", "denominator"])
             )
+            recipe = {**_recipe_base, "kind": "agg_single", "mnid_id": mnid_id, "value_field": "pct", "include_counts": True} if mnid_id else None
         else:
             series_df = _monthly_rate_series(df, mask, live_birth_denominator_mask, "person_id", include_counts=True, grain=_fetch_grain)
+            recipe = {**_recipe_base, "kind": "raw_rate", "df_key": _cp_df_key, "include_counts": True,
+                      "numerator_mask_spec": mask_spec, "denominator_mask_spec": live_birth_denominator_spec}
         neonatal_complication_cards.append(_trend_chart_payload(
             chart_key,
             title,
@@ -1147,6 +1300,7 @@ def render_country_profile(
             scope_label=chart_scope_label,
             include_daily=_include_daily_toggle,
             default_grain=_fetch_grain,
+            refetch=recipe,
         )["card"])
 
     total_births_chart = _trend_chart_payload(
@@ -1160,6 +1314,7 @@ def render_country_profile(
         scope_label=chart_scope_label,
         include_daily=_include_daily_toggle,
         default_grain=_fetch_grain,
+        refetch=total_births_recipe,
     )["card"]
     maternal_mortality_chart = _trend_chart_payload(
         "maternal-mortality",
@@ -1172,6 +1327,7 @@ def render_country_profile(
         scope_label=chart_scope_label,
         include_daily=_include_daily_toggle,
         default_grain=_fetch_grain,
+        refetch=maternal_death_recipe,
     )["card"]
     neonatal_mortality_chart = _trend_chart_payload(
         "neonatal-mortality",
@@ -1184,6 +1340,7 @@ def render_country_profile(
         scope_label=chart_scope_label,
         include_daily=_include_daily_toggle,
         default_grain=_fetch_grain,
+        refetch=neonatal_death_recipe,
     )["card"]
     stillbirths_chart = _trend_chart_payload(
         "stillbirths",
@@ -1196,6 +1353,7 @@ def render_country_profile(
         scope_label=chart_scope_label,
         include_daily=_include_daily_toggle,
         default_grain=_fetch_grain,
+        refetch=stillbirth_trend_recipe,
     )["card"]
 
     hero = dmc.Paper(

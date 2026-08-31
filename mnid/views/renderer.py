@@ -29,7 +29,7 @@ from mnid.views.kpi_engine import (
 from mnid.core.data_utils import prepare_mnid_dataframe as _prepare_mnid_dataframe
 from mnid.core.data_source import get_mnid_data_source
 from mnid.dashboards import load_dashboard_module
-from mnid.views.executive_views import render_country_profile, _profile_scope_name
+from mnid.views.executive_views import render_country_profile, _profile_scope_name, _refetch_series
 from mnid.views.operational_readiness import render_operational_readiness
 from mnid.components.run_charts import (
     bucket_multi_series, bucket_time_series,
@@ -710,14 +710,7 @@ def _toggle_country_profile_measure(_n_clicks, stored_measure):
     prevent_initial_call=False,
 )
 def _update_country_profile_chart_grain(grain, measure, stored_rows, meta):
-    if not stored_rows:
-        raise PreventUpdate
-    series_df = pd.DataFrame(stored_rows)
-    if series_df.empty:
-        raise PreventUpdate
     meta = meta or {}
-    if 'month' in series_df.columns:
-        series_df['month'] = pd.to_datetime(series_df['month'], errors='coerce')
     grain       = (grain or 'monthly').strip().lower()
     measure     = (measure or 'median').strip().lower()
     title       = meta.get('title') or 'Chart'
@@ -725,6 +718,31 @@ def _update_country_profile_chart_grain(grain, measure, stored_rows, meta):
     y_title     = meta.get('y_title') or 'Cases'
     is_multi    = bool(meta.get('multi'))
     scope_label = meta.get('scope_label')
+    recipe      = meta.get('refetch')
+
+    # A recipe means this chart can redo its own fetch at whatever grain was
+    # actually requested (see _refetch_series's module note in
+    # executive_views.py) -- but only reach for it when the request is
+    # genuinely "Daily": aggregating already-fetched data *up* to a coarser
+    # grain (Weekly/Monthly/Quarterly/Yearly) is a cheap, lossless, correct
+    # client-side reshape of stored_rows, exactly like before. Real per-day
+    # detail is the one thing that can never be recovered *down* from data
+    # that was only ever fetched at monthly resolution, so that's the only
+    # case worth paying for a fresh fetch -- refetching on every toggle
+    # click regardless of grain would turn Weekly/Quarterly/Yearly (cheap
+    # reshapes today) into full raw-row rescans too.
+    if recipe and grain == 'daily':
+        series_df = _refetch_series(recipe, grain)
+    elif stored_rows:
+        series_df = pd.DataFrame(stored_rows)
+        if 'month' in series_df.columns:
+            series_df['month'] = pd.to_datetime(series_df['month'], errors='coerce')
+    else:
+        raise PreventUpdate
+
+    if series_df is None or series_df.empty:
+        raise PreventUpdate
+
     if is_multi:
         bucketed = bucket_multi_series(series_df.copy(), grain)
         figure   = _multi_run_chart(bucketed, title, y_title, grain=grain, measure=measure, scope_label=scope_label)

@@ -723,6 +723,7 @@ def _trend_chart_payload(
     scope_label: str | None = None,
     include_daily: bool = True,
     default_grain: str | None = None,
+    refetch: dict | None = None,
 ) -> dict:
     # Callers that already know what grain series_df was actually fetched at
     # (e.g. Country Profile deriving it from the selected window's width --
@@ -800,6 +801,14 @@ def _trend_chart_payload(
                         "y_title": y_title,
                         "multi": multi,
                         "scope_label": scope_label,
+                        # A small JSON-serializable "recipe" describing how to
+                        # redo this chart's exact fetch at a freshly-requested
+                        # grain (see _refetch_series in executive_views.py) --
+                        # None for callers that don't need it (e.g. Run
+                        # Charts' own tab, which recomputes server-side on
+                        # every grain change already and never reaches this
+                        # client-rebucket callback at all).
+                        "refetch": refetch,
                     },
                 ),
             ], style={"display": "flex", "alignItems": "center", "gap": "8px"}),
