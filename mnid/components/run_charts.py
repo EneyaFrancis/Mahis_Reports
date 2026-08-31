@@ -156,6 +156,8 @@ def _hex_to_rgba(color: str, alpha: float) -> str:
 def _bucket_start(series: pd.Series, grain: str) -> pd.Series:
     dt = pd.to_datetime(series, errors="coerce")
     grain = str(grain or "monthly").strip().lower()
+    if grain == "daily":
+        return dt.dt.normalize()
     if grain == "weekly":
         return dt.dt.to_period("W-SUN").dt.start_time
     if grain == "quarterly":
@@ -203,6 +205,7 @@ def bucket_time_series(series_df: pd.DataFrame, grain: str, value_col: str = "va
             bucketed["period_start"].min(),
             bucketed["period_start"].max(),
             freq={
+                "daily": "D",
                 "weekly": "W-MON",
                 "monthly": "MS",
                 "quarterly": "QS",
