@@ -491,6 +491,7 @@ def _trend_switcher(
     cat_order   = _resolve_category_order(tracked, categories)
     default_cat = default_cat if default_cat in cat_order else (cat_order[0] if cat_order else 'ANC')
     loc_options = _location_options_for_df(df, scope_meta or {})
+    _mahis_mode = (scope_meta or {}).get('route') != 'dhis2'
 
     ind_opts_by_cat = {
         c: [{'label': i['label'], 'value': i['id']} for i in tracked if i.get('category') == c]
@@ -561,13 +562,20 @@ def _trend_switcher(
                         ),
                         dcc.Dropdown(
                             id='mnid-trend-grain',
-                            options=[
+                            options=(
+                                # DHIS2's aggregate only ever has monthly-grain rows --
+                                # offering "Daily" there would silently show monthly
+                                # data under a misleading label instead of a real
+                                # day-level view, so only offer it in MAHIS mode.
+                                [{'label': 'Daily', 'value': 'daily'}]
+                                if _mahis_mode else []
+                            ) + [
                                 {'label': 'Weekly',    'value': 'weekly'},
                                 {'label': 'Monthly',   'value': 'monthly'},
                                 {'label': 'Quarterly', 'value': 'quarterly'},
                                 {'label': 'Yearly',    'value': 'yearly'},
                             ],
-                            value='monthly',
+                            value='daily' if _mahis_mode else 'monthly',
                             clearable=False,
                             searchable=False,
                             style={'minWidth': '110px', 'fontSize': '12px'},
