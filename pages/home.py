@@ -483,7 +483,7 @@ path = os.getcwd()
 # BUILD CHARTS
 PREMIUM_DASHBOARD_REPORTS = {"Maternal and Child Health"}
 
-def _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, is_network=False):
+def _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, programs=None, is_network=False):
     """Return SQL WHERE clause parts for the given scope and level.
 
     is_network=True omits the per-facility filter so the network query covers
@@ -510,7 +510,47 @@ def _scope_where_parts(effective_level, location, districts, user_districts, fac
             parts.append(f"{FACILITY_} IN ({quoted_facilities})")
     if age:
         parts.append(f"{AGE_GROUP_} = '{age}'")
+    if programs:
+        quoted_programs = ", ".join([f"'{p}'" for p in programs])
+        parts.append(f"{PROGRAM_} IN ({quoted_programs})")
     return parts
+
+
+def _format_active_filter(label, value):
+    """Render one filter as 'Label[value]', or 'Label[*]' when multiple values
+    are selected. Returns None when the filter has nothing selected."""
+    if not value:
+        return None
+    if isinstance(value, (list, tuple)):
+        display = value[0] if len(value) == 1 else "*"
+    else:
+        display = value
+    return f"{label}[{display}]"
+
+
+def _build_active_filters_display(period_type, facilities, programs, districts):
+    """Minimal 'Active Filters: ...' summary (bold orange), shown only when at
+    least one of the four tracked filters is set. Returns
+    (banner_children, clear_link_style) -- clear-filters-link itself lives in
+    the static layout (see filter-period-text's sibling) and is just toggled
+    via style here, since it has to already exist at page load."""
+    active_parts = [
+        p for p in (
+            _format_active_filter("Period", period_type),
+            _format_active_filter("Facility", facilities),
+            _format_active_filter("Program", programs),
+            _format_active_filter("District", districts),
+        ) if p
+    ]
+    if not active_parts:
+        return "", {"display": "none"}
+    banner = html.Span(
+        f"Active Filters: {', '.join(active_parts)}",
+        style={"fontWeight": "700", "color": "#f59e0b"},
+    )
+    link_style = {"color": "#2563eb", "textDecoration": "underline",
+                  "cursor": "pointer", "fontWeight": "400", "marginLeft": "6px"}
+    return banner, link_style
 
 
 def build_charts_from_json(filtered_query, filtered_with_range_query, delta_days, dashboards_json, filter_summary=None,
@@ -860,6 +900,16 @@ layout = html.Div(
                                 className="modern-dropdown",
                             ),
                         ]),
+                        # Program Filter (raw Program column, options from this
+                        # route's dcc_dropdown_json/dropdowns.json["programs"])
+                        html.Div(id="dashboard-program-filter-group", className="filter-group", children=[
+                            html.Label("Program", className="filter-label"),
+                            dcc.Dropdown(
+                                id='dashboard-program-filter',
+                                options=[], value=[], multi=True, clearable=True,
+                                className="modern-dropdown", placeholder="Select program(s)",
+                            ),
+                        ]),
                         # Program Category Filter
                         html.Div(id="dashboard-category-filter-group", className="filter-group", children=[
                             html.Label("Program Category", className="filter-label"),
@@ -965,7 +1015,18 @@ layout = html.Div(
                             style={"fontWeight":"400",
                                    "color":"grey",
                                    "fontSize":"12px"}
-                            )
+                            ),
+                        # Static from page load (hidden by default) rather than
+                        # nested inside filter-period-text's dynamic children --
+                        # Dash's frontend rejects a plain Input id that isn't
+                        # part of the initial layout, so this has to always
+                        # exist and just be toggled via style instead.
+                        html.Span(
+                            "clear filters",
+                            id="clear-filters-link",
+                            n_clicks=0,
+                            style={"display": "none"},
+                        ),
                     ],
                 ),
                 # Menu Section
@@ -1720,21 +1781,39 @@ def sync_filter_cascade(level, districts, moh_level, urlparams, active_report):
 
 
 @callback(
+    Output('dashboard-program-filter', 'options'),
+    Input('url-params-store', 'data'),
+)
+def load_program_filter_options(urlparams):
+    data_route = (urlparams or {}).get('route', ["default"])[0]
+    dropdowns_path = os.path.join(path, f'data/{data_route}', 'dcc_dropdown_json', 'dropdowns.json')
+    try:
+        with open(dropdowns_path, 'r') as f:
+            programs = json.load(f).get('programs', [])
+    except (FileNotFoundError, json.JSONDecodeError):
+        programs = []
+    return [{'label': p, 'value': p} for p in programs]
+
+
+@callback(
     [Output('dashboard-container', 'children'),
      Output('dashboard-level-filter', 'value'),
      Output('filter-period-text', 'children'),
+     Output('clear-filters-link', 'style'),
      Output('dashboard-render-state', 'data')],
     [
-        # Only these four re-render the dashboard immediately: clicking "Apply
-        # Filters", clicking a menu button, or navigating (URL/route change).
-        # Every actual filter control below is a State, not an Input, so
-        # changing a dropdown or the date range no longer applies live --
-        # the user has to click Apply Filters first. District/Facility
-        # dropdown *options* are refreshed live by sync_filter_cascade above.
+        # Only these five re-render the dashboard immediately: clicking "Apply
+        # Filters", clicking a menu button, navigating (URL/route change), or
+        # clicking "clear filters". Every actual filter control below is a
+        # State, not an Input, so changing a dropdown or the date range no
+        # longer applies live -- the user has to click Apply Filters first.
+        # District/Facility dropdown *options* are refreshed live by
+        # sync_filter_cascade above.
         Input('dashboard-btn-generate', 'n_clicks'),
         Input({"type": "menu-button", "name": ALL}, "n_clicks"),
         Input('url', 'pathname'),
         Input('url-params-store', 'data'),
+        Input('clear-filters-link', 'n_clicks'),
     ],
     [
         State('dashboard-date-range-picker', 'start_date'),
@@ -1744,19 +1823,32 @@ def sync_filter_cascade(level, districts, moh_level, urlparams, active_report):
         State('dashboard-facility-filter', 'value'),
         State('dashboard-overview-filter', 'value'),
         State('dashboard-category-filter', 'value'),
+        State('dashboard-program-filter', 'value'),
         State('dashboard-moh-level-filter', 'value'),
         State('dashboard-age-filter', 'value'),
+        State('dashboard-period-type-filter', 'value'),
         State('active-button-store', 'data'),
         State('mnid-active-tab-store', 'data'),
     ],
 )
-def update_dashboard(gen, menu_clicks, pathname, urlparams,
+def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks,
                      start_date, end_date, level,
-                     districts, facilities, overview, category,
-                     moh_level, age, current_active, active_mnid_tab):
+                     districts, facilities, overview, category, programs,
+                     moh_level, age, period_type, current_active, active_mnid_tab):
     try:
         ctx = callback_context
         triggered_id = ctx.triggered[0]['prop_id'] if ctx.triggered else None
+
+        is_clearing_filters = triggered_id == 'clear-filters-link.n_clicks'
+        if is_clearing_filters:
+            # "clear filters" both re-renders the dashboard unfiltered and
+            # blanks the Active Filters banner -- resetting just the dropdown
+            # widgets (as dashboard-btn-reset does) wouldn't touch either of
+            # those, since this callback is the only thing that writes them.
+            # start_date/end_date get reset further down, once default_end
+            # (the anchor date) is available.
+            districts, facilities, programs = [], [], []
+            category, age, period_type = "All", None, DEFAULT_RELATIVE_PERIOD
 
         data_route = (urlparams or {}).get('route', ["default"])[0]
         dataset_version = _dataset_version_token(data_route)
@@ -1796,6 +1888,14 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams,
         default_start, default_end = _default_date_window(date_route)
         if date_route == 'dhis2':
             start_date, end_date = _resolve_dhis2_date_window(start_date, end_date)
+        if is_clearing_filters:
+            # Recompute from DEFAULT_RELATIVE_PERIOD directly (not the
+            # unrelated 30-day _default_date_window fallback) so "clear
+            # filters" reloads exactly the window Relative Period would
+            # resolve to, anchored the same way sync_picker_with_logic
+            # anchors it (to the latest available data, not the literal
+            # calendar date).
+            start_date, end_date = get_relative_date_range(DEFAULT_RELATIVE_PERIOD, current_date=default_end)
         start_dt = pd.to_datetime(start_date or default_start).replace(hour=0, minute=0, second=0)
         end_dt = pd.to_datetime(end_date or default_end).replace(hour=23, minute=59, second=59)
         default_start_date = start_dt - pd.Timedelta(days=DEFAULT_DASHBOARD_DAYS)
@@ -1811,7 +1911,7 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams,
         )
         if resolved is None:
             return (html.Div("Unauthorized User. Please contact system administrator."), level,
-                    "", {'status': 'unauthorized'})
+                    "", {"display": "none"}, {'status': 'unauthorized'})
 
         scope           = resolved['scope']
         user_level      = resolved['user_level']
@@ -1830,8 +1930,8 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams,
         active_dists = (districts or user_districts) if effective_level == 'district' else (districts or [])
         delta_days = max((end_dt - start_dt).days, 1)
 
-        filtered_parts = _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, is_network=False)
-        network_parts  = _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, is_network=True)
+        filtered_parts = _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, programs=programs, is_network=False)
+        network_parts  = _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, programs=programs, is_network=True)
         scope_suffix   = (" AND " + " AND ".join(filtered_parts)) if filtered_parts else ""
         network_suffix = (" AND " + " AND ".join(network_parts))  if network_parts  else ""
 
@@ -1920,11 +2020,12 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams,
 
         dashboard_content = html.Div(rendered) if len(rendered) > 1 else (rendered[0] if rendered else html.Div("No dashboard selected."))
 
-        
+        banner_children, clear_link_style = _build_active_filters_display(period_type, facilities, programs, districts)
         return (
             dashboard_content,
             level,
-            f"{start_dt} - {end_dt}",
+            banner_children,
+            clear_link_style,
             {
                 'status': 'ok',
                 'selected_reports': selected_reports,
@@ -1957,6 +2058,7 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams,
                 html.P(f"{type(e).__name__}", style={"color": "#64748b", "fontSize": "12px", "fontWeight": "600"}),
                 html.P(str(e), style={"color": "#94A3B8", "fontSize": "12px"}),
             ]),
+            dash.no_update,
             dash.no_update,
             dash.no_update,
             dash.no_update,
@@ -2030,12 +2132,14 @@ def sync_picker_with_logic(period_type, n, current_active, urlparams):
      Output('dashboard-facility-filter', 'value', allow_duplicate=True),
      Output('dashboard-overview-filter', 'value', allow_duplicate=True),
      Output('dashboard-category-filter', 'value', allow_duplicate=True),
+     Output('dashboard-program-filter', 'value', allow_duplicate=True),
      Output('dashboard-age-filter', 'value', allow_duplicate=True)],
-    Input('dashboard-btn-reset', 'n_clicks'),
+    [Input('dashboard-btn-reset', 'n_clicks'),
+     Input('clear-filters-link', 'n_clicks')],
     prevent_initial_call=True
 )
-def reset_ui_controls(n_clicks):
-    return DEFAULT_RELATIVE_PERIOD, None, [], [], [], "All", None
+def reset_ui_controls(reset_clicks, clear_link_clicks):
+    return DEFAULT_RELATIVE_PERIOD, None, [], [], [], "All", [], None
 
 @callback(
     [Output('dashboard-period-type-filter', 'style'),
