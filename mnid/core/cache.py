@@ -22,8 +22,8 @@ _EXECUTIVE_CACHE_DIR = os.environ.get('MNID_EXEC_CACHE_DIR') or os.path.join(
 )
 _MNID_EXECUTIVE_DISK_CACHE = diskcache.Cache(_EXECUTIVE_CACHE_DIR, size_limit=512 * 1024 * 1024)
 _MNID_WARNED_MESSAGES: set = set()
-_COUNTRY_PROFILE_RENDER_VERSION = "country-profile-v34-jaundice-rds-dedicated"
-_EXECUTIVE_RENDER_VERSION = "executive-v36-jaundice-rds-dedicated"
+_COUNTRY_PROFILE_RENDER_VERSION = "country-profile-v37-runcharts-respect-window"
+_EXECUTIVE_RENDER_VERSION = "executive-v39-runcharts-respect-window"
 
 
 _network_df_cache: dict = {}

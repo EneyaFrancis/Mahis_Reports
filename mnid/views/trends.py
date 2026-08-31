@@ -292,6 +292,8 @@ def _run_chart_cards(
     fallback_df: pd.DataFrame | None = None,
     grain: str = 'monthly',
     measure: str = 'median',
+    start_date=None,
+    end_date=None,
 ) -> list:
     tracked = [i for i in indicators if i.get('status') == 'tracked' and i.get('category') == cat]
     if selected_ids:
@@ -334,6 +336,18 @@ def _run_chart_cards(
         _ind_ids   = {_agg_resolve_id(agg_df, i['id'], i.get('label')) for i in tracked}
         _grain_set = set(_agg_candidate_grains(grain))
         _amask = agg_df['grain'].isin(_grain_set) & agg_df['indicator_id'].isin(_ind_ids)
+        # This branch only runs when there are no raw MAHIS rows to derive a
+        # date bound from (always true for the DHIS2 route, which never
+        # populates raw rows) -- without applying the selected window here
+        # too, it fell through to the *entire* aggregate's history (every
+        # period ever synced), completely ignoring whatever Relative Period
+        # was actually selected. Floor start_date to the period boundary
+        # the same way query_coverage()/_build_agg_batch() do, so a mid-month
+        # start_date still finds that month's row.
+        if start_date is not None:
+            _amask &= agg_df['period_start'] >= min(_agg_floor_period(start_date, g) for g in _grain_set)
+        if end_date is not None:
+            _amask &= agg_df['period_start'] <= pd.Timestamp(end_date)
         if fac_filter:
             _amask &= agg_df['facility_code'].isin([str(f) for f in fac_filter])
         elif dist_filter:
@@ -470,6 +484,8 @@ def _trend_switcher(
     default_cat: str | None = None,
     scope_meta: dict | None = None,
     payload_key: str | None = None,
+    start_date=None,
+    end_date=None,
 ) -> html.Div:
     tracked     = [i for i in indicators if i.get('status') == 'tracked']
     cat_order   = _resolve_category_order(tracked, categories)
@@ -495,6 +511,14 @@ def _trend_switcher(
         'data_key':        _remember_ui_payload('trend', df, stable_key=payload_key),
         'date_min':        _date_min,
         'date_max':        _date_max,
+        # The actual selected Relative Period / Custom Date Range, distinct
+        # from date_min/date_max above (which reflect the raw dataframe's
+        # own bounds, not what the user picked). update_trend_chart threads
+        # these into _run_chart_cards so its aggregate-fallback branch (the
+        # one DHIS2 always takes, having no raw rows) is bounded by what was
+        # actually selected instead of showing the whole synced history.
+        'start_date':      str(start_date) if start_date is not None else None,
+        'end_date':        str(end_date) if end_date is not None else None,
         'scope_meta':      scope_meta or {},
         'loc_options':     loc_options,
         'ind_opts_by_cat': ind_opts_by_cat,
@@ -646,6 +670,7 @@ def update_trend_chart(n_clicks_list, location, selected_inds, grain, measure_cl
         df, tracked, cat, location or 'all',
         default_ind_values if cat_changed else selected_inds,
         scope_meta, agg_df=_agg_now, fallback_df=_df_full, grain=grain, measure=measure,
+        start_date=trend_payload.get('start_date'), end_date=trend_payload.get('end_date'),
     )
     # Truncate to match the number of buttons actually on the page.
     # On initial page load the maternal tab hasn't rendered yet so n_clicks_list=[]
