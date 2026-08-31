@@ -325,6 +325,22 @@ def _run_chart_cards(
 
     if have_raw_rows:
         plot_df, fac_filter, dist_filter = _trend_scope_filters(source_df, location)
+        # _trend_scope_filters only narrows by facility/district -- it has no
+        # idea what Relative Period / Custom Date Range is selected, so
+        # without filtering to [start_date, end_date] here too, this branch
+        # showed the raw dataset's *entire* history regardless of what was
+        # picked (e.g. selecting "Today" still showed data going back
+        # however far the underlying rows happen to start). The aggregate
+        # fallback branch below already applies this same window; raw rows
+        # need the identical treatment.
+        if 'Date' in plot_df.columns:
+            _plot_dates = pd.to_datetime(plot_df['Date'], errors='coerce')
+            if start_date is not None:
+                plot_df = plot_df[_plot_dates >= pd.Timestamp(start_date)]
+                _plot_dates = _plot_dates[_plot_dates >= pd.Timestamp(start_date)]
+            if end_date is not None:
+                _end_ts = pd.Timestamp(end_date) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+                plot_df = plot_df[_plot_dates <= _end_ts]
         dates = pd.to_datetime(plot_df['Date'], errors='coerce').dropna() if 'Date' in plot_df.columns else pd.Series([], dtype='datetime64[ns]')
         if not dates.empty:
             plot_df, periods, tickfmt, hfmt = _trend_period_context(plot_df, grain)
@@ -441,6 +457,19 @@ def _run_chart_cards(
                     _lm = _fb['District'].astype(str) == str(location)
                     if _lm.any():
                         _fb = _fb[_lm]
+            # Same reasoning as the top-level plot_df window filter above --
+            # fallback_df is rebuilt fresh from scratch here (a different,
+            # per-indicator reconstruction), so it needs the exact same
+            # [start_date, end_date] narrowing or it silently ignores
+            # whatever Relative Period / Custom Date Range was selected.
+            if 'Date' in _fb.columns:
+                _fb_all_dates = pd.to_datetime(_fb['Date'], errors='coerce')
+                if start_date is not None:
+                    _fb = _fb[_fb_all_dates >= pd.Timestamp(start_date)]
+                    _fb_all_dates = _fb_all_dates[_fb_all_dates >= pd.Timestamp(start_date)]
+                if end_date is not None:
+                    _fb_end_ts = pd.Timestamp(end_date) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
+                    _fb = _fb[_fb_all_dates <= _fb_end_ts]
             _fb_dates = pd.to_datetime(_fb['Date'], errors='coerce').dropna() if 'Date' in _fb.columns else pd.Series([], dtype='datetime64[ns]')
             if not _fb_dates.empty:
                 _fb, _fb_periods, _fb_tickfmt, _fb_hfmt = _trend_period_context(_fb, grain)
