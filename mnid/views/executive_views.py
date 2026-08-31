@@ -83,6 +83,63 @@ def _two_column_chart_grid(children: list, gap: str = "18px", margin_bottom: str
     )
 
 
+def _exec_alert_banner(maternal_deaths: int, mmr: float, neonatal_deaths: int, stillbirths: int) -> html.Div:
+    items = []
+    if maternal_deaths > 0:
+        items.append(("Maternal deaths", maternal_deaths, f"MMR {mmr:.0f} per 100,000 live births"))
+    if neonatal_deaths > 0:
+        items.append(("Neonatal deaths", neonatal_deaths, "Recorded in the selected period"))
+    if stillbirths > 0:
+        items.append(("Stillbirths", stillbirths, "Recorded in the selected period"))
+    if not items:
+        return html.Div()
+
+    return html.Div(
+        style={
+            "display": "flex", "alignItems": "flex-start", "gap": "12px",
+            "background": "#FFF7ED", "border": "1px solid #FED7AA",
+            "borderRadius": "10px", "padding": "10px 14px",
+            "marginBottom": "20px",
+        },
+        children=[
+            html.Div(style={
+                "display": "flex", "flexDirection": "column",
+                "alignItems": "center", "gap": "3px", "flexShrink": "0",
+            }, children=[
+                html.Div(style={
+                    "width": "10px", "height": "10px", "borderRadius": "50%",
+                    "background": "#EF4444",
+                    "animation": "mnid-dot-blink 1.3s ease-in-out infinite",
+                }),
+                html.Span(f"{sum(c for _, c, _ in items)}", style={
+                    "fontSize": "15px", "fontWeight": "800", "color": "#DC2626", "lineHeight": "1",
+                }),
+                html.Span("events", style={"fontSize": "8px", "color": "#9A3412", "lineHeight": "1"}),
+            ]),
+            html.Div(style={"width": "1px", "alignSelf": "stretch", "background": "#FED7AA", "flexShrink": "0"}),
+            html.Div(style={"flex": "1", "minWidth": "0"}, children=[
+                html.Div("Priority Alert", style={
+                    "fontSize": "12px", "fontWeight": "800", "color": "#9A3412", "marginBottom": "4px",
+                }),
+                html.Div("Maternal, neonatal, or stillbirth deaths were recorded in this reporting window.", style={
+                    "fontSize": "11px", "color": "#9A3412", "marginBottom": "8px",
+                }),
+                html.Div([
+                    html.Div([
+                        html.Span(label, style={"fontSize": "11px", "fontWeight": "700", "color": "#7C2D12"}),
+                        html.Span(f"{count:,}", style={"fontSize": "18px", "fontWeight": "800", "color": "#991B1B"}),
+                        html.Span(sub, style={"fontSize": "10px", "color": "#9A3412"}),
+                    ], style={
+                        "padding": "8px 10px", "borderRadius": "10px", "background": "#FFF",
+                        "border": "1px solid #FED7AA", "minWidth": "160px", "flex": "1",
+                    })
+                    for label, count, sub in items
+                ], style={"display": "flex", "gap": "10px", "flexWrap": "wrap"}),
+            ]),
+        ]
+    )
+
+
 DISTRICT_REGION_ZONE = {
     "Blantyre": ("Southern Region", "Blantyre Zone"),
     "Chikwawa": ("Southern Region", "Blantyre Zone"),
@@ -1196,6 +1253,19 @@ def render_country_profile(
         "borderRadius": "10px", "overflow": "hidden", "marginBottom": "20px",
     })
 
+    # ---------- Alert banner ----------
+    alert = None
+    _md = current_metrics["maternal_deaths"]
+    _nd = current_metrics["neonatal_deaths"]
+    _sb = current_metrics["stillbirths"]
+    if _md > 0 or _nd > 0 or _sb > 0:
+        alert = _exec_alert_banner(
+            maternal_deaths=_md,
+            mmr=current_metrics["institutional_mmr"],
+            neonatal_deaths=_nd,
+            stillbirths=_sb,
+        )
+
     scope_map = {item["label"]: item["value"] for item in scope_items}
     capture_store = _capture_store(
         facility_name=scope_map.get("Facility", profile_name["eyebrow"]),
@@ -1211,6 +1281,7 @@ def render_country_profile(
         children=[
             capture_store,
             hero,
+            *([alert] if alert else []),
             scope_band,
             _section_header("Country Summary · Current Reporting Period"),
             _responsive_grid(summary_cards, min_width="200px", gap="14px"),
