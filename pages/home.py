@@ -439,7 +439,16 @@ def get_enabled_dashboard_menu():
     config = load_dashboard_tab_config()
 
     if config["mode"] == "mnh_only":
-        allowed_reports = {"Maternal Health"}
+        # "mnh_only" means Maternal & Newborn Health only (see the MNH-*
+        # naming used throughout this feature -- MNH-Beginnings, MNH-MoH,
+        # MNH-Nest360) -- restricting to just the "Maternal Health" report
+        # name silently dropped the separate top-level "Newborn" report,
+        # which only DHIS2 route ever showed (there, Newborn is loaded as
+        # a companion tab bundled *inside* the "Maternal Health" render,
+        # bypassing this menu filter entirely -- MAHIS route treats them
+        # as two fully separate top-level reports, so it needs both names
+        # listed here explicitly).
+        allowed_reports = {"Maternal Health", "Newborn"}
     elif config["visible_reports"]:
         allowed_reports = set(config["visible_reports"])
     else:
