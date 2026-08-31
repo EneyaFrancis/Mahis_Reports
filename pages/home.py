@@ -177,6 +177,18 @@ def _latest_available_date(route: str = 'default') -> pd.Timestamp | None:
 
 
 def _default_date_window(route: str = 'default'):
+    # DHIS2 reports monthly, not daily -- defaulting to "today" (or a
+    # rolling 30-day window ending near today) either shows an
+    # incomplete/empty current month or straddles two incomparable months.
+    # Default instead to the last 6 complete calendar months, ending at the
+    # latest reported month -- see MNIDDataSource.default_window(). MAHIS
+    # (below, unchanged) keeps its rolling-30-day-ending-today window since
+    # it aggregates daily and "today" is a meaningful anchor there.
+    if route == 'dhis2':
+        window = get_mnid_data_source(source='dhis2').default_window()
+        if window is not None:
+            return window
+
     route_data_path = Path(path) / 'data' / route / 'parquet'
     hmis_path = Path(path) / 'mnid' / 'data' / 'dhis2' / 'aggregates' / 'hmis_test.parquet'
     if route != 'dhis2' and not route_data_path.exists() and hmis_path.exists():
@@ -820,8 +832,19 @@ layout = html.Div(
                                 min_date_allowed="2023-01-01",
                                 max_date_allowed="2050-01-01",
                                 initial_visible_month=datetime.now(),
-                                start_date=_default_date_window()[0],
-                                end_date=_default_date_window()[1],
+                                # This is the DatePickerRange's static initial value, computed
+                                # once at layout-build time -- there's no selected report yet
+                                # to check via _is_dhis2_mnid_report, but MNID_DATA_SOURCE is a
+                                # global config flag, so gate directly on the data source like
+                                # _is_dhis2_mnid_report itself does. Getting this wrong matters:
+                                # sync_picker_with_logic (which normally corrects a stale/wrong
+                                # relative-period window) has prevent_initial_call=True, so it
+                                # never runs on first page load -- whatever lands here is what
+                                # the very first render (and the first update_dashboard call,
+                                # since resolve_window() preserves any range that overlaps
+                                # DHIS2's data instead of replacing it) actually uses.
+                                start_date=_default_date_window('dhis2' if get_mnid_data_source().source == 'dhis2' else 'default')[0],
+                                end_date=_default_date_window('dhis2' if get_mnid_data_source().source == 'dhis2' else 'default')[1],
                                 display_format='YYYY-MM-DD',
                                 className="modern-datepicker",
                                 number_of_months_shown=1,
@@ -1941,11 +1964,13 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams,
 
 @callback(
     [Output('dashboard-date-range-picker', 'start_date'),
-     Output('dashboard-date-range-picker', 'end_date')],
+     Output('dashboard-date-range-picker', 'end_date'),
+     Output('dashboard-period-type-filter', 'value', allow_duplicate=True)],
     [Input('dashboard-period-type-filter', 'value'),
      Input('dashboard-interval-update-today', 'n_intervals'),
      Input('active-button-store', 'data')],
     [State('url-params-store', 'data')],
+    prevent_initial_call=True,
 )
 def sync_picker_with_logic(period_type, n, current_active, urlparams):
     ctx = callback_context
@@ -1964,6 +1989,18 @@ def sync_picker_with_logic(period_type, n, current_active, urlparams):
     default_start, default_end = _default_date_window(date_route)
     anchor = default_end
 
+    # "Today" is the dropdown's own untouched initial value -- meaningless
+    # for DHIS2's monthly grain (it collapsed the whole range to a single
+    # day, completely bypassing _default_date_window's 6-month default
+    # below). Auto-switch it to "Last 6 Months" -- both the picker's dates
+    # AND the dropdown's own displayed label -- the first time a DHIS2
+    # report becomes active while it's still sitting on that default. A
+    # period_type the user actually picked themselves (anything other than
+    # the untouched 'Today') is left alone, same as before.
+    if date_route == 'dhis2' and period_type in (None, '', 'Today'):
+        s, e = get_relative_date_range('Last 6 Months', current_date=anchor)
+        return (s or default_start), (e or default_end), 'Last 6 Months'
+
     if triggered_id == "dashboard-interval-update-today":
         # This used to silently snap Custom Date Range back to "Today"
         # every 10 minutes whenever Relative Period was still on its
@@ -1977,13 +2014,14 @@ def sync_picker_with_logic(period_type, n, current_active, urlparams):
         # this callback, and with Relative Period still sitting on whatever
         # it was last set to, the code below would silently overwrite a
         # custom range back to that stale relative period's dates. Leave
-        # whatever's currently in the picker alone here.
+        # whatever's currently in the picker alone here. (The DHIS2/"Today"
+        # auto-switch above already handled the one case worth overriding.)
         raise PreventUpdate
     if period_type:
         s, e = get_relative_date_range(period_type, current_date=anchor)
         if s and e:
-            return s, e
-    return default_start, default_end
+            return s, e, period_type
+    return default_start, default_end, (period_type or DEFAULT_RELATIVE_PERIOD)
 
 @callback(
     [Output('dashboard-period-type-filter', 'value', allow_duplicate=True),

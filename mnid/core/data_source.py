@@ -61,10 +61,23 @@ class MNIDDataSource:
         return start, end
 
     def default_window(self, days: int = 30) -> tuple[object, object] | None:
-        """Return a recent window anchored to this source's latest report."""
+        """Return a recent window anchored to this source's latest report.
+
+        DHIS2 reports monthly, not daily -- a rolling N-day window ending
+        "today" (or even at the latest reported date) either straddles two
+        incomparable months or lands mostly inside a still-being-entered
+        current month. Default instead to the last 6 complete calendar
+        months ending at the latest reported month (`available_end` is
+        already month-end aligned for dhis2, see reporting_bounds() above).
+        MAHIS keeps the original rolling N-day window -- it aggregates
+        daily, so "today" is a meaningful anchor there.
+        """
         _, available_end = self.reporting_bounds()
         if available_end is None:
             return None
+        if self.source == 'dhis2':
+            start = (available_end.replace(day=1) - pd.DateOffset(months=5)).normalize()
+            return start.date(), available_end.date()
         start = available_end - pd.Timedelta(days=max(days - 1, 0))
         return start.date(), available_end.date()
 

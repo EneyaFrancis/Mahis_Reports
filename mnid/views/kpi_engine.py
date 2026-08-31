@@ -518,7 +518,10 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
 
     from mnid.views.trends import _trend_switcher
     _t2 = _time.monotonic()
-    trend_switcher = _trend_switcher(facility_df, display_inds, scope_meta=scope_meta, payload_key=payload_key)
+    trend_switcher = _trend_switcher(
+        facility_df, display_inds, scope_meta=scope_meta, payload_key=payload_key,
+        start_date=_s, end_date=_e,
+    )
     _LOGGER.info('MNID timing: trend_switcher %.2fs', _time.monotonic() - _t2)
 
     _t3 = _time.monotonic()
