@@ -22,8 +22,8 @@ _EXECUTIVE_CACHE_DIR = os.environ.get('MNID_EXEC_CACHE_DIR') or os.path.join(
 )
 _MNID_EXECUTIVE_DISK_CACHE = diskcache.Cache(_EXECUTIVE_CACHE_DIR, size_limit=512 * 1024 * 1024)
 _MNID_WARNED_MESSAGES: set = set()
-_COUNTRY_PROFILE_RENDER_VERSION = "country-profile-v17-neonatal-run-charts"
-_EXECUTIVE_RENDER_VERSION = "executive-v13-neonatal-run-charts"
+_COUNTRY_PROFILE_RENDER_VERSION = "country-profile-v43-runcharts-precomputed-grain-guard"
+_EXECUTIVE_RENDER_VERSION = "executive-v45-runcharts-precomputed-grain-guard"
 
 
 _network_df_cache: dict = {}
@@ -179,6 +179,22 @@ def _resolve_scope_filters(df: pd.DataFrame, scope_meta: dict | None = None) -> 
                     selected_facility_codes.extend(name_to_codes.get(facility_name, []))
 
         selected_facility_codes = list(dict.fromkeys(selected_facility_codes))
+
+    if (scope_meta or {}).get('route') == 'dhis2' and selected_facility_codes:
+        # The assumption below ("DHIS2-route views pass an empty df") is
+        # false whenever network_df is the real MAHIS-shaped dataframe (it
+        # usually is) -- a facility present in both MAHIS and DHIS2, like
+        # "Kamuzu Central Hospital", then resolves to its *MAHIS* code
+        # (e.g. '201') via the block above, which the DHIS2 aggregate has
+        # never heard of -- every facility-scoped DHIS2 query then silently
+        # matches zero rows (0/0 everywhere) instead of falling back to the
+        # crosswalk. Confirmed live 2026-08-26. Validate the MAHIS-resolved
+        # codes are actually known DHIS2 codes before trusting them; if none
+        # are, discard them so the crosswalk fallback below runs instead.
+        from mnid.core.dhis2_facilities import dhis2_known_facility_codes
+        _known_dhis2_codes = dhis2_known_facility_codes()
+        if not any(code in _known_dhis2_codes for code in selected_facility_codes):
+            selected_facility_codes = []
 
     if not selected_facility_codes and selected_facilities:
         # DHIS2-route views pass an empty/no-Facility_CODE df here (DHIS2

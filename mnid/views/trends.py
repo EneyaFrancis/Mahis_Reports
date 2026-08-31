@@ -161,9 +161,19 @@ def _indicator_run_fig(
             d_vals.append(d_val)
 
     period_labels = [_format_grain_label(pd.Timestamp(x), grain) for x in xs]
-    smoothed, _   = _moving_average_values(ys, grain, method=measure)
-    measure_label = 'Median' if measure == 'median' else 'Moving avg'
-    valid_ys      = [y for y in smoothed if y is not None]
+    # Median mode plots the real values as the line itself (not a rolling
+    # median hiding the actual trend) and gets its own flat median reference
+    # line instead -- same idea as the target line. Moving average keeps its
+    # existing behavior: the smoothed rolling mean IS the line.
+    if measure == 'median':
+        plotted = ys
+        median_value = pd.Series([y for y in ys if y is not None], dtype='float64').median()
+        median_value = None if pd.isna(median_value) else float(median_value)
+    else:
+        plotted, _ = _moving_average_values(ys, grain, method=measure)
+        median_value = None
+    measure_label = 'Moving avg'
+    valid_ys      = [y for y in plotted if y is not None]
     if not valid_ys:
         return go.Figure(layout={
             'paper_bgcolor': 'white', 'plot_bgcolor': 'white', 'height': 220,
@@ -184,8 +194,15 @@ def _indicator_run_fig(
             showlegend=False,
             hovertemplate=f'Target: {target}%<extra></extra>',
         ))
+    if median_value is not None:
+        traces.append(go.Scatter(
+            x=period_labels, y=[median_value] * len(period_labels), mode='lines',
+            line={'color': '#6366F1', 'width': 1.4, 'dash': 'dot'},
+            showlegend=False,
+            hovertemplate=f'Median: {median_value:.1f}%<extra></extra>',
+        ))
 
-    valid_pts = [(x, label, y, raw) for x, label, y, raw in zip(xs, period_labels, smoothed, ys) if y is not None]
+    valid_pts = [(x, label, y, raw) for x, label, y, raw in zip(xs, period_labels, plotted, ys) if y is not None]
     kp_set, key_pts = set(), []
     for pt in [valid_pts[0], valid_pts[-1]]:
         if pt[1] not in kp_set:
@@ -201,35 +218,55 @@ def _indicator_run_fig(
         showlegend=False,
         hovertemplate='%{x}: %{y:.0f}%<extra></extra>',
     ))
-    traces.append(go.Scatter(
-        x=period_labels, y=smoothed, mode='lines+markers',
-        line={'color': color, 'width': 3.2, 'shape': 'spline', 'smoothing': 0.45},
-        marker={'size': 6, 'color': color, 'line': {'color': '#fff', 'width': 1.2}},
-        fill='tozeroy', fillcolor=_hex_to_rgba(color, 0.08),
-        connectgaps=False, showlegend=False,
-        customdata=list(zip(period_labels, n_vals, d_vals, ys)),
-        hovertemplate=(
+    if measure == 'median':
+        main_hovertemplate = (
+            '<b>%{customdata[0]}</b><br>'
+            'Actual: <b>%{y:.1f}%</b><br>'
+            'Clients: %{customdata[1]} / %{customdata[2]}'
+            '<extra></extra>'
+        )
+    else:
+        main_hovertemplate = (
             '<b>%{customdata[0]}</b><br>'
             f'{measure_label}: ' '<b>%{y:.1f}%</b><br>'
             'Actual: <b>%{customdata[3]:.1f}%</b><br>'
             'Clients: %{customdata[1]} / %{customdata[2]}'
             '<extra></extra>'
-        ),
+        )
+    traces.append(go.Scatter(
+        x=period_labels, y=plotted, mode='lines+markers',
+        line={'color': color, 'width': 3.2, 'shape': 'spline', 'smoothing': 0.45},
+        marker={'size': 6, 'color': color, 'line': {'color': '#fff', 'width': 1.2}},
+        fill='tozeroy', fillcolor=_hex_to_rgba(color, 0.08),
+        connectgaps=False, showlegend=False,
+        customdata=list(zip(period_labels, n_vals, d_vals, ys)),
+        hovertemplate=main_hovertemplate,
     ))
 
+    # x=1 + xshift is a *fixed pixel* offset from the plot's right edge,
+    # unlike x=1.03 (a fraction of the plot's own width) which shrinks on a
+    # narrower plot and ate into the margin before the text could render --
+    # that's why "Target 80%" kept clipping even after widening the margin.
     layout_annotations = []
     if target is not None:
         layout_annotations.append({
-            'x': 1.005, 'y': target / 112, 'xref': 'paper', 'yref': 'paper',
-            'text': f'target {target:.0f}%', 'showarrow': False,
+            'x': 1, 'xshift': 8, 'y': target / 112, 'xref': 'paper', 'yref': 'paper',
+            'text': f'Target {target:.0f}%', 'showarrow': False,
             'font': {'size': 10, 'color': '#64748B', 'family': 'Geist, system-ui, sans-serif'},
+            'xanchor': 'left', 'yanchor': 'middle',
+        })
+    if median_value is not None:
+        layout_annotations.append({
+            'x': 1, 'xshift': 8, 'y': median_value / 112, 'xref': 'paper', 'yref': 'paper',
+            'text': f'Median {median_value:.0f}%', 'showarrow': False,
+            'font': {'size': 10, 'color': '#6366F1', 'family': 'Geist, system-ui, sans-serif'},
             'xanchor': 'left', 'yanchor': 'middle',
         })
     tick_angle = -28 if grain in {'daily', 'weekly', 'monthly'} else 0
     return go.Figure(data=traces, layout={
         'paper_bgcolor': 'white', 'plot_bgcolor': 'white',
         'font': {'family': 'Geist, system-ui, sans-serif', 'color': '#64748b', 'size': 11},
-        'height': 220, 'margin': {'l': 42, 'r': 24, 't': 16, 'b': 44},
+        'height': 220, 'margin': {'l': 42, 'r': 92, 't': 16, 'b': 44},
         'showlegend': False, 'hovermode': 'x unified',
         'hoverlabel': {
             'bgcolor': '#0f172a', 'bordercolor': '#0f172a',
@@ -258,6 +295,8 @@ def _run_chart_cards(
     fallback_df: pd.DataFrame | None = None,
     grain: str = 'monthly',
     measure: str = 'median',
+    start_date=None,
+    end_date=None,
 ) -> list:
     tracked = [i for i in indicators if i.get('status') == 'tracked' and i.get('category') == cat]
     if selected_ids:
@@ -300,6 +339,18 @@ def _run_chart_cards(
         _ind_ids   = {_agg_resolve_id(agg_df, i['id'], i.get('label')) for i in tracked}
         _grain_set = set(_agg_candidate_grains(grain))
         _amask = agg_df['grain'].isin(_grain_set) & agg_df['indicator_id'].isin(_ind_ids)
+        # This branch only runs when there are no raw MAHIS rows to derive a
+        # date bound from (always true for the DHIS2 route, which never
+        # populates raw rows) -- without applying the selected window here
+        # too, it fell through to the *entire* aggregate's history (every
+        # period ever synced), completely ignoring whatever Relative Period
+        # was actually selected. Floor start_date to the period boundary
+        # the same way query_coverage()/_build_agg_batch() do, so a mid-month
+        # start_date still finds that month's row.
+        if start_date is not None:
+            _amask &= agg_df['period_start'] >= min(_agg_floor_period(start_date, g) for g in _grain_set)
+        if end_date is not None:
+            _amask &= agg_df['period_start'] <= pd.Timestamp(end_date)
         if fac_filter:
             _amask &= agg_df['facility_code'].isin([str(f) for f in fac_filter])
         elif dist_filter:
@@ -344,6 +395,24 @@ def _run_chart_cards(
             _smask &= agg_df['district'].isin([str(d) for d in dist_filter])
         _agg_slice = agg_df[_smask].reset_index(drop=True)
 
+    # The aggregate can only ever serve whatever grain(s) it was actually
+    # built with (confirmed monthly-only for both the DHIS2 and MAHIS
+    # aggregates) -- query_time_series/_agg_time_series silently falls back
+    # to a coarser grain when the exact one requested isn't there (by
+    # design, see mnid/aggregation/store.py), so "precomputed" below can
+    # come back non-empty with *monthly* rows even when grain='daily' was
+    # requested. Preferring it unconditionally (the original behavior)
+    # then silently overrode "Daily" with monthly data for MAHIS every
+    # time, since the monthly aggregate almost always has *something* for
+    # the current period even though raw rows could serve real day-level
+    # detail. Only trust the aggregate for the requested grain when it
+    # genuinely has rows stored at that exact grain; otherwise, when raw
+    # rows exist, let those drive real per-day/per-week bucketing instead.
+    _agg_has_requested_grain = (
+        _agg_slice is not None and not _agg_slice.empty
+        and grain in set(_agg_slice['grain'].unique())
+    )
+
     cat_colors = CAT_PALETTES.get(cat, _TREND_SERIES_PALETTE)
     cards = []
 
@@ -351,7 +420,7 @@ def _run_chart_cards(
         color = cat_colors[idx % len(cat_colors)]
 
         precomputed = None
-        if _agg_slice is not None:
+        if _agg_slice is not None and (_agg_has_requested_grain or not have_raw_rows):
             precomputed = _agg_time_series(
                 _agg_slice, ind['id'], grain=grain,
                 facility_codes=fac_filter,
@@ -436,13 +505,13 @@ def _trend_switcher(
     default_cat: str | None = None,
     scope_meta: dict | None = None,
     payload_key: str | None = None,
+    start_date=None,
+    end_date=None,
 ) -> html.Div:
     tracked     = [i for i in indicators if i.get('status') == 'tracked']
     cat_order   = _resolve_category_order(tracked, categories)
     default_cat = default_cat if default_cat in cat_order else (cat_order[0] if cat_order else 'ANC')
     loc_options = _location_options_for_df(df, scope_meta or {})
-    # DHIS2's aggregate only ever has monthly-grain rows -- Daily is only
-    # meaningful (and only offered) in MAHIS mode.
     _mahis_mode = (scope_meta or {}).get('route') != 'dhis2'
 
     ind_opts_by_cat = {
@@ -464,6 +533,14 @@ def _trend_switcher(
         'data_key':        _remember_ui_payload('trend', df, stable_key=payload_key),
         'date_min':        _date_min,
         'date_max':        _date_max,
+        # The actual selected Relative Period / Custom Date Range, distinct
+        # from date_min/date_max above (which reflect the raw dataframe's
+        # own bounds, not what the user picked). update_trend_chart threads
+        # these into _run_chart_cards so its aggregate-fallback branch (the
+        # one DHIS2 always takes, having no raw rows) is bounded by what was
+        # actually selected instead of showing the whole synced history.
+        'start_date':      str(start_date) if start_date is not None else None,
+        'end_date':        str(end_date) if end_date is not None else None,
         'scope_meta':      scope_meta or {},
         'loc_options':     loc_options,
         'ind_opts_by_cat': ind_opts_by_cat,
@@ -622,6 +699,7 @@ def update_trend_chart(n_clicks_list, location, selected_inds, grain, measure_cl
         df, tracked, cat, location or 'all',
         default_ind_values if cat_changed else selected_inds,
         scope_meta, agg_df=_agg_now, fallback_df=_df_full, grain=grain, measure=measure,
+        start_date=trend_payload.get('start_date'), end_date=trend_payload.get('end_date'),
     )
     # Truncate to match the number of buttons actually on the page.
     # On initial page load the maternal tab hasn't rendered yet so n_clicks_list=[]

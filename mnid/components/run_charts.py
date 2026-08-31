@@ -77,6 +77,50 @@ _EXEC_DEFAULT_GRAINS = {
 }
 
 
+def _bake_chart_title(fig: go.Figure, title: str, scope_label: str | None = None) -> go.Figure:
+    """Put the chart's title (and current filter scope, e.g. "All Facilities"
+    or a selected district/facility) into the figure's own layout, not just
+    as separate HTML text rendered above it. Plotly's PNG export button only
+    ever captures the figure itself -- a title living outside it is silently
+    dropped from every downloaded image, which is exactly why exports were
+    coming out as an untitled, generically-named "chart.png"."""
+    text = f"<b>{title}</b>"
+    if scope_label:
+        text += f'<span style="font-size:10px;font-weight:400;color:#94a3b8">  ·  {scope_label}</span>'
+    existing_margin = fig.layout.margin
+    top = (existing_margin.t or 0) if existing_margin else 0
+    fig.update_layout(
+        title=dict(
+            text=text, x=0.01, xanchor="left", y=0.98, yanchor="top",
+            font=dict(size=13, color="#0f172a", family=_GEIST),
+        ),
+        margin=dict(t=top + 24),
+    )
+    return fig
+
+
+def _export_filename(title: str, scope_label: str | None = None) -> str:
+    """Slugify a chart title (+ optional filter scope) into a PNG export
+    filename, e.g. "Total Births" + "All Facilities" -> "total_births_all_facilities"."""
+    text = " ".join(part for part in (title, scope_label) if part)
+    slug = re.sub(r"[^\w\s-]", "", text).strip().lower()
+    slug = re.sub(r"[\s_-]+", "_", slug)
+    return slug or "chart"
+
+
+def _export_config(title: str, scope_label: str | None = None) -> dict:
+    return {
+        "displayModeBar": True,
+        "responsive": True,
+        "modeBarButtonsToRemove": ["select2d", "lasso2d", "autoScale2d"],
+        "toImageButtonOptions": {
+            "format": "png",
+            "scale": 2,
+            "filename": _export_filename(title, scope_label),
+        },
+    }
+
+
 def _exec_chart_layout(
     height: int = 300,
     xaxis: dict | None = None,
@@ -267,6 +311,7 @@ def _run_chart(
     target: float | None = None,
     grain: str = "monthly",
     measure: str = "median",
+    scope_label: str | None = None,
 ) -> go.Figure:
     fig = go.Figure()
     if series.empty:
@@ -287,7 +332,7 @@ def _run_chart(
                 font=dict(size=13, color=MUTED, family=_GEIST),
             )],
         )
-        return fig
+        return _bake_chart_title(fig, title, scope_label)
 
     plot_series = series.copy()
     x_values = (
@@ -301,14 +346,46 @@ def _run_chart(
         else pd.to_datetime(plot_series["month"], errors="coerce").dt.strftime("%b %Y")
     )
     smooth_grain = grain if grain in {"weekly", "monthly", "quarterly", "yearly"} else "monthly"
-    smoothed, _ = _moving_average_values(plot_series["value"].tolist(), smooth_grain, method=measure)
-    measure_label = "Median" if measure == "median" else "Moving avg"
+    actual_values = plot_series["value"].tolist()
+    # Median mode plots the real, unsmoothed values as the line itself (so
+    # the actual trend is visible, not hidden behind a rolling median) and
+    # adds a flat median reference line instead -- same idea as the target
+    # line, so both "how do we compare to target" and "how do we compare to
+    # our own typical value" read at a glance. Moving average keeps its
+    # existing behavior unchanged: the smoothed rolling mean IS the line.
+    if measure == "median":
+        y_values = actual_values
+        median_value = pd.Series(actual_values, dtype="float64").median()
+    else:
+        y_values, _ = _moving_average_values(actual_values, smooth_grain, method=measure)
+        median_value = None
+    measure_label = "Moving avg"
     value_format = ".1f" if _is_percentage_axis(y_title) else ",.0f"
     has_counts = "numerator" in plot_series.columns and "denominator" in plot_series.columns
-    if has_counts:
+    if measure == "median":
+        if has_counts:
+            customdata = list(zip(
+                hover_labels,
+                plot_series["numerator"].tolist(),
+                plot_series["denominator"].tolist(),
+            ))
+            hovertemplate = (
+                "<b>%{customdata[0]}</b><br>"
+                f"Actual: <b>%{{y:{value_format}}}</b><br>"
+                "Clients: %{customdata[1]:.0f} / %{customdata[2]:.0f}"
+                "<extra></extra>"
+            )
+        else:
+            customdata = hover_labels
+            hovertemplate = (
+                "<b>%{customdata}</b><br>"
+                f"Actual: <b>%{{y:{value_format}}}</b>"
+                "<extra></extra>"
+            )
+    elif has_counts:
         customdata = list(zip(
             hover_labels,
-            plot_series["value"].tolist(),
+            actual_values,
             plot_series["numerator"].tolist(),
             plot_series["denominator"].tolist(),
         ))
@@ -320,7 +397,7 @@ def _run_chart(
             "<extra></extra>"
         )
     else:
-        customdata = list(zip(hover_labels, plot_series["value"].tolist()))
+        customdata = list(zip(hover_labels, actual_values))
         hovertemplate = (
             "<b>%{customdata[0]}</b><br>"
             f"{measure_label}: " f"<b>%{{y:{value_format}}}</b><br>"
@@ -329,7 +406,7 @@ def _run_chart(
         )
     fig.add_trace(go.Scatter(
         x=x_values,
-        y=smoothed,
+        y=y_values,
         name=title,
         mode="lines+markers",
         line=dict(color=color, width=3.8, shape="spline", smoothing=0.55),
@@ -339,17 +416,51 @@ def _run_chart(
         customdata=customdata,
         hovertemplate=hovertemplate,
     ))
+    # Target/median as scatter traces (not fig.add_hline shapes) so they
+    # participate in hovermode="x unified" below -- shapes drawn via
+    # add_hline are static and don't respond to hover at all. The layout
+    # annotations further down give each an always-visible label too, so the
+    # value is readable without needing to hover, exactly like the target
+    # line's value now shows in that visible label.
+    n_points = len(x_values)
+    _unit = "%" if _is_percentage_axis(y_title) else ""
     if target is not None:
-        fig.add_hline(
-            y=target,
-            line=dict(color="#f59e0b", width=1.4, dash="dash"),
-            annotation_text="Target",
-            annotation_font=dict(color="#f59e0b", size=10),
-            annotation_position="right",
-        )
+        fig.add_trace(go.Scatter(
+            x=x_values, y=[target] * n_points, mode="lines",
+            line=dict(color="#f59e0b", width=1.4, dash="dot"),
+            showlegend=False,
+            hovertemplate=f"Target: {target:{value_format}}{_unit}<extra></extra>",
+        ))
+    if median_value is not None and pd.notna(median_value):
+        fig.add_trace(go.Scatter(
+            x=x_values, y=[median_value] * n_points, mode="lines",
+            line=dict(color="#6366f1", width=1.4, dash="dot"),
+            showlegend=False,
+            hovertemplate=f"Median: {median_value:{value_format}}{_unit}<extra></extra>",
+        ))
+    # x=1 + xshift is a *fixed pixel* offset from the plot's right edge,
+    # unlike x=1.02 (a fraction of the plot's own width) which shrinks on a
+    # narrower plot and ate into the margin before the text could render --
+    # that's why "Target 80%" kept clipping even after widening the margin.
+    layout_annotations = []
+    if target is not None:
+        layout_annotations.append(dict(
+            x=1, xshift=8, y=target, xref="paper", yref="y", xanchor="left", yanchor="middle",
+            text=f"Target {target:{value_format}}{_unit}", showarrow=False,
+            font=dict(color="#f59e0b", size=10),
+        ))
+    if median_value is not None and pd.notna(median_value):
+        layout_annotations.append(dict(
+            x=1, xshift=8, y=median_value, xref="paper", yref="y", xanchor="left", yanchor="middle",
+            text=f"Median {median_value:{value_format}}{_unit}", showarrow=False,
+            font=dict(color="#6366f1", size=10),
+        ))
     fig.update_layout(**_exec_chart_layout(
         height=240,
-        margin=dict(l=42, r=18, t=12, b=42),
+        # Widened 18 -> 52 -> 92: the annotation now uses a fixed xshift=8
+        # rather than a paper-fraction x, so nearly all of this margin is
+        # real, predictable room for "Target 80.0%"/"Median 65.2%" to render.
+        margin=dict(l=42, r=92, t=12, b=42),
         xaxis=dict(
             showgrid=False,
             showline=False,
@@ -372,8 +483,9 @@ def _run_chart(
             rangemode="tozero",
         ),
     ))
+    fig.update_layout(annotations=layout_annotations)
     fig.update_layout(showlegend=False, transition={"duration": 260, "easing": "cubic-in-out"})
-    return fig
+    return _bake_chart_title(fig, title, scope_label)
 
 
 def _multi_run_chart(
@@ -383,6 +495,7 @@ def _multi_run_chart(
     target: float | None = None,
     grain: str = "monthly",
     measure: str = "median",
+    scope_label: str | None = None,
 ) -> go.Figure:
     fig = go.Figure()
     if series_df.empty:
@@ -403,46 +516,89 @@ def _multi_run_chart(
                 font=dict(size=13, color=MUTED, family=_GEIST),
             )],
         )
-        return fig
+        return _bake_chart_title(fig, title, scope_label)
 
-    measure_label = "Median" if measure == "median" else "Moving avg"
+    measure_label = "Moving avg"
     value_format = ".1f" if _is_percentage_axis(y_title) else ",.0f"
+    _unit = "%" if _is_percentage_axis(y_title) else ""
+    median_lines = []
+    trace_x_values = None
     for label in series_df["series"].dropna().unique():
         trace_df = series_df[series_df["series"] == label]
         color = trace_df["color"].iloc[0] if "color" in trace_df.columns and not trace_df.empty else PRIMARY_GREEN
-        smoothed, _ = _moving_average_values(trace_df["value"].tolist(), grain, method=measure)
-        fig.add_trace(go.Scatter(
-            x=(
-                trace_df["bucket_label"]
-                if "bucket_label" in trace_df.columns
-                else pd.to_datetime(trace_df["month"], errors="coerce").dt.strftime("%b %Y")
-            ),
-            y=smoothed,
-            name=label,
-            mode="lines+markers",
-            line=dict(color=color, width=3.0, shape="spline", smoothing=0.45),
-            marker=dict(size=6, color=color, line=dict(color="#fff", width=1.0)),
-            customdata=trace_df["value"].tolist(),
-            hovertemplate=(
+        actual_values = trace_df["value"].tolist()
+        # Same idea as the single-series chart: median mode plots the real
+        # values (not a rolling median) and gets its own flat per-series
+        # median reference line instead; moving average is unchanged.
+        if measure == "median":
+            y_values = actual_values
+            median_value = pd.Series(actual_values, dtype="float64").median()
+            if pd.notna(median_value):
+                median_lines.append((label, color, median_value))
+            hovertemplate = (
+                f"<b>{label}</b><br>%{{x}}<br>"
+                f"Actual: <b>%{{y:{value_format}}}</b>"
+                "<extra></extra>"
+            )
+        else:
+            y_values, _ = _moving_average_values(actual_values, grain, method=measure)
+            hovertemplate = (
                 f"<b>{label}</b><br>%{{x}}<br>"
                 f"{measure_label}: " f"<b>%{{y:{value_format}}}</b><br>"
                 f"Actual: <b>%{{customdata:{value_format}}}</b>"
                 "<extra></extra>"
-            ),
+            )
+        trace_x_values = (
+            trace_df["bucket_label"]
+            if "bucket_label" in trace_df.columns
+            else pd.to_datetime(trace_df["month"], errors="coerce").dt.strftime("%b %Y")
+        )
+        fig.add_trace(go.Scatter(
+            x=trace_x_values,
+            y=y_values,
+            name=label,
+            mode="lines+markers",
+            line=dict(color=color, width=3.0, shape="spline", smoothing=0.45),
+            marker=dict(size=6, color=color, line=dict(color="#fff", width=1.0)),
+            customdata=actual_values,
+            hovertemplate=hovertemplate,
+        ))
+
+    # Trace-based (not fig.add_hline shapes) so target/median participate in
+    # hovermode="x unified" -- shapes don't respond to hover at all. Layout
+    # annotations give each an always-visible value label too.
+    n_points = len(trace_x_values) if trace_x_values is not None else 0
+    layout_annotations = []
+    for label, color, median_value in median_lines:
+        fig.add_trace(go.Scatter(
+            x=trace_x_values, y=[median_value] * n_points, mode="lines",
+            line=dict(color=color, width=1.2, dash="dot"), opacity=0.6,
+            showlegend=False,
+            hovertemplate=f"{label} median: {median_value:{value_format}}{_unit}<extra></extra>",
+        ))
+        layout_annotations.append(dict(
+            x=1, xshift=8, y=median_value, xref="paper", yref="y", xanchor="left", yanchor="middle",
+            text=f"{median_value:{value_format}}{_unit}", showarrow=False,
+            font=dict(color=color, size=9),
         ))
 
     if target is not None:
-        fig.add_hline(
-            y=target,
-            line=dict(color="#f59e0b", width=1.4, dash="dash"),
-            annotation_text="Target",
-            annotation_font=dict(color="#f59e0b", size=10),
-            annotation_position="right",
-        )
+        fig.add_trace(go.Scatter(
+            x=trace_x_values, y=[target] * n_points, mode="lines",
+            line=dict(color="#f59e0b", width=1.4, dash="dot"),
+            showlegend=False,
+            hovertemplate=f"Target: {target:{value_format}}{_unit}<extra></extra>",
+        ))
+        layout_annotations.append(dict(
+            x=1, xshift=8, y=target, xref="paper", yref="y", xanchor="left", yanchor="middle",
+            text=f"Target {target:{value_format}}{_unit}", showarrow=False,
+            font=dict(color="#f59e0b", size=10),
+        ))
 
     fig.update_layout(**_exec_chart_layout(
         height=240,
-        margin=dict(l=42, r=18, t=12, b=42),
+        # Same xshift-based annotation + widened margin as _run_chart above.
+        margin=dict(l=42, r=92, t=12, b=42),
         xaxis=dict(
             showgrid=False,
             showline=False,
@@ -465,6 +621,7 @@ def _multi_run_chart(
             rangemode="tozero",
         ),
     ))
+    fig.update_layout(annotations=layout_annotations)
     fig.update_layout(
         showlegend=True,
         legend=dict(
@@ -477,7 +634,7 @@ def _multi_run_chart(
         ),
         transition={"duration": 260, "easing": "cubic-in-out"},
     )
-    return fig
+    return _bake_chart_title(fig, title, scope_label)
 
 
 def _trend_chart_card(
@@ -491,7 +648,13 @@ def _trend_chart_card(
     caption_id: str | dict | None = None,
     graph_config: dict | None = None,
     graph_style: dict | None = None,
+    scope_label: str | None = None,
 ) -> dmc.Paper:
+    # The bold title used to render here as separate HTML, redundant with
+    # (and invisible to) the figure's own title -- now baked directly into
+    # `figure` by _bake_chart_title before it reaches this function, so the
+    # PNG export button actually captures it. Only the descriptive subtitle
+    # stays as on-screen-only HTML.
     return dmc.Paper(
         withBorder=True,
         radius="md",
@@ -505,19 +668,11 @@ def _trend_chart_card(
         },
         children=[
             html.Div([
-                html.Div([
-                    html.Div(title, style={
-                        "fontSize": "13px",
-                        "fontWeight": "800",
-                        "color": "#0f172a",
-                        "lineHeight": "1.2",
-                        "marginBottom": "4px",
-                    }),
-                    html.Div(subtitle, style={
-                        "fontSize": "11px",
-                        "color": "#64748b",
-                    }),
-                ], style={"flex": "1", "minWidth": "0"}),
+                html.Div(subtitle, style={
+                    "fontSize": "11px",
+                    "color": "#64748b",
+                    "flex": "1", "minWidth": "0",
+                }),
                 *([header_right] if header_right is not None else []),
             ], style={
                 "padding": "2px 4px 6px 4px",
@@ -530,7 +685,7 @@ def _trend_chart_card(
             dcc.Graph(
                 **({"id": graph_id} if graph_id is not None else {}),
                 figure=figure,
-                config=graph_config or {"displayModeBar": True, "responsive": True},
+                config=graph_config or _export_config(title, scope_label),
                 style=graph_style or {"height": "240px"},
             ),
             *([html.Div(
@@ -559,6 +714,7 @@ def _trend_chart_payload(
     series_df: pd.DataFrame,
     multi: bool = False,
     measure: str = "median",
+    scope_label: str | None = None,
     include_daily: bool = True,
 ) -> dict:
     default_grain = _EXEC_DEFAULT_GRAINS.get(chart_key, "monthly")
@@ -579,9 +735,9 @@ def _trend_chart_payload(
         else bucket_time_series(series_df, default_grain)
     )
     figure = (
-        _multi_run_chart(bucketed, title, y_title, grain=default_grain, measure=measure)
+        _multi_run_chart(bucketed, title, y_title, grain=default_grain, measure=measure, scope_label=scope_label)
         if multi
-        else _run_chart(bucketed, title, accent, y_title, grain=default_grain, measure=measure)
+        else _run_chart(bucketed, title, accent, y_title, grain=default_grain, measure=measure, scope_label=scope_label)
     )
     return {
         "card": _trend_chart_card(
@@ -589,6 +745,7 @@ def _trend_chart_payload(
             subtitle,
             figure,
             accent,
+            scope_label=scope_label,
             header_right=html.Div([
                 dmc.SegmentedControl(
                     id={"type": "mnid-cp-grain", "chart": chart_key},
@@ -627,6 +784,7 @@ def _trend_chart_payload(
                         "accent": accent,
                         "y_title": y_title,
                         "multi": multi,
+                        "scope_label": scope_label,
                     },
                 ),
             ], style={"display": "flex", "alignItems": "center", "gap": "8px"}),

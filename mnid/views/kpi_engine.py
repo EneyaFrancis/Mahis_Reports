@@ -437,8 +437,17 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
     def _compute_inds(inds):
         computed = []
         for ind in inds:
+            # _cur_batch is keyed by the aggregate's own indicator_id, which for
+            # Excel-sourced indicators (mapped in by mnid_publish.py's high-priority
+            # merge) can differ from the tracked catalog's id -- query_coverage/
+            # _agg_coverage below already resolve that via resolve_indicator_id's
+            # label fallback, but this pre-built batch dict (added purely for
+            # speed, see _build_agg_batch) did a strict id lookup with no
+            # fallback, so any such indicator silently landed on 0 of 0 here
+            # while the exact same indicator showed real data on Coverage charts.
+            _batch_id = _agg_resolve_id(_agg, ind['id'], ind.get('label')) if _agg is not None else ind['id']
             if _cur_batch:
-                num, den, pct = _batch_cov(_cur_batch, ind['id'], _kpi_fallbacks)
+                num, den, pct = _batch_cov(_cur_batch, _batch_id, _kpi_fallbacks)
                 if den == 0 and ind.get('numerator_filters') and ind.get('denominator_filters'):
                     num, den, pct = _cov(facility_df, ind['numerator_filters'], ind['denominator_filters'])
             elif _agg is not None and _s is not None:
@@ -459,7 +468,8 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
     def _add_delta(computed_list):
         for c in computed_list:
             if _prev_batch and prev_start is not None:
-                _, prev_den, prev_pct = _batch_cov(_prev_batch, c['id'], _kpi_fallbacks)
+                _prev_batch_id = _agg_resolve_id(_agg, c['id'], c.get('label')) if _agg is not None else c['id']
+                _, prev_den, prev_pct = _batch_cov(_prev_batch, _prev_batch_id, _kpi_fallbacks)
                 if prev_den == 0 and c.get('numerator_filters') and c.get('denominator_filters'):
                     try:
                         _, _, prev_pct = _cov(_prev_df_filtered, c['numerator_filters'], c['denominator_filters'])
@@ -518,7 +528,10 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
 
     from mnid.views.trends import _trend_switcher
     _t2 = _time.monotonic()
-    trend_switcher = _trend_switcher(facility_df, display_inds, scope_meta=scope_meta, payload_key=payload_key)
+    trend_switcher = _trend_switcher(
+        facility_df, display_inds, scope_meta=scope_meta, payload_key=payload_key,
+        start_date=_s, end_date=_e,
+    )
     _LOGGER.info('MNID timing: trend_switcher %.2fs', _time.monotonic() - _t2)
 
     _t3 = _time.monotonic()
@@ -589,6 +602,10 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
                 ]
             elif default_cat == 'Newborn':
                 _activity_stats = [
+                    # Moved here from Country Profile's summary row -- was
+                    # "Neonatal Care Unit Admissions" there, same underlying
+                    # indicator, now shown on the tab it actually belongs to.
+                    _indicator_activity('Neonatal Admissions', override_label='Neonatal Care Unit Admissions'),
                     _indicator_activity('Outborn babies'),
                     _indicator_activity('Neonatal Complications at Birth'),
                     _indicator_activity('Birth asphyxia among newborn admissions'),

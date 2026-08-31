@@ -72,45 +72,6 @@ html { scroll-behavior: smooth; }
 .mnid-chart-card{ animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .mnid-card      { animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .mnid-executive-content { min-height: 520px; position: relative; }
-.mnid-loading-surface {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  min-height: 520px;
-  padding: 8px 4px 20px;
-}
-.mnid-loading-surface-hero,
-.mnid-loading-surface-card,
-.mnid-loading-surface-wide {
-  background: linear-gradient(
-    90deg,
-    rgba(226,232,240,0.9) 0%,
-    rgba(248,250,252,0.98) 50%,
-    rgba(226,232,240,0.9) 100%
-  );
-  background-size: 220% 100%;
-  animation: dashboardSkeletonShift 1.4s ease-in-out infinite;
-  border: 1px solid rgba(226,232,240,0.85);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.72);
-}
-.mnid-loading-surface-hero {
-  height: 68px;
-  border-radius: 22px;
-}
-.mnid-loading-surface-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
-}
-.mnid-loading-surface-card {
-  height: 132px;
-  border-radius: 24px;
-}
-.mnid-loading-surface-wide {
-  flex: 1 1 auto;
-  min-height: 280px;
-  border-radius: 28px;
-}
 .mnid-loading-parent { position: relative; }
 .mnid-loading-overlay {
   position: fixed;
@@ -667,7 +628,11 @@ html { scroll-behavior: smooth; }
 
 .mnid-performance-shell {
   display: grid;
-  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 2.1fr);
+  /* Table column gets relatively more room than before -- the page itself
+     is narrower now (90% width, see .mnid-main/.mnid-executive-page), so
+     keeping the old 0.72fr gauge column made the table side feel squeezed
+     against its own 980px min-width sooner than it used to. */
+  grid-template-columns: minmax(220px, 0.55fr) minmax(0, 2.4fr);
   gap: 16px;
   align-items: start;
 }
@@ -745,7 +710,12 @@ html { scroll-behavior: smooth; }
   border-collapse: separate;
   border-spacing: 0;
   min-width: 980px;
-  width: max-content;
+  /* Fills the wrap instead of shrinking to content -- with max-width capped
+     on every indicator column below, a handful of selected indicators used
+     to leave a large blank gap on the right instead of spreading out to
+     use the space. Still scrolls (via .mnid-performance-table-wrap's
+     overflow-x) once enough columns are selected to exceed min-width. */
+  width: 100%;
   background: #FFFFFF;
 }
 
@@ -754,7 +724,6 @@ html { scroll-behavior: smooth; }
   top: 0;
   z-index: 2;
   min-width: 86px;
-  max-width: 86px;
   padding: 10px 8px;
   background: #F8FAFC;
   border-bottom: 1px solid #DCE7EE;
@@ -793,7 +762,6 @@ html { scroll-behavior: smooth; }
 
 .mnid-performance-value-cell {
   min-width: 86px;
-  max-width: 86px;
   padding: 9px 6px;
   border-right: 1px solid rgba(255,255,255,0.6);
   border-bottom: 1px solid rgba(255,255,255,0.6);
@@ -1089,10 +1057,13 @@ html { scroll-behavior: smooth; }
   font-style: italic;
 }
 
-/* MNID analysis chart grid */
+/* MNID analysis chart grid -- widened from 460px so Target/Median labels in
+   the right margin (see run_charts.py/trends.py) have enough real width to
+   render in full; at 460px (3-per-row on a typical screen) they were still
+   clipping even with the in-chart margin already widened. */
 .mnid-chart-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(560px, 1fr));
   gap: 12px;
   padding: 4px 0;
 }
@@ -1107,7 +1078,7 @@ html { scroll-behavior: smooth; }
   transition: box-shadow 0.15s, transform 0.15s;
 }
 
-/* ── MNID capture modebar button ────────────────────────────────────── */
+/* MNID capture modebar button */
 .mnid-capture-modebar-btn svg {
   display: block;
   margin: 0 auto;
@@ -1750,16 +1721,19 @@ html { scroll-behavior: smooth; }
 }
 
 .mnid-main {
-  max-width: 1440px;
+  /* 90%, matching .mnid-executive-page (Country Profile / Operational
+     Readiness) so all 4 tabs share the same width convention. */
+  max-width: 90%;
   margin: 0 auto;
   padding: 18px 20px 36px;
 }
 
 .mnid-topbar {
-  padding: 18px 22px;
-  border-radius: 16px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.98) 100%);
+  padding: 20px 24px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
 .mnid-topbar-copy {
@@ -1768,8 +1742,8 @@ html { scroll-behavior: smooth; }
 }
 
 .mnid-topbar h1 {
-  font-size: 28px;
-  margin: 0 0 4px;
+  font-size: 26px;
+  margin: 0 0 6px;
 }
 
 .mnid-topbar p {
@@ -1778,7 +1752,58 @@ html { scroll-behavior: smooth; }
 
 .mnid-topbar-label {
   color: #0f766e;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.mnid-topbar-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.mnid-topbar-badge {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 99px;
+}
+.mnid-topbar-badge.live {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+  color: #15803d;
+}
+
+.mnid-topbar-meta {
+  display: flex;
+  flex-wrap: wrap;
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+.mnid-topbar-meta-item {
+  padding: 8px 14px;
+  border-right: 1px solid #e2e8f0;
+}
+.mnid-topbar-meta-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  display: block;
+  margin-bottom: 2px;
+}
+.mnid-topbar-meta-value {
   font-size: 11px;
+  font-weight: 600;
+  color: #0f172a;
 }
 
 .mnid-topbar-highlight {
@@ -2071,8 +2096,12 @@ html { scroll-behavior: smooth; }
   box-shadow: var(--shadow-md) !important;
 }
 
-/* Executive page layout */
+/* Executive page layout -- shared by Country Profile and Operational
+   Readiness (both render this same class). Capped at 90% width, centered,
+   to match .mnid-main below (Maternal/Newborn) rather than running full-bleed. */
 .mnid-executive-page {
+  max-width: 90%;
+  margin: 0 auto;
   padding-bottom: 24px;
 }
 

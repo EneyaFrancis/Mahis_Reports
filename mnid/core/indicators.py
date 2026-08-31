@@ -1675,7 +1675,12 @@ def _enrich_program_based_mnid_indicators(indicators: list, categories: list[str
             'note': 'Tracked from birth-weight bands plus newborn CPAP treatment observations already normalized into the parquet. This remains a weight-band proxy because RDS is not modeled separately.',
         },
         'Babies with clinical jaundice who receive phototherapy': {
-            'status': 'awaiting_baseline',
+            # Was awaiting_baseline (no reliable MAHIS report concept for
+            # this). Now sourced from the NEST360 excel workbook on the
+            # DHIS2 route (2026-08-26) -- these numerator/denominator_filters
+            # are MAHIS-only and stay unused there, but resolve_indicator_id's
+            # label-fallback now finds this indicator's real DHIS2-route rows.
+            'status': 'tracked',
             'numerator_filters': {
                 'unique': 'person_id',
                 'variable1': 'mnid_newborn_jaundice_phototherapy', 'value1': 'Yes',
@@ -1684,10 +1689,12 @@ def _enrich_program_based_mnid_indicators(indicators: list, categories: list[str
                 'unique': 'person_id',
                 'variable1': 'mnid_newborn_jaundice', 'value1': 'Yes',
             },
-            'note': 'Clinical jaundice is present, but phototherapy treatment is not yet arriving in a reliable report concept in the current parquet.',
+            'note': 'MAHIS: phototherapy treatment is not yet arriving in a reliable report concept in the current parquet. DHIS2 route: sourced from the NEST360 excel workbook.',
         },
         'Babies with suspected sepsis who receive parenteral antibiotics': {
-            'status': 'awaiting_baseline',
+            # Was awaiting_baseline; now sourced from the NEST360 excel
+            # workbook on the DHIS2 route (2026-08-26) -- see note above.
+            'status': 'tracked',
             'numerator_filters': {
                 'unique': 'person_id',
                 'variable1': 'mnid_newborn_sepsis_antibiotics', 'value1': 'Yes',
@@ -1696,7 +1703,7 @@ def _enrich_program_based_mnid_indicators(indicators: list, categories: list[str
                 'unique': 'person_id',
                 'variable1': 'mnid_newborn_sepsis', 'value1': 'Yes',
             },
-            'note': 'Needs a linked newborn sepsis diagnosis signal in the current extract before the antibiotic-treatment ratio is dependable.',
+            'note': 'MAHIS: needs a linked newborn sepsis diagnosis signal in the current extract before the antibiotic-treatment ratio is dependable. DHIS2 route: sourced from the NEST360 excel workbook.',
         },
         'Babies not hypothermic on admission to the neonatal unit': {
             'status': 'tracked',
