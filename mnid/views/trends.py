@@ -634,7 +634,14 @@ def _trend_switcher(
                                 {'label': 'Quarterly', 'value': 'quarterly'},
                                 {'label': 'Yearly',    'value': 'yearly'},
                             ],
-                            value='daily' if _mahis_mode else 'monthly',
+                            # Default to Monthly even in MAHIS mode -- "Daily" is
+                            # available to pick, but genuine per-day granularity
+                            # means scanning every raw row instead of the small
+                            # pre-aggregated table, and defaulting every MAHIS
+                            # page load into that expensive path (rather than
+                            # only when someone actually asks for it) is what
+                            # was pressuring the server under concurrent load.
+                            value='monthly',
                             clearable=False,
                             searchable=False,
                             style={'minWidth': '110px', 'fontSize': '12px'},

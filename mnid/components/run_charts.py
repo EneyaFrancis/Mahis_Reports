@@ -62,18 +62,24 @@ _EXEC_GRAIN_OPTIONS = [
 ]
 
 _EXEC_DEFAULT_GRAINS = {
-    "total-births": "daily",
-    "maternal-mortality": "daily",
-    "neonatal-mortality": "daily",
-    "stillbirths": "daily",
-    "pre-eclampsia-and-eclampsia": "daily",
-    "postpartum-haemorrhage": "daily",
-    "maternal-sepsis": "daily",
-    "obstructed-or-prolonged-labour": "daily",
-    "ruptured-uterus": "daily",
-    "birth-asphyxia": "daily",
-    "preterm-birth": "daily",
-    "neonatal-sepsis": "daily",
+    # "Daily" stays selectable in the SegmentedControl (see include_daily in
+    # _trend_chart_payload) but is no longer the *default* -- genuine per-day
+    # granularity means scanning every raw row instead of the small
+    # pre-aggregated table, and defaulting every MAHIS Country Profile load
+    # into that expensive path (rather than only when someone actually asks
+    # for it) is what was pressuring the server under concurrent load.
+    "total-births": "monthly",
+    "maternal-mortality": "monthly",
+    "neonatal-mortality": "monthly",
+    "stillbirths": "monthly",
+    "pre-eclampsia-and-eclampsia": "monthly",
+    "postpartum-haemorrhage": "monthly",
+    "maternal-sepsis": "monthly",
+    "obstructed-or-prolonged-labour": "monthly",
+    "ruptured-uterus": "monthly",
+    "birth-asphyxia": "monthly",
+    "preterm-birth": "monthly",
+    "neonatal-sepsis": "monthly",
 }
 
 
@@ -716,8 +722,17 @@ def _trend_chart_payload(
     measure: str = "median",
     scope_label: str | None = None,
     include_daily: bool = True,
+    default_grain: str | None = None,
 ) -> dict:
-    default_grain = _EXEC_DEFAULT_GRAINS.get(chart_key, "monthly")
+    # Callers that already know what grain series_df was actually fetched at
+    # (e.g. Country Profile deriving it from the selected window's width --
+    # see _fetch_grain in executive_views.py) pass it directly so the default
+    # display matches what's really in series_df, rather than falling back
+    # to a fixed per-chart guess that might not match: fetching daily data
+    # for a narrow window and then immediately re-bucketing it up to monthly
+    # for the initial paint would defeat the point of fetching daily at all.
+    if default_grain is None:
+        default_grain = _EXEC_DEFAULT_GRAINS.get(chart_key, "monthly")
     # DHIS2's aggregate only ever has monthly-grain rows -- offering "Daily"
     # there would silently show monthly data under a misleading label instead
     # of a real day-level view, so only offer it in MAHIS mode (include_daily

@@ -933,7 +933,35 @@ def render_country_profile(
     else:
         current_metrics = _metric_snapshot(df)
         previous_metrics = _metric_snapshot(prev_df)
-        start, end = _period_bounds(df)
+        # Prefer the actually-selected window the same way the DHIS2 branch
+        # above already does -- falling back to _period_bounds(df) only when
+        # start_date/end_date weren't passed in at all. df's own min/max
+        # happens to roughly track the selected window today (it arrives
+        # already scoped by update_dashboard's SQL query), but "roughly"
+        # isn't exact -- the network_query lookback extends further back
+        # than the selected start_date, so relying on it alone silently
+        # widened this function's idea of "the selected window" beyond what
+        # was actually picked, which fed straight into _fetch_grain below
+        # deciding "daily" or "monthly" using the wrong span.
+        start = pd.to_datetime(start_date) if start_date else None
+        end = pd.to_datetime(end_date) if end_date else None
+        if start is None or end is None:
+            start, end = _period_bounds(df)
+
+    # Fetch grain follows the width of the selected window, not a hardcoded
+    # constant: a wide window (months) fetches monthly -- cheap (hits the
+    # small pre-aggregated table / a coarse raw-row bucket instead of a full
+    # per-day scan) *and* more appropriate, since cramming 180+ daily points
+    # into one of these summary charts wouldn't be readable anyway. A narrow
+    # window (comparable to "Today"/a few days) fetches daily -- meaningful
+    # detail, and still cheap since the window itself is small. "Daily" is
+    # only offered as a chart toggle when this initial fetch is actually
+    # daily-resolution -- the client-side toggle just re-buckets whatever was
+    # fetched, so offering "Daily" over an only-ever-fetched-monthly series
+    # would silently show flat/repeated values, not real day-level movement.
+    _fetch_window_days = (end - start).days if (start is not None and end is not None) else None
+    _fetch_grain = 'daily' if (_fetch_window_days is not None and _fetch_window_days <= 31) else 'monthly'
+    _include_daily_toggle = (not use_dhis2) and _fetch_grain == 'daily'
 
     period_label = f"{start.strftime('%d %b %Y') if start is not None else 'N/A'} - {end.strftime('%d %b %Y') if end is not None else 'N/A'}"
     updated_label = end.strftime("%d %b %Y, %H:%M") if end is not None else "Unavailable"
@@ -996,19 +1024,19 @@ def render_country_profile(
     ]
 
     if use_dhis2:
-        total_births_series = _agg_monthly_series(agg_df, "mnid_lab_core_totalbirths", start, end, facility_codes, districts, grain="daily")
-        maternal_death_series = _agg_monthly_series(agg_df, "mnid_pnc_overview_004", start, end, facility_codes, districts, grain="daily")
-        neonatal_death_series = _agg_monthly_series(agg_df, "mnid_nb_overview_002", start, end, facility_codes, districts, grain="daily")
+        total_births_series = _agg_monthly_series(agg_df, "mnid_lab_core_totalbirths", start, end, facility_codes, districts, grain=_fetch_grain)
+        maternal_death_series = _agg_monthly_series(agg_df, "mnid_pnc_overview_004", start, end, facility_codes, districts, grain=_fetch_grain)
+        neonatal_death_series = _agg_monthly_series(agg_df, "mnid_nb_overview_002", start, end, facility_codes, districts, grain=_fetch_grain)
         stillbirth_trend_series = _agg_monthly_multiseries({
             "Total stillbirths": ("mnid_lab_overview_005", STILLBIRTH_BLUE),
             "Fresh stillbirths": ("mnid_lab_core_freshstillbirths", "#DB2777"),
             "Macerated stillbirths": ("mnid_lab_core_maceratedstillbirths", "#7C3AED"),
-        }, agg_df, start, end, facility_codes, districts, grain="daily")
+        }, agg_df, start, end, facility_codes, districts, grain=_fetch_grain)
         # Only used by the row-level maternal/neonatal complication loops below.
         live_birth_denominator_mask = total_birth_denominator_mask = None
     else:
-        maternal_death_series = _monthly_series(df, _yn_mask(df, "mnid_pnc_maternal_death"), "person_id", grain="daily")
-        neonatal_death_series = _monthly_series(df, _contains_mask(df, "obs_value_coded", ["Died", "Dead", "Death", "Neonatal death"]), "person_id", grain="daily")
+        maternal_death_series = _monthly_series(df, _yn_mask(df, "mnid_pnc_maternal_death"), "person_id", grain=_fetch_grain)
+        neonatal_death_series = _monthly_series(df, _contains_mask(df, "obs_value_coded", ["Died", "Dead", "Death", "Neonatal death"]), "person_id", grain=_fetch_grain)
         live_birth_denominator_mask = (
             _contains_mask(df, "concept_name", ["Outcome of the delivery"])
             & _contains_mask(df, "obs_value_coded", ["Live birth", "Live births", "Alive"])
@@ -1033,7 +1061,7 @@ def render_country_profile(
         total_births_series = _monthly_multiseries({"Total births": (
             _contains_mask(df, "concept_name", ["Outcome of the delivery", "Status of baby", "Admission outcome"]),
             PRIMARY_GREEN,
-        )}, df, grain="daily")
+        )}, df, grain=_fetch_grain)
         total_births_series = total_births_series[["month", "value"]].copy() if not total_births_series.empty else pd.DataFrame(columns=["month", "value"])
         stillbirth_trend_series = _monthly_multiseries({
             "Total stillbirths": (_yn_mask(df, "mnid_labour_stillbirth"), STILLBIRTH_BLUE),
@@ -1045,7 +1073,7 @@ def render_country_profile(
                 _contains_mask(df, "obs_value_coded", ["Macerated stillbirth", "Macerated still birth"]),
                 "#7C3AED",
             ),
-        }, df, grain="daily")
+        }, df, grain=_fetch_grain)
 
     chart_scope_label = _chart_scope_label(scope_meta)
     maternal_complication_specs = [
@@ -1071,11 +1099,11 @@ def render_country_profile(
         if use_dhis2:
             mnid_id = _AGG_MATERNAL_COMPLICATION_IDS.get(title)
             series_df = (
-                _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct", include_counts=True, grain="daily")
+                _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct", include_counts=True, grain=_fetch_grain)
                 if mnid_id else pd.DataFrame(columns=["month", "value", "numerator", "denominator"])
             )
         else:
-            series_df = _monthly_rate_series(df, mask, total_birth_denominator_mask, "person_id", include_counts=True, grain="daily")
+            series_df = _monthly_rate_series(df, mask, total_birth_denominator_mask, "person_id", include_counts=True, grain=_fetch_grain)
         maternal_complication_cards.append(_trend_chart_payload(
             chart_key,
             title,
@@ -1085,7 +1113,8 @@ def render_country_profile(
             series_df,
             multi=False,
             scope_label=chart_scope_label,
-            include_daily=not use_dhis2,
+            include_daily=_include_daily_toggle,
+            default_grain=_fetch_grain,
         )["card"])
     neonatal_complication_cards = []
     for title, color, mask in neonatal_complication_specs:
@@ -1093,11 +1122,11 @@ def render_country_profile(
         if use_dhis2:
             mnid_id = _AGG_NEONATAL_COMPLICATION_IDS.get(title)
             series_df = (
-                _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct", include_counts=True, grain="daily")
+                _agg_monthly_series(agg_df, mnid_id, start, end, facility_codes, districts, value_field="pct", include_counts=True, grain=_fetch_grain)
                 if mnid_id else pd.DataFrame(columns=["month", "value", "numerator", "denominator"])
             )
         else:
-            series_df = _monthly_rate_series(df, mask, live_birth_denominator_mask, "person_id", include_counts=True, grain="daily")
+            series_df = _monthly_rate_series(df, mask, live_birth_denominator_mask, "person_id", include_counts=True, grain=_fetch_grain)
         neonatal_complication_cards.append(_trend_chart_payload(
             chart_key,
             title,
@@ -1107,7 +1136,8 @@ def render_country_profile(
             series_df,
             multi=False,
             scope_label=chart_scope_label,
-            include_daily=not use_dhis2,
+            include_daily=_include_daily_toggle,
+            default_grain=_fetch_grain,
         )["card"])
 
     total_births_chart = _trend_chart_payload(
@@ -1119,7 +1149,8 @@ def render_country_profile(
         total_births_series,
         multi=False,
         scope_label=chart_scope_label,
-        include_daily=not use_dhis2,
+        include_daily=_include_daily_toggle,
+        default_grain=_fetch_grain,
     )["card"]
     maternal_mortality_chart = _trend_chart_payload(
         "maternal-mortality",
@@ -1130,7 +1161,8 @@ def render_country_profile(
         maternal_death_series,
         multi=False,
         scope_label=chart_scope_label,
-        include_daily=not use_dhis2,
+        include_daily=_include_daily_toggle,
+        default_grain=_fetch_grain,
     )["card"]
     neonatal_mortality_chart = _trend_chart_payload(
         "neonatal-mortality",
@@ -1141,7 +1173,8 @@ def render_country_profile(
         neonatal_death_series,
         multi=False,
         scope_label=chart_scope_label,
-        include_daily=not use_dhis2,
+        include_daily=_include_daily_toggle,
+        default_grain=_fetch_grain,
     )["card"]
     stillbirths_chart = _trend_chart_payload(
         "stillbirths",
@@ -1152,7 +1185,8 @@ def render_country_profile(
         stillbirth_trend_series,
         multi=True,
         scope_label=chart_scope_label,
-        include_daily=not use_dhis2,
+        include_daily=_include_daily_toggle,
+        default_grain=_fetch_grain,
     )["card"]
 
     hero = dmc.Paper(
