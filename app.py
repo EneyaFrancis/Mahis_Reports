@@ -63,4 +63,16 @@ register_api_routes(server)
 
 if __name__ == "__main__":
     print(f"Start your app on: http://localhost:8050/home?route=default&Location={DEMO_LOCATION}&uuid={DEMO_UUID}&user_level=national")
-    app.run(host="0.0.0.0", port=8050, debug=True)
+    # threaded=True matters a lot more than it used to now that MNID renders
+    # can take several seconds on a big facility/date selection -- Flask's
+    # dev server defaults to single-threaded, so one slow callback blocked
+    # *every* other concurrent request on this same process, including the
+    # browser's own parallel request for plotly.js's static JS bundle. That
+    # showed up in the browser console as "plotly.js did not load after 30
+    # seconds" (queued behind the slow callback, not actually failing to
+    # load) followed by a React crash trying to render the raw figure object
+    # as a fallback, and felt to the user like "the spinner never stops"
+    # even though the server-side render did eventually finish. Production
+    # (gunicorn --workers 4) was never affected -- concurrent requests there
+    # land on different worker processes.
+    app.run(host="0.0.0.0", port=8050, debug=True, threaded=True)
