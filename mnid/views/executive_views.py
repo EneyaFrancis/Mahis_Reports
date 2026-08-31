@@ -949,9 +949,9 @@ def render_country_profile(
             start, end = _period_bounds(df)
 
     # Fetch grain follows the width of the selected window, not a hardcoded
-    # constant: a wide window (months) fetches monthly -- cheap (hits the
-    # small pre-aggregated table / a coarse raw-row bucket instead of a full
-    # per-day scan) *and* more appropriate, since cramming 180+ daily points
+    # constant: a wide window fetches monthly -- cheap (hits the small
+    # pre-aggregated table / a coarse raw-row bucket instead of a full
+    # per-day scan) *and* more appropriate, since cramming many daily points
     # into one of these summary charts wouldn't be readable anyway. A narrow
     # window (comparable to "Today"/a few days) fetches daily -- meaningful
     # detail, and still cheap since the window itself is small. "Daily" is
@@ -959,8 +959,17 @@ def render_country_profile(
     # daily-resolution -- the client-side toggle just re-buckets whatever was
     # fetched, so offering "Daily" over an only-ever-fetched-monthly series
     # would silently show flat/repeated values, not real day-level movement.
+    #
+    # The cutoff has to sit *below* MAHIS's own default window (a rolling 30
+    # days, see MNIDDataSource.default_window()) -- a completely untouched
+    # page load is by far the most common case, and it must land on the
+    # cheap monthly path, not accidentally qualify as "narrow" and trigger
+    # the expensive scan on every single default visit. 7 days cleanly
+    # separates the genuinely short relative periods (Today, Yesterday,
+    # Last 7 Days, This Week, Last Week) from the 30-day default and
+    # anything coarser.
     _fetch_window_days = (end - start).days if (start is not None and end is not None) else None
-    _fetch_grain = 'daily' if (_fetch_window_days is not None and _fetch_window_days <= 31) else 'monthly'
+    _fetch_grain = 'daily' if (_fetch_window_days is not None and _fetch_window_days <= 7) else 'monthly'
     _include_daily_toggle = (not use_dhis2) and _fetch_grain == 'daily'
 
     period_label = f"{start.strftime('%d %b %Y') if start is not None else 'N/A'} - {end.strftime('%d %b %Y') if end is not None else 'N/A'}"
