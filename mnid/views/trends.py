@@ -395,6 +395,24 @@ def _run_chart_cards(
             _smask &= agg_df['district'].isin([str(d) for d in dist_filter])
         _agg_slice = agg_df[_smask].reset_index(drop=True)
 
+    # The aggregate can only ever serve whatever grain(s) it was actually
+    # built with (confirmed monthly-only for both the DHIS2 and MAHIS
+    # aggregates) -- query_time_series/_agg_time_series silently falls back
+    # to a coarser grain when the exact one requested isn't there (by
+    # design, see mnid/aggregation/store.py), so "precomputed" below can
+    # come back non-empty with *monthly* rows even when grain='daily' was
+    # requested. Preferring it unconditionally (the original behavior)
+    # then silently overrode "Daily" with monthly data for MAHIS every
+    # time, since the monthly aggregate almost always has *something* for
+    # the current period even though raw rows could serve real day-level
+    # detail. Only trust the aggregate for the requested grain when it
+    # genuinely has rows stored at that exact grain; otherwise, when raw
+    # rows exist, let those drive real per-day/per-week bucketing instead.
+    _agg_has_requested_grain = (
+        _agg_slice is not None and not _agg_slice.empty
+        and grain in set(_agg_slice['grain'].unique())
+    )
+
     cat_colors = CAT_PALETTES.get(cat, _TREND_SERIES_PALETTE)
     cards = []
 
@@ -402,7 +420,7 @@ def _run_chart_cards(
         color = cat_colors[idx % len(cat_colors)]
 
         precomputed = None
-        if _agg_slice is not None:
+        if _agg_slice is not None and (_agg_has_requested_grain or not have_raw_rows):
             precomputed = _agg_time_series(
                 _agg_slice, ind['id'], grain=grain,
                 facility_codes=fac_filter,
