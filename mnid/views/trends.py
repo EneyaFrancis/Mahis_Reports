@@ -435,8 +435,17 @@ def _run_chart_cards(
     for idx, ind in enumerate(tracked):
         color = cat_colors[idx % len(cat_colors)]
 
+        # Skipping the aggregate in favor of raw rows (below) only helps when
+        # raw rows can actually compute this indicator -- an indicator with
+        # no numerator_filters/denominator_filters defined (common for many
+        # Excel/DHIS2-sourced indicators, even under the MAHIS route) can
+        # never be computed from raw rows at all, so skipping the aggregate
+        # for those left them showing "No data" instead of real (if
+        # coarser-grain) aggregate data that Coverage, using the aggregate
+        # unconditionally, was already showing fine for the same indicator.
+        _ind_can_use_raw = bool(ind.get('numerator_filters') and ind.get('denominator_filters'))
         precomputed = None
-        if _agg_slice is not None and (_agg_has_requested_grain or not have_raw_rows):
+        if _agg_slice is not None and (_agg_has_requested_grain or not have_raw_rows or not _ind_can_use_raw):
             precomputed = _agg_time_series(
                 _agg_slice, ind['id'], grain=grain,
                 facility_codes=fac_filter,
@@ -625,7 +634,14 @@ def _trend_switcher(
                                 {'label': 'Quarterly', 'value': 'quarterly'},
                                 {'label': 'Yearly',    'value': 'yearly'},
                             ],
-                            value='daily' if _mahis_mode else 'monthly',
+                            # Default to Monthly even in MAHIS mode -- "Daily" is
+                            # available to pick, but genuine per-day granularity
+                            # means scanning every raw row instead of the small
+                            # pre-aggregated table, and defaulting every MAHIS
+                            # page load into that expensive path (rather than
+                            # only when someone actually asks for it) is what
+                            # was pressuring the server under concurrent load.
+                            value='monthly',
                             clearable=False,
                             searchable=False,
                             style={'minWidth': '110px', 'fontSize': '12px'},

@@ -101,3 +101,4 @@ data/visualizations/dashboard_tabs_config.json
 saved_queries.json.mnid_exec_cache/
 .temp/
 logs/
+/mnid/dhis2/config/source
