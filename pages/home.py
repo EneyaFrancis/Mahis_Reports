@@ -1907,7 +1907,17 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks,
             start_date, end_date = get_relative_date_range(DEFAULT_RELATIVE_PERIOD, current_date=default_end)
         start_dt = pd.to_datetime(start_date or default_start).replace(hour=0, minute=0, second=0)
         end_dt = pd.to_datetime(end_date or default_end).replace(hour=23, minute=59, second=59)
-        default_start_date = start_dt - pd.Timedelta(days=DEFAULT_DASHBOARD_DAYS)
+        # network_query below is deliberately widened by DEFAULT_DASHBOARD_DAYS
+        # to give trend/comparison charts some historical context beyond the
+        # exact selected range -- but a single specific day (Today, Yesterday,
+        # or any custom one-day range) is a request to see *that day*, not a
+        # week ending on it. Padding it backward regardless silently turned
+        # "Today" into a 7-day window for any report that reads from
+        # network_df instead of the exactly-scoped filtered_query, which is
+        # not what selecting "Today" means. Only apply the padding when a
+        # real multi-day range was actually selected.
+        is_single_day_selection = start_dt.date() == end_dt.date()
+        default_start_date = start_dt if is_single_day_selection else start_dt - pd.Timedelta(days=DEFAULT_DASHBOARD_DAYS)
 
         location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
         DATA_PATH_ = f"data/{data_route}/parquet"
