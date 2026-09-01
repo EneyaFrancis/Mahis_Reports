@@ -1,0 +1,223 @@
+/* Data Quality page styling.
+   Colours here mirror dq/theme.py's tokens -- keep the two in sync:
+   brand #006401, coverage present #15803D, coverage missing tint of
+   DANGER_C #DC2626, severity high #DC2626 / medium #FFC107 / low #64748B,
+   ok #16A34A. */
+
+.dq-page {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.dq-status-message {
+    padding: 10px 16px;
+    border-radius: 8px;
+    background: #f8f9fa;
+    color: #2c3e50;
+    font-size: 0.875rem;
+}
+
+/* Empty states -- always explain what's missing and what to do next,
+   never just "no data". */
+.dq-empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: #6c757d;
+    background: #f8f9fa;
+    border-radius: 12px;
+    margin: 12px 0;
+}
+
+.dq-empty-state-title {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 6px;
+}
+
+/* Severity / status badges -- colour is always paired with this text
+   label, never the only signal. */
+.dq-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.dq-badge-high {
+    background: #FCE4E4;
+    color: #DC2626;
+}
+
+.dq-badge-medium {
+    background: #FFF3CD;
+    color: #8a6d00;
+}
+
+.dq-badge-low {
+    background: #F1F5F9;
+    color: #64748B;
+}
+
+.dq-badge-ok {
+    background: #DCFCE7;
+    color: #16A34A;
+}
+
+/* Coverage grid -- one row per patient, one cell per column. */
+.dq-coverage-grid {
+    display: grid;
+    gap: 1px;
+    background: #E2E8F0;
+    border: 1px solid #E2E8F0;
+    border-radius: 4px;
+    overflow: auto;
+}
+
+.dq-coverage-cell {
+    width: 100%;
+    height: 100%;
+    min-height: 14px;
+}
+
+.dq-coverage-cell-present {
+    background: #15803D;
+}
+
+.dq-coverage-cell-missing {
+    background: #FADEDE;
+}
+
+/* Facility scorecard / defects tables re-use the app's existing DataTable
+   look (see reports.css) -- nothing new needed here. */
+
+.dq-kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.dq-kpi-card {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.dq-kpi-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #495057;
+}
+
+.dq-kpi-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #006401;
+}
+
+.dq-kpi-sub {
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+.dq-panel {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.dq-panel-title {
+    margin: 0 0 8px 0;
+    color: #2c3e50;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.dq-panel-note {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-bottom: 12px;
+    font-style: italic;
+}
+
+.dq-checklist-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.875rem;
+    color: #2c3e50;
+}
+
+.dq-group-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dq-group-details {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 8px 12px;
+    background: #fff;
+}
+
+.dq-group-summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: #2c3e50;
+    padding: 4px 0;
+}
+
+.dq-compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 0.8125rem;
+}
+
+.dq-compare-table th,
+.dq-compare-table td {
+    border: 1px solid #e9ecef;
+    padding: 6px 10px;
+    text-align: left;
+}
+
+.dq-compare-table th {
+    background: #f8f9fa;
+    color: #2c3e50;
+}
+
+.dq-diff-field {
+    font-weight: 600;
+    color: #495057;
+    background: #f8f9fa;
+}
+
+.dq-diff-cell-mismatch {
+    background: #FADEDE;
+    color: #DC2626;
+    font-weight: 600;
+}
+
+.dq-page :focus-visible {
+    outline: 2px solid #006401;
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dq-page,
+    .dq-page * {
+        animation: none !important;
+        transition: none !important;
+    }
+}
