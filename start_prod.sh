@@ -21,7 +21,7 @@ exec python -m gunicorn \
     --timeout 120 \
     --graceful-timeout 120 \
     --keep-alive 5 \
-    --bind 0.0.0.0:8040 \
+    --bind 0.0.0.0:8050 \
     --log-level debug \
     --capture-output \
     --access-logfile "$BASE_DIR/gunicorn_access.log" \

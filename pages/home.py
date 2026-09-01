@@ -201,8 +201,16 @@ def _default_date_window(route: str = 'default'):
                 return periods.min().date(), periods.max().date()
         except Exception:
             pass
-    latest = _latest_available_date(route)
-    anchor = latest.date() if latest is not None else datetime.now().date()
+    # MAHIS aggregates daily and refreshes on a short cron cycle -- "today"
+    # is meant to be the real calendar date here, not borrowed from DHIS2's
+    # own "anchor to the latest reported period" approach (that exists
+    # specifically because DHIS2's monthly reporting genuinely lags behind
+    # the calendar; MAHIS's own daily refresh is a different situation and
+    # shouldn't inherit DHIS2's anchor just because the code lives nearby).
+    # A stalled refresh pipeline should show up as a visibly empty "Today"
+    # rather than silently anchoring back to whatever data happens to
+    # already exist.
+    anchor = datetime.now().date()
     start = anchor - pd.Timedelta(days=29)
     return start, anchor
 
