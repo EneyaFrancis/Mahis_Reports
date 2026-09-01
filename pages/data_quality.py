@@ -1,11 +1,13 @@
 import dash
-from dash import html, dcc, dash_table, Input, Output, callback
+from dash import html, dcc, dash_table, Input, Output, State, callback
+from dash.exceptions import PreventUpdate
 import pandas as pd
 import plotly.graph_objects as go
 
 from data_storage import DataStorage
 from config import (
-    PROGRAM_, FACILITY_, DATE_, PERSON_ID_, ENCOUNTER_ID_, OBS_DATETIME_,
+    PROGRAM_, FACILITY_, DISTRICT_, DATE_, PERSON_ID_, ENCOUNTER_ID_, OBS_DATETIME_,
+    CONCEPT_NAME_,
     IDENTIFIER_, FIRST_NAME_, LAST_NAME_, GENDER_, HOME_DISTRICT_, TA_, VILLAGE_,
     BIRTHDATE_, CELL_,
 )
@@ -13,7 +15,10 @@ from pages.home import _resolve_user_scope, _scope_where_parts, _load_user_regis
 from mnid.core.constants import BG, BORDER, TEXT
 from dq.theme import BRAND, BRAND_TINT
 import dq.theme  # noqa: F401 -- registers the "dq" Plotly template
-from dq.checks.duplicates import RULES as DUP_RULES, RULE_ORDER as DUP_RULE_ORDER, match_duplicates
+from dq.checks.duplicates import (
+    RULES as DUP_RULES, RULE_ORDER as DUP_RULE_ORDER, FIELD_OPTIONS as DUP_FIELD_OPTIONS,
+    match_duplicates,
+)
 
 dash.register_page(__name__, path="/data_quality", title="Data Quality")
 
@@ -64,11 +69,11 @@ def _ceiling_scope_where(level, location, user_districts):
     return " AND ".join(parts) if parts else "1=1"
 
 
-def _selection_where(level, location, user_districts, selected_facilities, program, start_date, end_date):
+def _selection_where(level, location, user_districts, selected_districts, selected_facilities, program, start_date, end_date):
     """WHERE clause for the user's scope ceiling narrowed by the filter bar's
-    own selections (facility, programme, date range)."""
+    own selections (district scope, facility, programme, date range)."""
     parts = _scope_where_parts(
-        level, location, None, user_districts, selected_facilities or None, None,
+        level, location, selected_districts or None, user_districts, selected_facilities or None, None,
         programs=[program] if program else None,
     )
     if start_date and end_date:
@@ -78,6 +83,17 @@ def _selection_where(level, location, user_districts, selected_facilities, progr
 
 def _presence_expr(col):
     return f'("{col}" IS NOT NULL AND trim(CAST("{col}" AS VARCHAR)) <> \'\')'
+
+
+def _rule_fields_display(rid, other_fields):
+    """D4 ("Other") has no fixed field set -- show whatever the user actually
+    picked instead of DUP_RULES's static placeholder text."""
+    if rid == "D4":
+        if other_fields:
+            label_map = dict(DUP_FIELD_OPTIONS)
+            return " + ".join(label_map.get(f, f) for f in other_fields)
+        return "no fields selected"
+    return DUP_RULES[rid]["fields"]
 
 
 def _kpi_card(label, value, sub=None):
@@ -100,50 +116,76 @@ def _empty_state(title, body):
 layout = html.Div(
     className="dq-page",
     children=[
-        html.H2("Data Quality", className="config-parameters-title"),
-        html.Div(id="dq-status"),
         html.Div(
-            id="dq-filter-bar",
-            className="config-controls-grid",
+            className="dq-header-row",
             children=[
+                # html.Div(
+                #     className="dq-header-title-col",
+                #     children=[html.H2("Data Quality", className="dq-page-title")],
+                # ),
                 html.Div(
-                    className="config-control-group",
+                    id="dq-filter-bar",
+                    className="dq-header-filters-col config-controls-grid",
                     children=[
-                        html.Label("Date Range", className="config-label"),
-                        dcc.DatePickerRange(
-                            id="dq-date-range",
-                            display_format="YYYY-MM-DD",
-                            minimum_nights=0,
-                            className="modern-datepicker-range",
+                        html.Div(
+                            className="config-control-group",
+                            children=[
+                                html.Label("Date Range", className="config-label"),
+                                dcc.DatePickerRange(
+                                    id="dq-date-range",
+                                    display_format="YYYY-MM-DD",
+                                    minimum_nights=0,
+                                    className="modern-datepicker-range",
+                                ),
+                            ],
+                        ),
+                        html.Div(
+                            className="config-control-group",
+                            children=[
+                                html.Label("Scope", className="config-label"),
+                                dcc.Dropdown(
+                                    id="dq-scope",
+                                    options=[], value=[], multi=True, clearable=True,
+                                    placeholder="All districts in scope",
+                                    className="modern-dropdown",
+                                ),
+                            ],
+                        ),
+                        html.Div(
+                            className="config-control-group",
+                            children=[
+                                html.Label("Health Facility", className="config-label"),
+                                dcc.Dropdown(
+                                    id="dq-facility-filter",
+                                    options=[], value=[], multi=True, clearable=True,
+                                    placeholder="All facilities in scope",
+                                    className="modern-dropdown",
+                                ),
+                            ],
+                        ),
+                        html.Div(
+                            className="config-control-group",
+                            children=[
+                                html.Label("Programme", className="config-label"),
+                                dcc.Dropdown(
+                                    id="dq-program-filter",
+                                    options=[], value=None, multi=False, clearable=False,
+                                    placeholder="Choose a programme…",
+                                    className="modern-dropdown",
+                                ),
+                            ],
                         ),
                     ],
                 ),
-                html.Div(
-                    className="config-control-group",
-                    children=[
-                        html.Label("Health Facility", className="config-label"),
-                        dcc.Dropdown(
-                            id="dq-facility-filter",
-                            options=[], value=[], multi=True, clearable=True,
-                            placeholder="All facilities in scope",
-                            className="modern-dropdown",
-                        ),
-                    ],
-                ),
-                html.Div(
-                    className="config-control-group",
-                    children=[
-                        html.Label("Programme", className="config-label"),
-                        dcc.Dropdown(
-                            id="dq-program-filter",
-                            options=[], value=None, multi=False, clearable=False,
-                            placeholder="Choose a programme…",
-                            className="modern-dropdown",
-                        ),
-                    ],
-                ),
+                # html.Div(
+                #     className="dq-header-action-col",
+                #     children=[
+                #         html.Button("Run DQ", id="dq-run-btn", n_clicks=0, className="dq-run-btn"),
+                #     ],
+                # ),
             ],
         ),
+        html.Div(id="dq-alert"),
         html.Div(
             id="dq-tabs-wrapper",
             children=[
@@ -154,13 +196,13 @@ layout = html.Div(
                         dcc.Tab(
                             label="Overview", value="overview",
                             style=_TAB_STYLE, selected_style=_TAB_SELECTED_STYLE,
-                            children=html.Div(id="dq-overview-content", className="card-2"),
+                            children=html.Div(id="dq-overview-content", className="results-card"),
                         ),
                         dcc.Tab(
                             label="Duplicates", value="duplicates",
                             style=_TAB_STYLE, selected_style=_TAB_SELECTED_STYLE,
                             children=html.Div(
-                                className="card-2",
+                                className="results-card",
                                 children=[
                                     html.Div(
                                         className="dq-panel",
@@ -176,9 +218,31 @@ layout = html.Div(
                                                     }
                                                     for rid in DUP_RULE_ORDER
                                                 ],
-                                                value=list(DUP_RULE_ORDER),
+                                                value=["D1", "D2", "D3"],
+                                                className="dq-checklist-row",
                                                 labelClassName="dq-checklist-label",
                                                 inputStyle={"marginRight": "6px"},
+                                            ),
+                                            html.Div(
+                                                id="dq-dup-other-fields-group",
+                                                className="config-control-group",
+                                                style={"marginTop": "12px", "display": "none"},
+                                                children=[
+                                                    html.Label(
+                                                        "D4 (Other) fields",
+                                                        className="config-label",
+                                                    ),
+                                                    dcc.Dropdown(
+                                                        id="dq-dup-other-fields",
+                                                        options=[
+                                                            {"label": label, "value": value}
+                                                            for value, label in DUP_FIELD_OPTIONS
+                                                        ],
+                                                        value=[], multi=True, clearable=True,
+                                                        placeholder="Choose fields to match on…",
+                                                        className="modern-dropdown",
+                                                    ),
+                                                ],
                                             ),
                                             html.Label(
                                                 "Minimum confidence to show",
@@ -216,9 +280,12 @@ layout = html.Div(
 
 
 @callback(
-    Output("dq-status", "children"),
+    Output("dq-alert", "children"),
     Output("dq-filter-bar", "style"),
     Output("dq-tabs-wrapper", "style"),
+    Output("dq-scope", "options"),
+    Output("dq-scope", "value"),
+    Output("dq-scope", "disabled"),
     Output("dq-facility-filter", "options"),
     Output("dq-facility-filter", "value"),
     Output("dq-facility-filter", "disabled"),
@@ -235,7 +302,11 @@ def initialize_data_quality_filters(urlparams):
     hidden = {"display": "none"}
     unauthorized = (
         html.Div("Unauthorized user. Please contact your system administrator.", className="dq-status-message"),
-        hidden, hidden, [], [], True, [], None, None, None, None, None,
+        hidden, hidden,
+        [], [], True,
+        [], [], True,
+        [], None,
+        None, None, None, None,
     )
 
     data_route = urlparams.get("route", ["default"])[0]
@@ -249,7 +320,11 @@ def initialize_data_quality_filters(urlparams):
     if not location:
         return (
             html.Div("Missing Location parameter.", className="dq-status-message"),
-            hidden, hidden, [], [], True, [], None, None, None, None, None,
+            hidden, hidden,
+            [], [], True,
+            [], [], True,
+            [], None,
+            None, None, None, None,
         )
 
     data_path = f"data/{data_route}/parquet"
@@ -259,6 +334,14 @@ def initialize_data_quality_filters(urlparams):
         user_districts = [user_districts]
 
     ceiling_where = _ceiling_scope_where(level, location, user_districts)
+
+    try:
+        dist_df = DataStorage.query_duckdb(
+            f"SELECT DISTINCT {DISTRICT_} FROM '{data_path}' WHERE {ceiling_where} ORDER BY {DISTRICT_}"
+        )
+        district_options = dist_df[DISTRICT_].dropna().tolist()
+    except Exception:
+        district_options = []
 
     try:
         fac_df = DataStorage.query_duckdb(
@@ -286,13 +369,19 @@ def initialize_data_quality_filters(urlparams):
 
     start_date, end_date = _latest_full_month_window(max_date)
 
+    # A district- or facility-level user is already ceilinged to their own
+    # district(s) -- Scope has nothing left to narrow, so it's locked to
+    # exactly what the ceiling query returned. Only a national-level user
+    # picks among more than one district.
+    district_disabled = level in ("district", "facility")
+    district_value = district_options if district_disabled else []
+
     facility_disabled = level == "facility"
     facility_value = facility_options if facility_disabled else []
 
-    status = html.Div(f"Scope: {level or 'unknown'}", className="dq-status-message") if level else None
-
     return (
-        status, {}, {},
+        None, {}, {},
+        [{"label": d, "value": d} for d in district_options], district_value, district_disabled,
         [{"label": f, "value": f} for f in facility_options], facility_value, facility_disabled,
         [{"label": p, "value": p} for p in program_options], default_program,
         start_date, end_date, _iso_date(min_date), _iso_date(max_date),
@@ -300,14 +389,61 @@ def initialize_data_quality_filters(urlparams):
 
 
 @callback(
+    Output("dq-facility-filter", "options", allow_duplicate=True),
+    Output("dq-facility-filter", "value", allow_duplicate=True),
+    Input("dq-scope", "value"),
+    State("url-params-store", "data"),
+    prevent_initial_call=True,
+)
+def sync_dq_facility_options_from_scope(selected_districts, urlparams):
+    """Narrows the Health Facility dropdown's options to whichever
+    district(s) are picked in Scope -- mirrors the ceiling-ordered query
+    initialize_data_quality_filters runs, just with the Scope selection
+    folded into the WHERE clause instead of left out of it."""
+    urlparams = urlparams or {}
+    data_route = urlparams.get("route", ["default"])[0]
+    location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
+
+    user_data = _load_user_registry(data_route)
+    user_row, scope = _resolve_user_scope(urlparams, user_data)
+    if user_row is None or not location:
+        raise PreventUpdate
+
+    level = scope.get("level")
+    if level == "facility":
+        # Already ceilinged to a single facility -- Scope is disabled and
+        # dq-facility-filter is already fixed by initialize_data_quality_filters.
+        raise PreventUpdate
+
+    user_districts = scope.get("districts") or []
+    if isinstance(user_districts, str):
+        user_districts = [user_districts]
+
+    data_path = f"data/{data_route}/parquet"
+    where_parts = _scope_where_parts(level, location, selected_districts or None, user_districts, None, None)
+    where = " AND ".join(where_parts) if where_parts else "1=1"
+
+    try:
+        fac_df = DataStorage.query_duckdb(
+            f"SELECT DISTINCT {FACILITY_} FROM '{data_path}' WHERE {where} ORDER BY {FACILITY_}"
+        )
+        facility_options = fac_df[FACILITY_].dropna().tolist()
+    except Exception:
+        facility_options = []
+
+    return [{"label": f, "value": f} for f in facility_options], []
+
+
+@callback(
     Output("dq-overview-content", "children"),
     Input("url-params-store", "data"),
     Input("dq-date-range", "start_date"),
     Input("dq-date-range", "end_date"),
+    Input("dq-scope", "value"),
     Input("dq-facility-filter", "value"),
     Input("dq-program-filter", "value"),
 )
-def render_overview_tab(urlparams, start_date, end_date, facilities, program):
+def render_overview_tab(urlparams, start_date, end_date, districts, facilities, program):
     urlparams = urlparams or {}
     data_route = urlparams.get("route", ["default"])[0]
     location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
@@ -330,13 +466,12 @@ def render_overview_tab(urlparams, start_date, end_date, facilities, program):
     if isinstance(user_districts, str):
         user_districts = [user_districts]
 
-    where = _selection_where(level, location, user_districts, facilities, program, start_date, end_date)
+    where = _selection_where(level, location, user_districts, districts, facilities, program, start_date, end_date)
 
     try:
         kpi_df = DataStorage.query_duckdb(
-            f"SELECT COUNT(DISTINCT {PERSON_ID_}) AS patients, COUNT(*) AS obs_rows, "
-            f"COUNT(*) FILTER (WHERE {OBS_DATETIME_} IS NOT NULL) AS obs_with_dt, "
-            f"COUNT(*) FILTER (WHERE {OBS_DATETIME_} IS NOT NULL AND DATE({OBS_DATETIME_}) = DATE({DATE_})) AS same_day "
+            f"SELECT COUNT(DISTINCT {PERSON_ID_}) AS patients, "
+            f"COUNT(DISTINCT ({PERSON_ID_}, {CONCEPT_NAME_})) AS obs_rows "
             f"FROM '{data_path}' WHERE {where}"
         )
     except Exception:
@@ -350,66 +485,100 @@ def render_overview_tab(urlparams, start_date, end_date, facilities, program):
 
     patients = int(kpi_df["patients"][0])
     obs_rows = int(kpi_df["obs_rows"][0])
-    obs_with_dt = int(kpi_df["obs_with_dt"][0])
-    same_day = int(kpi_df["same_day"][0])
-    same_day_rate = (same_day / obs_with_dt * 100) if obs_with_dt else None
+
+    try:
+        roster_df = DataStorage.query_duckdb(
+            f"SELECT {PERSON_ID_} AS person_id, "
+            f"MAX({LAST_NAME_}) AS family_name, MAX({FIRST_NAME_}) AS given_name, "
+            f"MAX({GENDER_}) AS gender, MAX({BIRTHDATE_}) AS birthdate, "
+            f"MAX({IDENTIFIER_}) AS identifier, MAX({VILLAGE_}) AS village, "
+            f"MAX({TA_}) AS ta, MAX({HOME_DISTRICT_}) AS home_district, MAX({CELL_}) AS cell, "
+            f"MAX({FACILITY_}) AS facility, COUNT(DISTINCT {ENCOUNTER_ID_}) AS encounter_count, "
+            f"MIN({DATE_}) AS first_encounter, MAX({DATE_}) AS last_encounter "
+            f"FROM '{data_path}' WHERE {where} GROUP BY {PERSON_ID_}"
+        )
+        duplicate_groups, _ = match_duplicates(roster_df, DUP_RULE_ORDER) if not roster_df.empty else ([], {})
+    except Exception:
+        duplicate_groups = []
 
     kpi_strip = html.Div(
         [
             _kpi_card("Patients in programme", f"{patients:,}"),
             _kpi_card("Observation rows", f"{obs_rows:,}"),
-            _kpi_card("Duplicate groups", "—", "Needs the Duplicates tab"),
+            _kpi_card("Duplicate groups", f"{len(duplicate_groups):,}"),
             _kpi_card("Records failing a rule", "—", "Needs the Validity tab"),
-            _kpi_card(
-                "Same-day capture rate",
-                f"{same_day_rate:.1f}%" if same_day_rate is not None else "n/a",
-                f"of {obs_with_dt:,} timestamped rows" if obs_with_dt else "no timestamped rows in scope",
-            ),
+            _kpi_card("Patients with complete data", "—", "Needs a completeness definition"),
         ],
         className="dq-kpi-row",
     )
 
     try:
         vol_df = DataStorage.query_duckdb(
-            f"SELECT DATE({DATE_}) AS d, COUNT(DISTINCT {ENCOUNTER_ID_}) AS n "
+            f"SELECT DATE({DATE_}) AS d, COUNT(DISTINCT ({PERSON_ID_}, {CONCEPT_NAME_})) AS n "
             f"FROM '{data_path}' WHERE {where} GROUP BY d ORDER BY d"
         )
     except Exception:
         vol_df = pd.DataFrame(columns=["d", "n"])
 
-    vol_fig = go.Figure(go.Bar(x=vol_df["d"], y=vol_df["n"]))
-    vol_fig.update_layout(template="dq", xaxis_title=None, yaxis_title="Encounters")
+    vol_fig = go.Figure(go.Bar(
+        x=vol_df["d"], y=vol_df["n"],
+        text=vol_df["n"], texttemplate="%{text:,}",
+        textposition="inside", insidetextanchor="end",
+    ))
+    vol_fig.update_layout(template="dq", xaxis_title=None, yaxis_title="Observations")
 
     volume_panel = html.Div(
         [
-            html.H4("Encounter volume by day", className="dq-panel-title"),
+            html.H4("Observations volume by day", className="dq-panel-title"),
             dcc.Graph(figure=vol_fig, config={"displayModeBar": False}),
         ],
         className="dq-panel",
     )
 
-    core_presence = " + ".join(f"CASE WHEN {_presence_expr(c)} THEN 1.0 ELSE 0.0 END" for c in CORE_FIELDS)
     try:
         fac_df = DataStorage.query_duckdb(
             f'SELECT {FACILITY_} AS "Facility", '
             f'COUNT(DISTINCT {PERSON_ID_}) AS "Patients", '
             f'COUNT(DISTINCT {ENCOUNTER_ID_}) AS "Encounters", '
-            f'COUNT(*) AS "Rows", '
-            f'ROUND(AVG(({core_presence}) / {len(CORE_FIELDS)}.0) * 100, 1) AS "Field completeness %", '
-            f'MEDIAN(CASE WHEN {OBS_DATETIME_} IS NOT NULL THEN DATE({OBS_DATETIME_}) - DATE({DATE_}) END) AS "Median capture lag (days)", '
-            f'ROUND(AVG(CASE WHEN {OBS_DATETIME_} IS NOT NULL AND (DATE({OBS_DATETIME_}) - DATE({DATE_})) > 7 '
-            f'THEN 1.0 ELSE 0.0 END) * 100, 1) AS "Entered >7 days late %" '
+            f'COUNT(DISTINCT ({PERSON_ID_}, {CONCEPT_NAME_})) AS "Rows" '
             f"FROM '{data_path}' WHERE {where} GROUP BY {FACILITY_} ORDER BY \"Patients\" DESC"
         )
     except Exception:
         fac_df = pd.DataFrame()
 
+    if not fac_df.empty:
+        fac_df["Field completeness %"] = "-"
+
+        try:
+            dup_roster_df = DataStorage.query_duckdb(
+                f"SELECT {PERSON_ID_} AS person_id, {FACILITY_} AS facility_group, "
+                f"MAX({LAST_NAME_}) AS family_name, MAX({FIRST_NAME_}) AS given_name, "
+                f"MAX({GENDER_}) AS gender, MAX({BIRTHDATE_}) AS birthdate, "
+                f"MAX({IDENTIFIER_}) AS identifier, MAX({VILLAGE_}) AS village, "
+                f"MAX({TA_}) AS ta, MAX({HOME_DISTRICT_}) AS home_district, MAX({CELL_}) AS cell, "
+                f"MAX({FACILITY_}) AS facility, COUNT(DISTINCT {ENCOUNTER_ID_}) AS encounter_count, "
+                f"MIN({DATE_}) AS first_encounter, MAX({DATE_}) AS last_encounter "
+                f"FROM '{data_path}' WHERE {where} GROUP BY {PERSON_ID_}, {FACILITY_}"
+            )
+        except Exception:
+            dup_roster_df = pd.DataFrame()
+
+        dup_group_counts = {}
+        if not dup_roster_df.empty:
+            for facility_name, sub_roster in dup_roster_df.groupby("facility_group"):
+                groups, _ = match_duplicates(sub_roster, DUP_RULE_ORDER)
+                dup_group_counts[facility_name] = len(groups)
+        fac_df["Duplicate groups"] = fac_df["Facility"].map(dup_group_counts).fillna(0).astype(int)
+
+        fac_df["% of Patients Completing Workflow"] = "-"
+
     scorecard_panel = html.Div(
         [
             html.H4("Facility scorecard", className="dq-panel-title"),
             html.Div(
-                "Field completeness here is a proxy over a fixed identity/demographics field set; "
-                "the full column-picker completeness score lives in the Completeness tab.",
+                "Field completeness and % of Patients Completing Workflow are placeholders "
+                "pending a definition; Duplicate groups matches this facility's own roster "
+                "the same way the Duplicates tab does.",
                 className="dq-panel-note",
             ),
             dash_table.DataTable(
@@ -486,16 +655,29 @@ def _group_details(group, roster_df):
 
 
 @callback(
+    Output("dq-dup-other-fields-group", "style"),
+    Input("dq-dup-rules", "value"),
+)
+def toggle_dup_other_fields(enabled_rules):
+    base_style = {"marginTop": "12px"}
+    if "D4" not in (enabled_rules or []):
+        base_style["display"] = "none"
+    return base_style
+
+
+@callback(
     Output("dq-duplicates-content", "children"),
     Input("url-params-store", "data"),
     Input("dq-date-range", "start_date"),
     Input("dq-date-range", "end_date"),
+    Input("dq-scope", "value"),
     Input("dq-facility-filter", "value"),
     Input("dq-program-filter", "value"),
     Input("dq-dup-rules", "value"),
+    Input("dq-dup-other-fields", "value"),
     Input("dq-dup-min-confidence", "value"),
 )
-def render_duplicates_tab(urlparams, start_date, end_date, facilities, program, enabled_rules, min_confidence):
+def render_duplicates_tab(urlparams, start_date, end_date, districts, facilities, program, enabled_rules, other_fields, min_confidence):
     urlparams = urlparams or {}
     data_route = urlparams.get("route", ["default"])[0]
     location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
@@ -517,10 +699,10 @@ def render_duplicates_tab(urlparams, start_date, end_date, facilities, program, 
     if isinstance(user_districts, str):
         user_districts = [user_districts]
 
-    where = _selection_where(level, location, user_districts, facilities, program, start_date, end_date)
+    where = _selection_where(level, location, user_districts, districts, facilities, program, start_date, end_date)
     # Identifier integrity is checked across the whole scoped extract, not
     # just the selected programme -- same scope, no Program filter.
-    scope_where = _selection_where(level, location, user_districts, facilities, None, start_date, end_date)
+    scope_where = _selection_where(level, location, user_districts, districts, facilities, None, start_date, end_date)
 
     try:
         roster_df = DataStorage.query_duckdb(
@@ -543,7 +725,7 @@ def render_duplicates_tab(urlparams, start_date, end_date, facilities, program, 
         )
 
     enabled_rules = enabled_rules or []
-    groups, per_rule_counts = match_duplicates(roster_df, enabled_rules)
+    groups, per_rule_counts = match_duplicates(roster_df, enabled_rules, other_fields=other_fields)
 
     patient_records = len(roster_df)
     surplus = sum(len(g["members"]) - 1 for g in groups)
@@ -554,9 +736,9 @@ def render_duplicates_tab(urlparams, start_date, end_date, facilities, program, 
     summary_strip = html.Div(
         [
             _kpi_card("Patient records", f"{patient_records:,}"),
-            _kpi_card("Distinct identities after merging", f"{distinct_identities:,}"),
-            _kpi_card("Group count", f"{len(groups):,}"),
-            _kpi_card("Records involved", f"{records_involved:,}"),
+            _kpi_card("Duplicate Groups", f"{len(groups):,}"),
+            _kpi_card("Distinct Patients if Merged", f"{distinct_identities:,}"),
+            _kpi_card("Records Affected", f"{records_involved:,}"),
             _kpi_card("Duplicate rate", f"{duplicate_rate:.1f}%", "surplus ÷ patient records"),
         ],
         className="dq-kpi-row",
@@ -571,7 +753,7 @@ def render_duplicates_tab(urlparams, start_date, end_date, facilities, program, 
         data=[
             {
                 "rule": f"{rid} — {DUP_RULES[rid]['label']}",
-                "key": DUP_RULES[rid]["fields"],
+                "key": _rule_fields_display(rid, other_fields),
                 "confidence": f"{DUP_RULES[rid]['confidence']:.2f}",
                 "groups": per_rule_counts[rid]["groups"],
                 "records": per_rule_counts[rid]["records"],

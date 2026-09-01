@@ -50,7 +50,7 @@ report_config_panel = html.Div(
         html.Div(
             className="config-parameters-card",
             children=[
-                html.H3("Generate a Clinical Report", className="config-parameters-title"),
+                # html.H3("Generate a Clinical Report", className="config-parameters-title"),
                 
                 # Controls Grid
                 html.Div(

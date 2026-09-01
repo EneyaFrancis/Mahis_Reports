@@ -134,9 +134,9 @@
 .modern-dropdown {
     width: 100%;
     background: #ffffff;
-    border: 1px solid #dfe6ee;
+    border: 0px solid #dfe6ee;
     border-radius: 10px;
-    padding: 7px;
+    padding: 2px;
     box-shadow: none;
 }
 

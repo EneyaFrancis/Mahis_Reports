@@ -13,35 +13,43 @@ last_encounter.
 import re
 
 RULES = {
-    "D1": {"label": "Exact identity", "fields": "family + given + birthdate + gender", "confidence": 0.97},
-    "D2": {"label": "Name and date of birth", "fields": "family + given + birthdate", "confidence": 0.90},
-    "D3": {"label": "Phonetic name and DOB", "fields": "phonetic(family) + phonetic(given) + birthdate", "confidence": 0.78},
-    "D4": {"label": "Name, gender, village", "fields": "family + given + gender + village", "confidence": 0.55},
-    "D5": {"label": "Shared phone", "fields": "normalised cell, 9+ digits", "confidence": 0.42},
-    "D6": {"label": "Shared identifier", "fields": "normalised identifier", "confidence": 0.99},
+    "D1": {
+        "label": "Exact identity",
+        "fields": "identifier + given name + family name + gender + birthdate + home district + TA + village",
+        "confidence": 0.98,
+    },
+    "D2": {
+        "label": "Without identifier",
+        "fields": "given name + family name + gender + birthdate + home district + TA + village",
+        "confidence": 0.90,
+    },
+    "D3": {
+        "label": "Name without location",
+        "fields": "given name + family name + gender + birthdate",
+        "confidence": 0.75,
+    },
+    "D4": {
+        "label": "Other",
+        "fields": "user-selected fields",
+        "confidence": 0.50,
+    },
 }
-RULE_ORDER = ["D1", "D2", "D3", "D4", "D5", "D6"]
+RULE_ORDER = ["D1", "D2", "D3", "D4"]
 
-_SOUNDEX_CODES = {}
-for _chars, _code in [("BFPV", "1"), ("CGJKQSXZ", "2"), ("DT", "3"), ("L", "4"), ("MN", "5"), ("R", "6")]:
-    for _ch in _chars:
-        _SOUNDEX_CODES[_ch] = _code
-
-
-def soundex(word):
-    """Standard Soundex phonetic key. DuckDB has no soundex() -- see new_page.md -- so this runs in Python."""
-    word = "".join(ch for ch in str(word or "").upper() if ch.isalpha())
-    if not word:
-        return ""
-    codes = [_SOUNDEX_CODES.get(ch, "") for ch in word]
-    result = [word[0]]
-    prev_code = codes[0]
-    for ch, code in zip(word[1:], codes[1:]):
-        if code and code != prev_code:
-            result.append(code)
-        if ch not in ("H", "W"):
-            prev_code = code
-    return ("".join(result) + "000")[:4]
+# Roster columns available to D4 ("Other") for the user to build a custom
+# rule from -- see FIELD_OPTIONS for the (value, label) pairs shown in the
+# Duplicates tab's field picker.
+FIELD_OPTIONS = [
+    ("identifier", "Identifier"),
+    ("given_name", "Given name"),
+    ("family_name", "Family name"),
+    ("gender", "Gender"),
+    ("birthdate", "Birthdate"),
+    ("home_district", "Home district"),
+    ("ta", "TA"),
+    ("village", "Village"),
+    ("cell", "Phone"),
+]
 
 
 def normalize_text(value):
@@ -50,7 +58,7 @@ def normalize_text(value):
 
 
 def normalize_phone(value):
-    """Digits only; empty unless there are enough digits to mean something (9+, per D5)."""
+    """Digits only; empty unless there are enough digits to mean something (9+)."""
     digits = re.sub(r"\D", "", str(value or ""))
     return digits if len(digits) >= 9 else ""
 
@@ -61,39 +69,38 @@ def _birthdate_key(value):
     return str(value)[:10]
 
 
-def _key_d1(row):
-    fam, giv, dob, gender = normalize_text(row["family_name"]), normalize_text(row["given_name"]), _birthdate_key(row["birthdate"]), normalize_text(row["gender"])
-    return ("D1", fam, giv, dob, gender) if (fam and giv and dob and gender) else None
+# Per-field normaliser used when building a rule's key -- most fields are
+# plain text, birthdate and phone need their own normalisation.
+_FIELD_NORMALIZERS = {
+    "identifier": normalize_text,
+    "given_name": normalize_text,
+    "family_name": normalize_text,
+    "gender": normalize_text,
+    "birthdate": _birthdate_key,
+    "home_district": normalize_text,
+    "ta": normalize_text,
+    "village": normalize_text,
+    "cell": normalize_phone,
+}
 
 
-def _key_d2(row):
-    fam, giv, dob = normalize_text(row["family_name"]), normalize_text(row["given_name"]), _birthdate_key(row["birthdate"])
-    return ("D2", fam, giv, dob) if (fam and giv and dob) else None
+def _make_key_fn(rule_id, fields):
+    """A key function requiring every one of `fields` to be present
+    (normalised, non-empty) on the row -- returns None otherwise, so a
+    patient missing any of the rule's fields never falls into a bucket."""
+    def key_fn(row):
+        values = tuple(_FIELD_NORMALIZERS.get(f, normalize_text)(row.get(f)) for f in fields)
+        if not fields or not all(values):
+            return None
+        return (rule_id,) + values
+    return key_fn
 
 
-def _key_d3(row):
-    fam, giv, dob = normalize_text(row["family_name"]), normalize_text(row["given_name"]), _birthdate_key(row["birthdate"])
-    if not (fam and giv and dob):
-        return None
-    return ("D3", soundex(row["family_name"]), soundex(row["given_name"]), dob)
+_key_d1 = _make_key_fn("D1", ["identifier", "given_name", "family_name", "gender", "birthdate", "home_district", "ta", "village"])
+_key_d2 = _make_key_fn("D2", ["given_name", "family_name", "gender", "birthdate", "home_district", "ta", "village"])
+_key_d3 = _make_key_fn("D3", ["given_name", "family_name", "gender", "birthdate"])
 
-
-def _key_d4(row):
-    fam, giv, gender, village = normalize_text(row["family_name"]), normalize_text(row["given_name"]), normalize_text(row["gender"]), normalize_text(row["village"])
-    return ("D4", fam, giv, gender, village) if (fam and giv and gender and village) else None
-
-
-def _key_d5(row):
-    phone = normalize_phone(row["cell"])
-    return ("D5", phone) if phone else None
-
-
-def _key_d6(row):
-    ident = normalize_text(row["identifier"])
-    return ("D6", ident) if ident else None
-
-
-_KEY_FNS = {"D1": _key_d1, "D2": _key_d2, "D3": _key_d3, "D4": _key_d4, "D5": _key_d5, "D6": _key_d6}
+_KEY_FNS = {"D1": _key_d1, "D2": _key_d2, "D3": _key_d3}
 
 
 class _UnionFind:
@@ -123,17 +130,23 @@ def _bucket(roster_df, key_fn):
     return {k: v for k, v in buckets.items() if len(v) > 1}
 
 
-def match_duplicates(roster_df, enabled_rules):
+def match_duplicates(roster_df, enabled_rules, other_fields=None):
     """Returns (groups, per_rule_counts).
 
     groups: list of {members: [person_id...], confidence: float, rules: [rule_id...]},
     sorted by confidence descending. Only groups with 2+ members are included.
 
-    per_rule_counts: {rule_id: {"groups": n, "records": n}} for ALL six rules,
-    independent of which are enabled -- lets the per-rule table stay
+    per_rule_counts: {rule_id: {"groups": n, "records": n}} for ALL four
+    rules, independent of which are enabled -- lets the per-rule table stay
     informative even for a rule the user has switched off.
+
+    other_fields: roster columns (see FIELD_OPTIONS) the user picked for D4
+    ("Other") -- D4 matches nothing until at least one field is picked.
     """
-    per_rule_buckets = {rid: _bucket(roster_df, fn) for rid, fn in _KEY_FNS.items()}
+    key_fns = dict(_KEY_FNS)
+    key_fns["D4"] = _make_key_fn("D4", other_fields or [])
+
+    per_rule_buckets = {rid: _bucket(roster_df, fn) for rid, fn in key_fns.items()}
     per_rule_counts = {
         rid: {"groups": len(buckets), "records": sum(len(v) for v in buckets.values())}
         for rid, buckets in per_rule_buckets.items()
