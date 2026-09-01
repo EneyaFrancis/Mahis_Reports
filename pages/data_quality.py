@@ -1,6 +1,7 @@
 import dash
 from dash import html, dcc, dash_table, Input, Output, State, callback
 from dash.exceptions import PreventUpdate
+import math
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -21,6 +22,8 @@ from dq.checks.duplicates import (
 )
 
 dash.register_page(__name__, path="/data_quality", title="Data Quality")
+
+_CANDIDATES_PAGE_SIZE = 10
 
 # Identity/Demographics core fields used for the Overview facility scorecard's
 # field-completeness proxy. The Completeness tab lets the user pick any
@@ -257,6 +260,7 @@ layout = html.Div(
                                             ),
                                         ],
                                     ),
+                                    dcc.Store(id="dq-dup-candidates-page", data=1),
                                     html.Div(id="dq-duplicates-content"),
                                 ],
                             ),
@@ -636,22 +640,46 @@ def _comparison_table(members_df):
     return html.Table([html.Thead(header), html.Tbody(rows)], className="dq-compare-table")
 
 
-def _group_details(group, roster_df):
+def _person_attributes_cell(best):
+    fields = [
+        ("Identifier", best.get("identifier")),
+        ("Given Name", best.get("given_name")),
+        ("Last Name", best.get("family_name")),
+        ("Gender", best.get("gender")),
+        ("Birthdate", best.get("birthdate")),
+    ]
+    return html.Div([html.Div(f"{label}: {_format_cell(value)}") for label, value in fields])
+
+
+def _candidate_row(sn, group, roster_df):
+    """One 'Candidate groups' table row -- SN, the representative person's
+    attributes (most encounters, ties broken by obs_rows), an expandable
+    'Similar Records' cell (native <details>/<summary>, same side-by-side
+    comparison as before, just moved out of the summary line), Confidence,
+    and Rules."""
     members_df = roster_df[roster_df["person_id"].isin(group["members"])].copy()
-    best = members_df.loc[members_df["encounter_count"].idxmax()]
-    summary = (
-        f"Confidence {group['confidence']:.2f} · {len(group['members'])} records · "
-        f"rules {', '.join(group['rules']) or 'none'}"
-    )
+    best = members_df.sort_values(["encounter_count", "obs_rows"], ascending=False).iloc[0]
     keep_line = html.Div(
         f"A merge would keep person_id {best['person_id']} ({int(best['encounter_count'])} encounters) "
         f"and retire {len(members_df) - 1} record(s). Read-only -- no merge is performed.",
         className="dq-panel-note",
     )
-    return html.Details(
-        [html.Summary(summary, className="dq-group-summary"), _comparison_table(members_df), keep_line],
+    n = len(group["members"])
+    similar_records = html.Details(
+        [
+            html.Summary(f"{n} Record{'s' if n != 1 else ''}", className="dq-group-summary"),
+            _comparison_table(members_df),
+            keep_line,
+        ],
         className="dq-group-details",
     )
+    return html.Tr([
+        html.Td(str(sn)),
+        html.Td(_person_attributes_cell(best)),
+        html.Td(similar_records),
+        html.Td(f"{group['confidence']:.2f}"),
+        html.Td(", ".join(group["rules"]) or "none"),
+    ])
 
 
 @callback(
@@ -666,7 +694,7 @@ def toggle_dup_other_fields(enabled_rules):
 
 
 @callback(
-    Output("dq-duplicates-content", "children"),
+    Output("dq-dup-candidates-page", "data"),
     Input("url-params-store", "data"),
     Input("dq-date-range", "start_date"),
     Input("dq-date-range", "end_date"),
@@ -677,7 +705,47 @@ def toggle_dup_other_fields(enabled_rules):
     Input("dq-dup-other-fields", "value"),
     Input("dq-dup-min-confidence", "value"),
 )
-def render_duplicates_tab(urlparams, start_date, end_date, districts, facilities, program, enabled_rules, other_fields, min_confidence):
+def reset_candidates_page(*_):
+    """Any change to what's being matched invalidates whatever page the user
+    was on -- e.g. a stale page 5 could land past the end of a now-shorter
+    candidate list."""
+    return 1
+
+
+@callback(
+    Output("dq-dup-candidates-page", "data", allow_duplicate=True),
+    Input("dq-candidates-prev-btn", "n_clicks"),
+    State("dq-dup-candidates-page", "data"),
+    prevent_initial_call=True,
+)
+def candidates_prev_page(_n_clicks, page):
+    return max(1, (page or 1) - 1)
+
+
+@callback(
+    Output("dq-dup-candidates-page", "data", allow_duplicate=True),
+    Input("dq-candidates-next-btn", "n_clicks"),
+    State("dq-dup-candidates-page", "data"),
+    prevent_initial_call=True,
+)
+def candidates_next_page(_n_clicks, page):
+    return (page or 1) + 1
+
+
+@callback(
+    Output("dq-duplicates-content", "children"),
+    Input("url-params-store", "data"),
+    Input("dq-date-range", "start_date"),
+    Input("dq-date-range", "end_date"),
+    Input("dq-scope", "value"),
+    Input("dq-facility-filter", "value"),
+    Input("dq-program-filter", "value"),
+    Input("dq-dup-rules", "value"),
+    Input("dq-dup-other-fields", "value"),
+    Input("dq-dup-min-confidence", "value"),
+    Input("dq-dup-candidates-page", "data"),
+)
+def render_duplicates_tab(urlparams, start_date, end_date, districts, facilities, program, enabled_rules, other_fields, min_confidence, candidates_page):
     urlparams = urlparams or {}
     data_route = urlparams.get("route", ["default"])[0]
     location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
@@ -712,6 +780,7 @@ def render_duplicates_tab(urlparams, start_date, end_date, districts, facilities
             f"MAX({IDENTIFIER_}) AS identifier, MAX({VILLAGE_}) AS village, "
             f"MAX({TA_}) AS ta, MAX({HOME_DISTRICT_}) AS home_district, MAX({CELL_}) AS cell, "
             f"MAX({FACILITY_}) AS facility, COUNT(DISTINCT {ENCOUNTER_ID_}) AS encounter_count, "
+            f"COUNT(DISTINCT ({PERSON_ID_}, {CONCEPT_NAME_})) AS obs_rows, "
             f"MIN({DATE_}) AS first_encounter, MAX({DATE_}) AS last_encounter "
             f"FROM '{data_path}' WHERE {where} GROUP BY {PERSON_ID_}"
         )
@@ -818,6 +887,7 @@ def render_duplicates_tab(urlparams, start_date, end_date, districts, facilities
 
     min_confidence = min_confidence or 0
     candidate_groups = [g for g in groups if g["confidence"] >= min_confidence]
+    candidates_pagination = None
     if not enabled_rules:
         candidates_panel = _empty_state(
             "No matching rule is switched on",
@@ -829,9 +899,34 @@ def render_duplicates_tab(urlparams, start_date, end_date, districts, facilities
             "Lower the minimum-confidence slider, or switch on more rules.",
         )
     else:
-        candidates_panel = html.Div(
-            [_group_details(g, roster_df) for g in candidate_groups],
-            className="dq-group-list",
+        total_pages = math.ceil(len(candidate_groups) / _CANDIDATES_PAGE_SIZE)
+        page = max(1, min(candidates_page or 1, total_pages))
+        start = (page - 1) * _CANDIDATES_PAGE_SIZE
+        page_groups = candidate_groups[start:start + _CANDIDATES_PAGE_SIZE]
+
+        candidates_panel = html.Table(
+            [
+                html.Thead(html.Tr([
+                    html.Th("SN"), html.Th("Person Attributes"), html.Th("Similar Records"),
+                    html.Th("Confidence"), html.Th("Rules"),
+                ])),
+                html.Tbody([
+                    _candidate_row(sn, g, roster_df)
+                    for sn, g in enumerate(page_groups, start=start + 1)
+                ]),
+            ],
+            className="dq-candidates-table",
+        )
+        candidates_pagination = html.Div(
+            [
+                html.Button("Previous", id="dq-candidates-prev-btn", n_clicks=0,
+                            disabled=page <= 1, className="dq-pagination-btn"),
+                html.Span(f"Page {page} of {total_pages} ({len(candidate_groups):,} candidate groups)",
+                          className="dq-pagination-info"),
+                html.Button("Next", id="dq-candidates-next-btn", n_clicks=0,
+                            disabled=page >= total_pages, className="dq-pagination-btn"),
+            ],
+            className="dq-pagination-row",
         )
 
     return html.Div(
@@ -845,18 +940,20 @@ def render_duplicates_tab(urlparams, start_date, end_date, districts, facilities
                 [html.H4("Duplicates by facility", className="dq-panel-title"), facility_table],
                 className="dq-panel",
             ),
-            identity_panel,
             html.Div(
                 [
                     html.H4("Candidate groups", className="dq-panel-title"),
                     html.Div(
-                        "Read-only. Each group expands into a field-by-field comparison; "
-                        "differing fields are highlighted.",
+                        "Read-only. Person Attributes reflects the record with the most "
+                        "encounters (ties broken by observation rows); expand Similar Records "
+                        "for a field-by-field comparison, where differing fields are highlighted.",
                         className="dq-panel-note",
                     ),
                     candidates_panel,
+                    candidates_pagination,
                 ],
                 className="dq-panel",
             ),
+            identity_panel,
         ]
     )

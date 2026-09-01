@@ -245,17 +245,58 @@
     color: #2c3e50;
 }
 
-.dq-group-list {
+.dq-candidates-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+.dq-candidates-table th,
+.dq-candidates-table td {
+    border: 1px solid #e9ecef;
+    padding: 8px 10px;
+    text-align: left;
+    vertical-align: top;
+}
+
+.dq-candidates-table th {
+    background: #f8f9fa;
+    color: #2c3e50;
+}
+
+.dq-pagination-row {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.dq-pagination-btn {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #006401;
+    cursor: pointer;
+}
+
+.dq-pagination-btn:disabled {
+    color: #adb5bd;
+    cursor: not-allowed;
+}
+
+.dq-pagination-info {
+    font-size: 0.8125rem;
+    color: #6c757d;
 }
 
 .dq-group-details {
-    border: 1px solid #e9ecef;
-    border-radius: 8px;
-    padding: 8px 12px;
-    background: #fff;
+    border: none;
+    padding: 0;
+    background: transparent;
 }
 
 .dq-group-summary {
