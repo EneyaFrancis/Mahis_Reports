@@ -1025,6 +1025,30 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     person_ctx['person_id'] = person_ctx['person_id'].astype(str)
     merged = out
     merged['person_id'] = merged['person_id'].astype(str)
+
+    # KNOWN LIMITATION (documented, not yet fixed -- see conversation history
+    # for full investigation): every mnid_* flag above is derived ONCE across
+    # this person's ENTIRE row history (this function runs on the whole
+    # multi-year prepared dataframe, cached, not per-request) and then
+    # broadcast onto every row that person has, regardless of date. A caller
+    # that filters a date-windowed facility_df by one of these flags (e.g.
+    # mnid_lab_overview_004's numerator_filters referencing
+    # mnid_labour_live_birth) is really asking "does this person have the
+    # flag set *anywhere, ever*", not "did this happen during the selected
+    # window" -- so a person whose actual qualifying event (e.g. a live
+    # birth) happened months or years before the selected window can still
+    # be counted, as long as they have any unrelated row (e.g. an ANC visit)
+    # inside it. Confirmed concretely: a "Last 7 Days" Live Births count of
+    # 394 included 140 people whose real delivery was recorded as far back as
+    # January of the prior year. Country Profile's own metric_snapshot is
+    # NOT affected -- it scans concept_name/obs_value_coded directly against
+    # the date-filtered rows rather than through one of these flags, which is
+    # why it stayed accurate throughout.
+    #
+    # A correct fix means recomputing the affected flags per-request against
+    # only the date-filtered subset instead of once globally -- a real
+    # architecture change to how this function is cached/called, deferred
+    # for now rather than rushed under this session's scope.
     return merged.merge(person_ctx, on='person_id', how='left')
 
 

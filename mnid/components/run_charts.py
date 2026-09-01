@@ -325,7 +325,7 @@ def _run_chart(
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
             margin=dict(l=0, r=0, t=0, b=0),
-            height=240,
+            height=300,
             xaxis=dict(visible=False),
             yaxis=dict(visible=False),
             annotations=[dict(
@@ -410,6 +410,14 @@ def _run_chart(
             f"Actual: <b>%{{customdata[1]:{value_format}}}</b>"
             "<extra></extra>"
         )
+    # A percentage series (0-100%) genuinely has a meaningful floor at 0, so
+    # anchoring the fill/axis there is correct. A raw-count series (Total
+    # Births, Maternal Deaths, ...) doesn't -- its natural day-to-day range
+    # (e.g. 11-25) sits far above 0, so forcing 0 into view compresses the
+    # actual variation into a thin, hard-to-read band near the bottom of the
+    # chart. Autoscale those to their own data range instead of anchoring to
+    # zero, so the real trend actually fills the chart.
+    _is_count_axis = not _is_percentage_axis(y_title)
     fig.add_trace(go.Scatter(
         x=x_values,
         y=y_values,
@@ -417,7 +425,7 @@ def _run_chart(
         mode="lines+markers",
         line=dict(color=color, width=3.8, shape="spline", smoothing=0.55),
         marker=dict(size=7, color=color, line=dict(color="#fff", width=1.5)),
-        fill="tozeroy",
+        fill=None if _is_count_axis else "tozeroy",
         fillcolor=_hex_to_rgba(color, 0.08),
         customdata=customdata,
         hovertemplate=hovertemplate,
@@ -462,7 +470,7 @@ def _run_chart(
             font=dict(color="#6366f1", size=10),
         ))
     fig.update_layout(**_exec_chart_layout(
-        height=240,
+        height=300,
         # Widened 18 -> 52 -> 92: the annotation now uses a fixed xshift=8
         # rather than a paper-fraction x, so nearly all of this margin is
         # real, predictable room for "Target 80.0%"/"Median 65.2%" to render.
@@ -486,7 +494,7 @@ def _run_chart(
             tickfont=dict(size=11, color="#94a3b8"),
             tickformat=None if _is_percentage_axis(y_title) else ",.0f",
             title=dict(text=y_title, font=dict(size=10, color="#64748b")),
-            rangemode="tozero",
+            rangemode="normal" if _is_count_axis else "tozero",
         ),
     ))
     fig.update_layout(annotations=layout_annotations)
@@ -509,7 +517,7 @@ def _multi_run_chart(
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
             margin=dict(l=0, r=0, t=0, b=0),
-            height=240,
+            height=300,
             xaxis=dict(visible=False),
             yaxis=dict(visible=False),
             annotations=[dict(
@@ -602,7 +610,7 @@ def _multi_run_chart(
         ))
 
     fig.update_layout(**_exec_chart_layout(
-        height=240,
+        height=300,
         # Same xshift-based annotation + widened margin as _run_chart above.
         margin=dict(l=42, r=92, t=12, b=42),
         xaxis=dict(
@@ -624,7 +632,11 @@ def _multi_run_chart(
             tickfont=dict(size=11, color="#94a3b8"),
             tickformat=None if _is_percentage_axis(y_title) else ",.0f",
             title=dict(text=y_title, font=dict(size=10, color="#64748b")),
-            rangemode="tozero",
+            # Same reasoning as _run_chart above -- a multi-series raw-count
+            # chart (Total/Fresh/Macerated stillbirths, all small numbers)
+            # looks flat if 0 is always forced into view; let it autoscale to
+            # whatever range the series actually occupy.
+            rangemode="normal" if not _is_percentage_axis(y_title) else "tozero",
         ),
     ))
     fig.update_layout(annotations=layout_annotations)

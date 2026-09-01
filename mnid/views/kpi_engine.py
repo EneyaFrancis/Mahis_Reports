@@ -84,7 +84,18 @@ def _kpi_window_matches_grain(start_ts, end_ts, grain: str) -> bool:
     """
     if start_ts is None or end_ts is None:
         return False
-    code = {'daily': 'D', 'weekly': 'W-SUN', 'monthly': 'M', 'quarterly': 'Q', 'yearly': 'A'}.get(grain, 'M')
+    if grain == 'daily':
+        # A daily bucket IS a single day -- summing whole daily rows across
+        # [start, end] can never include a partial day or spill past the
+        # window on either edge, regardless of how wide or oddly-aligned the
+        # selection is (unlike weekly/monthly/etc., which only sum cleanly
+        # when the window happens to land on a period boundary). So daily is
+        # always safe to trust, as long as the range itself is sane.
+        try:
+            return pd.Timestamp(start_ts) <= pd.Timestamp(end_ts)
+        except Exception:
+            return False
+    code = {'weekly': 'W-SUN', 'monthly': 'M', 'quarterly': 'Q', 'yearly': 'A'}.get(grain, 'M')
     try:
         start_ts = pd.Timestamp(start_ts).normalize()
         end_ts = pd.Timestamp(end_ts).normalize()
@@ -104,12 +115,29 @@ def _build_agg_batch(agg_df: pd.DataFrame, start, end, grain: str,
     """
     try:
         grains = _agg_candidate_grains(grain)
-        floor = min(_agg_floor_period(start, g) for g in grains)
-        sub = agg_df[
-            agg_df['grain'].isin(grains)
-            & (agg_df['period_start'] >= floor)
-            & (agg_df['period_start'] <= pd.Timestamp(end))
+        end_ts = pd.Timestamp(end)
+        # Each candidate grain needs its OWN floor, not one shared minimum --
+        # a single floor = min(daily_floor, weekly_floor, monthly_floor) is
+        # always the *monthly* one (the earliest), so the 'daily' rows in the
+        # combined frame silently spanned the whole month-to-date instead of
+        # just [start, end]. That's the exact same "whole period returned for
+        # a narrow selection" bug _kpi_window_matches_grain guards against,
+        # just reintroduced one level down inside this function once daily
+        # rows actually existed in the aggregate to trigger it. Filtering per
+        # grain first, then concatenating, keeps each grain's rows correctly
+        # scoped to its own floor before the groupby below sums them.
+        parts = [
+            agg_df[
+                (agg_df['grain'] == g)
+                & (agg_df['period_start'] >= _agg_floor_period(start, g))
+                & (agg_df['period_start'] <= end_ts)
+            ]
+            for g in grains
         ]
+        parts = [p for p in parts if not p.empty]
+        if not parts:
+            return {}
+        sub = pd.concat(parts, ignore_index=True)
         if fac_filter:
             sub = sub[sub['facility_code'].isin([str(f) for f in fac_filter])]
         elif dist_filter:
@@ -121,6 +149,16 @@ def _build_agg_batch(agg_df: pd.DataFrame, start, end, grain: str,
         den = grouped['denominator'].astype(int)
         den_safe = den.where(den > 0, 1)
         pct = (num / den_safe * 100).clip(upper=100.0).round(1).where(den > 0, 0.0)
+        # Keys carry their own grain (not just indicator_id) so callers know
+        # *which* grain's row actually answered the lookup -- _batch_cov below
+        # walks the fallback chain per indicator, and a request for 'daily'
+        # can silently resolve to 'monthly' for one indicator (no daily rows
+        # for that facility/day) while another indicator in the same batch
+        # genuinely has daily data. Without surfacing which grain won, a
+        # caller has no way to re-check whether that specific fallback grain
+        # is actually safe for the requested window (see
+        # _kpi_window_matches_grain) -- it would just trust every number in
+        # the batch as if they'd all come from the same, pre-blessed grain.
         return {
             (str(iid), g): (int(n), int(d), float(p))
             for iid, g, n, d, p in zip(grouped['indicator_id'], grouped['grain'], num, den, pct)
@@ -130,13 +168,15 @@ def _build_agg_batch(agg_df: pd.DataFrame, start, end, grain: str,
 
 
 def _batch_cov(batch: dict, ind_id: str, grain_fallbacks: list) -> tuple:
-    """Look up (num, den, pct) from a pre-built batch dict with grain fallback."""
+    """Look up (num, den, pct, matched_grain) from a pre-built batch dict with
+    grain fallback. matched_grain is None when nothing in the batch matched,
+    so the caller can tell "genuinely 0 of 0" apart from "no row at all"."""
     iid = str(ind_id)
     for g in grain_fallbacks:
         v = batch.get((iid, g))
         if v and v[1] > 0:
-            return v
-    return 0, 0, 0.0
+            return v[0], v[1], v[2], g
+    return 0, 0, 0.0, None
 
 
 def _programme_activity_counts(df: pd.DataFrame) -> dict[str, int]:
@@ -416,13 +456,21 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
     _agg = _get_aggregate(route=(scope_meta or {}).get('route', 'default'))
     _fac_filter  = selected_facility_codes or None
     _dist_filter = selected_districts or None
-    _kpi_grain   = 'monthly'
+    # 'daily' (not 'monthly') is the base grain to request: summing whole
+    # daily aggregate rows over [start, end] is exact for *any* window width
+    # (see _kpi_window_matches_grain), and _candidate_grains('daily') still
+    # falls back through weekly/monthly if a given route/indicator was never
+    # aggregated at daily grain (e.g. an older aggregate built before daily
+    # rows existed) -- _kpi_window_safe below is what keeps that fallback
+    # honest for whichever grain _batch_cov/_agg_coverage actually finds.
+    _kpi_grain   = 'daily'
     _coverage_grain = _aggregate_grain_for_window(_s, _e)
     _kpi_fallbacks  = list(_agg_candidate_grains(_kpi_grain))
-    # See _kpi_window_matches_grain's docstring -- only trust the monthly
-    # aggregate for the current window when it exactly spans whole month(s);
+    # See _kpi_window_matches_grain's docstring -- daily is always safe;
+    # monthly/weekly/etc. (reached via the fallback chain above) are only
+    # safe when the window exactly spans whole period(s) of that grain,
     # otherwise a narrower selection (Today, Last 7 Days, an in-progress
-    # This Month, ...) would silently sum the *entire* enclosing month.
+    # This Month, ...) would silently sum the *entire* enclosing period.
     _kpi_window_safe = _kpi_window_matches_grain(_s, _e, _kpi_grain)
 
     try:
@@ -458,13 +506,23 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
 
     _cov_agg: pd.DataFrame | None = None
     if _agg is not None and _s is not None:
+        # Same per-grain-floor fix as _build_agg_batch above -- a single
+        # shared floor = min(...) across daily/weekly/monthly candidates
+        # always resolves to the earliest (monthly) one, so the 'daily'/
+        # 'weekly' rows here would silently span back to the start of the
+        # month instead of just the selected window.
         _cov_grains = _agg_candidate_grains(_coverage_grain)
-        _cov_floor  = min(_agg_floor_period(_s, g) for g in _cov_grains)
-        _cov_agg    = _agg[
-            _agg['grain'].isin(_cov_grains)
-            & (_agg['period_start'] >= _cov_floor)
-            & (_agg['period_start'] <= pd.Timestamp(_e))
+        _cov_end    = pd.Timestamp(_e)
+        _cov_parts  = [
+            _agg[
+                (_agg['grain'] == g)
+                & (_agg['period_start'] >= _agg_floor_period(_s, g))
+                & (_agg['period_start'] <= _cov_end)
+            ]
+            for g in _cov_grains
         ]
+        _cov_parts  = [p for p in _cov_parts if not p.empty]
+        _cov_agg    = pd.concat(_cov_parts, ignore_index=True) if _cov_parts else _agg.iloc[0:0]
         if _fac_filter:
             _cov_agg = _cov_agg[_cov_agg['facility_code'].isin([str(f) for f in _fac_filter])]
         elif _dist_filter:
@@ -483,7 +541,16 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
             # while the exact same indicator showed real data on Coverage charts.
             _batch_id = _agg_resolve_id(_agg, ind['id'], ind.get('label')) if _agg is not None else ind['id']
             if _cur_batch and _kpi_window_safe:
-                num, den, pct = _batch_cov(_cur_batch, _batch_id, _kpi_fallbacks)
+                num, den, pct, _matched_grain = _batch_cov(_cur_batch, _batch_id, _kpi_fallbacks)
+                # _kpi_window_safe only blessed the *requested* grain (daily,
+                # always safe) -- the fallback chain inside _batch_cov can
+                # still have resolved THIS indicator to a coarser grain (no
+                # daily rows for this facility/day), which is only safe when
+                # the window happens to exactly span whole periods of that
+                # coarser grain. Re-check against whichever grain actually
+                # answered, not the one that was requested.
+                if _matched_grain is not None and not _kpi_window_matches_grain(_s, _e, _matched_grain):
+                    den = 0
                 if den == 0 and ind.get('numerator_filters') and ind.get('denominator_filters'):
                     num, den, pct = _cov(facility_df, ind['numerator_filters'], ind['denominator_filters'])
             elif _agg is not None and _s is not None and _kpi_window_safe:
@@ -505,7 +572,9 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
         for c in computed_list:
             if _prev_batch and prev_start is not None and _prev_kpi_window_safe:
                 _prev_batch_id = _agg_resolve_id(_agg, c['id'], c.get('label')) if _agg is not None else c['id']
-                _, prev_den, prev_pct = _batch_cov(_prev_batch, _prev_batch_id, _kpi_fallbacks)
+                _, prev_den, prev_pct, _prev_matched_grain = _batch_cov(_prev_batch, _prev_batch_id, _kpi_fallbacks)
+                if _prev_matched_grain is not None and not _kpi_window_matches_grain(prev_start, prev_end, _prev_matched_grain):
+                    prev_den = 0
                 if prev_den == 0 and c.get('numerator_filters') and c.get('denominator_filters'):
                     try:
                         _, _, prev_pct = _cov(_prev_df_filtered, c['numerator_filters'], c['denominator_filters'])

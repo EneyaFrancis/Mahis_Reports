@@ -296,8 +296,22 @@ for district, facilities in DISTRICTS.items():
 
         for tag, year, month, days in MONTHS:
             scenario = _scenario_for(fac_code, tag)
+            # `days` is last_day from _build_months -- days_in_month for a
+            # completed month, but just the elapsed day-of-month (e.g. 1) for
+            # the current, still-in-progress month. Every *_pids block below
+            # generates a FULL MONTH's usual patient volume regardless of
+            # `days`, then _rand_date scatters it across [1, days] -- fine
+            # when days == days_in_month, but for a partial current month
+            # that dumps an entire month's worth of visits onto the handful
+            # of days that have actually happened (all of them, if days==1),
+            # producing a run-chart spike on today's date roughly
+            # days_in_month/days times the real daily volume. Scale the
+            # generated volume down to the fraction of the month that has
+            # actually elapsed so a partial month reads as a partial month.
+            _days_in_month = calendar.monthrange(year, month)[1]
+            month_fraction = min(1.0, days / _days_in_month)
             # ── ANC ──────────────────────────────────────────────────────────
-            anc_pids = [_next_id() for _ in range(random.randint(28, 42))]
+            anc_pids = [_next_id() for _ in range(max(1, round(random.randint(28, 42) * month_fraction)))]
             anc_sets = {key: _sample_n(anc_pids, _r(key, fac_jitter)) for key in [
                 "anemia", "hiv_test", "bp", "syphilis", "urine", "ga", "tetanus",
                 "preg_planned", "danger_signs",
@@ -365,7 +379,7 @@ for district, facilities in DISTRICTS.items():
                     _obs(tmpl, "Gestation in weeks", value_n=float(random.randint(6, 12)))
 
             # ── Labour ───────────────────────────────────────────────────────
-            lab_pids = [_next_id() for _ in range(_scaled_count(10, 18, scenario["labour_volume"]))]
+            lab_pids = [_next_id() for _ in range(_scaled_count(10, 18, scenario["labour_volume"] * month_fraction))]
             num_lab = _sample_n(lab_pids, _r("lab_core", fac_jitter))
             vitk_lab_num = _sample_n(lab_pids, _r("vitk_lab", fac_jitter))
             breastfeeding_num = _sample_n(lab_pids, _r("breastfeeding_lab", fac_jitter))
@@ -499,7 +513,7 @@ for district, facilities in DISTRICTS.items():
                     )
 
             # ── PNC ──────────────────────────────────────────────────────────
-            pnc_pids = [_next_id() for _ in range(_scaled_count(8, 14, scenario["pnc_volume"]))]
+            pnc_pids = [_next_id() for _ in range(_scaled_count(8, 14, scenario["pnc_volume"] * month_fraction))]
             num_pnc = _sample_n(pnc_pids, _r("pnc_core", fac_jitter))
 
             mother_denom = _sample_n(pnc_pids, 0.85)
@@ -571,7 +585,7 @@ for district, facilities in DISTRICTS.items():
                     _obs(tmpl, "Exclusive breastfeeding counselling", "Yes")
 
             # ── Newborn ───────────────────────────────────────────────────────
-            nb_pids = [_next_id() for _ in range(_scaled_count(5, 11, scenario["newborn_volume"]))]
+            nb_pids = [_next_id() for _ in range(_scaled_count(5, 11, scenario["newborn_volume"] * month_fraction))]
             num_nb = _sample_n(nb_pids, _r("nb_core", fac_jitter))
 
             ikmc_denom = _sample_n(nb_pids, 0.55)
