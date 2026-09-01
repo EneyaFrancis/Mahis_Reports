@@ -22,8 +22,8 @@ _EXECUTIVE_CACHE_DIR = os.environ.get('MNID_EXEC_CACHE_DIR') or os.path.join(
 )
 _MNID_EXECUTIVE_DISK_CACHE = diskcache.Cache(_EXECUTIVE_CACHE_DIR, size_limit=512 * 1024 * 1024)
 _MNID_WARNED_MESSAGES: set = set()
-_COUNTRY_PROFILE_RENDER_VERSION = "country-profile-v48-daily-fetch-on-demand"
-_EXECUTIVE_RENDER_VERSION = "executive-v50-daily-fetch-on-demand"
+_COUNTRY_PROFILE_RENDER_VERSION = "country-profile-v49-always-monthly-default"
+_EXECUTIVE_RENDER_VERSION = "executive-v51-always-monthly-default"
 
 
 _network_df_cache: dict = {}

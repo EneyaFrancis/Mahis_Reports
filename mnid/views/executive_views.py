@@ -1049,34 +1049,25 @@ def render_country_profile(
         if start is None or end is None:
             start, end = _period_bounds(df)
 
-    # Fetch grain follows the width of the selected window, not a hardcoded
-    # constant: a wide window fetches monthly -- cheap (hits the small
-    # pre-aggregated table / a coarse raw-row bucket instead of a full
-    # per-day scan) *and* more appropriate, since cramming many daily points
-    # into one of these summary charts wouldn't be readable anyway. A narrow
-    # window (comparable to "Today"/a few days) fetches daily -- meaningful
-    # detail, and still cheap since the window itself is small. "Daily" is
-    # "Daily" is always offered as a chart toggle in MAHIS mode, matching the
-    # Run Charts tab under Maternal/Newborn -- available on demand, never the
-    # default. Selecting it doesn't rely on this initial fetch already being
-    # daily-resolution: the grain-toggle callback (_update_country_profile_
-    # chart_grain in renderer.py) holds a "recipe" (refetch, attached below
-    # per chart) describing exactly how to redo this same fetch at whatever
-    # grain is actually requested, mirroring Run Charts' own per-grain-change
-    # server recompute instead of a client-side reshape of stale data (which
-    # can't turn already-aggregated monthly data into real daily detail).
+    # Always fetch monthly initially, on every page load, regardless of the
+    # selected window's width -- matching Run Charts under Maternal/Newborn
+    # exactly (its grain dropdown always defaults to 'monthly' too). An
+    # earlier version of this made the initial fetch/display grain follow
+    # the window's width (narrow windows defaulting straight to "Daily"),
+    # which meant something as ordinary as selecting "Today" silently
+    # switched Country Profile into the expensive per-day scan by itself,
+    # with no user action -- not what "initially falls on monthly" means.
     #
-    # The cutoff below only controls what this *initial* render fetches by
-    # default -- it has to sit below MAHIS's own default window (a rolling
-    # 30 days, see MNIDDataSource.default_window()), since a completely
-    # untouched page load is by far the most common case and must land on
-    # the cheap monthly path, not accidentally qualify as "narrow" and
-    # trigger the expensive scan on every single default visit. 7 days
-    # cleanly separates the genuinely short relative periods (Today,
-    # Yesterday, Last 7 Days, This Week, Last Week) from the 30-day default
-    # and anything coarser.
-    _fetch_window_days = (end - start).days if (start is not None and end is not None) else None
-    _fetch_grain = 'daily' if (_fetch_window_days is not None and _fetch_window_days <= 7) else 'monthly'
+    # "Daily" is still always offered as a chart toggle in MAHIS mode,
+    # available on demand, never the default. Selecting it doesn't need this
+    # initial fetch to already be daily-resolution: the grain-toggle callback
+    # (_update_country_profile_chart_grain in renderer.py) holds a "recipe"
+    # (refetch, attached below per chart) describing exactly how to redo this
+    # same fetch at whatever grain is actually requested, mirroring Run
+    # Charts' own per-grain-change server recompute instead of a client-side
+    # reshape of stale data (which can't turn already-aggregated monthly
+    # data into real daily detail).
+    _fetch_grain = 'monthly'
     _include_daily_toggle = not use_dhis2
 
     period_label = f"{start.strftime('%d %b %Y') if start is not None else 'N/A'} - {end.strftime('%d %b %Y') if end is not None else 'N/A'}"
