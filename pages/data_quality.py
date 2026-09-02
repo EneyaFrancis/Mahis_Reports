@@ -1,14 +1,16 @@
 import dash
 from dash import html, dcc, dash_table, Input, Output, State, callback
 from dash.exceptions import PreventUpdate
+import json
 import math
+import os
 import pandas as pd
 import plotly.graph_objects as go
 
 from data_storage import DataStorage
 from config import (
     PROGRAM_, FACILITY_, DISTRICT_, DATE_, PERSON_ID_, ENCOUNTER_ID_, OBS_DATETIME_,
-    CONCEPT_NAME_,
+    CONCEPT_NAME_, ENCOUNTER_,
     IDENTIFIER_, FIRST_NAME_, LAST_NAME_, GENDER_, HOME_DISTRICT_, TA_, VILLAGE_,
     BIRTHDATE_, CELL_,
 )
@@ -30,6 +32,18 @@ _CANDIDATES_PAGE_SIZE = 10
 # column set; this is a fixed, smaller stand-in so Overview has a real number
 # today without duplicating that tab's column-picker logic.
 CORE_FIELDS = [IDENTIFIER_, FIRST_NAME_, LAST_NAME_, GENDER_, HOME_DISTRICT_, TA_, VILLAGE_]
+
+# The Completeness tab's own "Mandatory Demographics" picker -- (source
+# column, display label) pairs a person record is evaluated against.
+DEMOGRAPHIC_FIELD_OPTIONS = [
+    (FIRST_NAME_, "Given name"),
+    (LAST_NAME_, "Family name"),
+    (GENDER_, "Gender"),
+    (BIRTHDATE_, "Date of birth"),
+    (HOME_DISTRICT_, "Home district"),
+    (TA_, "TA"),
+    (VILLAGE_, "Village"),
+]
 
 _TAB_STYLE = {
     "padding": "10px 18px",
@@ -82,6 +96,53 @@ def _selection_where(level, location, user_districts, selected_districts, select
     if start_date and end_date:
         parts.append(f"{DATE_} BETWEEN '{start_date}'::TIMESTAMP AND '{end_date} 23:59:59'::TIMESTAMP")
     return " AND ".join(parts) if parts else "1=1"
+
+
+def _dq_prefs_path(route):
+    return os.path.join(os.getcwd(), f'data/{route}', 'dcc_dropdown_json', 'dq_preferences.json')
+
+
+def _load_dq_prefs(route, uuid):
+    """Per-user Completeness rules (mandatory encounters + demographics),
+    saved under data/{route}/dcc_dropdown_json/dq_preferences.json so they're
+    already selected the next time this uuid opens the page."""
+    empty = {"encounters": [], "demographics": []}
+    if not uuid:
+        return empty
+    try:
+        with open(_dq_prefs_path(route)) as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return empty
+    for entry in data.get("users", []):
+        if entry.get("uuid") == uuid:
+            return {
+                "encounters": entry.get("encounters") or [],
+                "demographics": entry.get("demographics") or [],
+            }
+    return empty
+
+
+def _save_dq_prefs(route, uuid, encounters, demographics):
+    if not uuid:
+        return
+    prefs_path = _dq_prefs_path(route)
+    try:
+        with open(prefs_path) as f:
+            data = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = {}
+    users = data.setdefault("users", [])
+    for entry in users:
+        if entry.get("uuid") == uuid:
+            entry["encounters"] = encounters or []
+            entry["demographics"] = demographics or []
+            break
+    else:
+        users.append({"uuid": uuid, "encounters": encounters or [], "demographics": demographics or []})
+    os.makedirs(os.path.dirname(prefs_path), exist_ok=True)
+    with open(prefs_path, 'w') as f:
+        json.dump(data, f, indent=2)
 
 
 def _presence_expr(col):
@@ -268,7 +329,66 @@ layout = html.Div(
                         dcc.Tab(
                             label="Completeness", value="completeness",
                             style=_TAB_STYLE, selected_style=_TAB_SELECTED_STYLE,
-                            children=html.Div(id="dq-completeness-content", className="card-2"),
+                            children=html.Div(
+                                className="results-card",
+                                children=[
+                                    html.Div(
+                                        className="dq-panel",
+                                        children=[
+                                            html.H4("Completeness rules", className="dq-panel-title"),
+                                            html.Div(
+                                                className="config-controls-grid",
+                                                children=[
+                                                    html.Div(
+                                                        className="config-control-group",
+                                                        children=[
+                                                            html.Label(
+                                                                "Mandatory Demographics",
+                                                                className="config-label",
+                                                            ),
+                                                            dcc.Dropdown(
+                                                                id="dq-completeness-demographics",
+                                                                options=[
+                                                                    {"label": label, "value": value}
+                                                                    for value, label in DEMOGRAPHIC_FIELD_OPTIONS
+                                                                ],
+                                                                value=[], multi=True, clearable=True,
+                                                                placeholder="Select required demographic fields…",
+                                                                className="modern-dropdown",
+                                                            ),
+                                                        ],
+                                                    ),
+                                                    html.Div(
+                                                        className="config-control-group",
+                                                        children=[
+                                                            html.Label(
+                                                                "Mandatory Encounters",
+                                                                className="config-label",
+                                                            ),
+                                                            dcc.Dropdown(
+                                                                id="dq-completeness-encounters",
+                                                                options=[], value=[], multi=True, clearable=True,
+                                                                placeholder="Select required encounters…",
+                                                                className="modern-dropdown",
+                                                            ),
+                                                        ],
+                                                    ),
+                                                ],
+                                            ),
+                                            html.Div(
+                                                "A person record is complete when every selected demographic "
+                                                "field is filled in and the person has at least one record "
+                                                "under each selected encounter. Encounter options reflect the "
+                                                "selected programme's last 7 days of activity. Your selection "
+                                                "is remembered for next time.",
+                                                className="dq-panel-note",
+                                            ),
+                                        ],
+                                    ),
+                                    html.Div(id="dq-prefs-save-status", style={"display": "none"}),
+                                    html.Div(id="dq-completeness-content", className="card-2"),
+                                ],
+                            ),
                         ),
                         dcc.Tab(
                             label="Validity and outliers", value="validity",
@@ -955,5 +1075,221 @@ def render_duplicates_tab(urlparams, start_date, end_date, districts, facilities
                 className="dq-panel",
             ),
             identity_panel,
+        ]
+    )
+
+
+@callback(
+    Output("dq-completeness-encounters", "options"),
+    Input("dq-program-filter", "value"),
+    Input("url-params-store", "data"),
+)
+def load_completeness_encounter_options(program, urlparams):
+    if not program:
+        return []
+    urlparams = urlparams or {}
+    data_route = urlparams.get("route", ["default"])[0]
+    data_path = f"data/{data_route}/parquet"
+    safe_program = str(program).replace("'", "''")
+    try:
+        enc_df = DataStorage.query_duckdb(
+            f"SELECT DISTINCT {ENCOUNTER_} FROM '{data_path}' "
+            f"WHERE {PROGRAM_} = '{safe_program}' "
+            f"AND {DATE_} >= (SELECT MAX({DATE_}) FROM '{data_path}') - INTERVAL 7 DAY "
+            f"ORDER BY {ENCOUNTER_}"
+        )
+        encounters = enc_df[ENCOUNTER_].dropna().tolist()
+    except Exception:
+        encounters = []
+    return [{"label": e, "value": e} for e in encounters]
+
+
+@callback(
+    Output("dq-completeness-demographics", "value"),
+    Output("dq-completeness-encounters", "value"),
+    Input("url-params-store", "data"),
+)
+def load_dq_preferences(urlparams):
+    """Restores this uuid's last saved Completeness rules -- demographics
+    default to every field the first time a user opens the page (see
+    DEMOGRAPHIC_FIELD_OPTIONS), encounters default to none since they're
+    programme-specific and there's no universally sensible default."""
+    urlparams = urlparams or {}
+    data_route = urlparams.get("route", ["default"])[0]
+    uuid = (urlparams.get("uuid") or [None])[0]
+    prefs = _load_dq_prefs(data_route, uuid)
+    demographics = prefs["demographics"] or [col for col, _ in DEMOGRAPHIC_FIELD_OPTIONS]
+    return demographics, prefs["encounters"]
+
+
+@callback(
+    Output("dq-prefs-save-status", "children"),
+    Input("dq-completeness-demographics", "value"),
+    Input("dq-completeness-encounters", "value"),
+    State("url-params-store", "data"),
+    prevent_initial_call=True,
+)
+def save_dq_preferences(demographics, encounters, urlparams):
+    urlparams = urlparams or {}
+    data_route = urlparams.get("route", ["default"])[0]
+    uuid = (urlparams.get("uuid") or [None])[0]
+    _save_dq_prefs(data_route, uuid, encounters, demographics)
+    return ""
+
+
+@callback(
+    Output("dq-completeness-content", "children"),
+    Input("url-params-store", "data"),
+    Input("dq-date-range", "start_date"),
+    Input("dq-date-range", "end_date"),
+    Input("dq-scope", "value"),
+    Input("dq-facility-filter", "value"),
+    Input("dq-program-filter", "value"),
+    Input("dq-completeness-demographics", "value"),
+    Input("dq-completeness-encounters", "value"),
+)
+def render_completeness_tab(urlparams, start_date, end_date, districts, facilities, program,
+                             mandatory_demographics, mandatory_encounters):
+    urlparams = urlparams or {}
+    data_route = urlparams.get("route", ["default"])[0]
+    location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
+
+    user_data = _load_user_registry(data_route)
+    user_row, scope = _resolve_user_scope(urlparams, user_data)
+    if user_row is None or not location:
+        return None
+
+    if not program:
+        return _empty_state(
+            "Select a programme",
+            "Completeness rules are evaluated against one programme's patient roster at a time.",
+        )
+
+    mandatory_demographics = mandatory_demographics or []
+    mandatory_encounters = mandatory_encounters or []
+    if not mandatory_demographics and not mandatory_encounters:
+        return _empty_state(
+            "No completeness rule is set",
+            "Pick at least one mandatory demographic field or encounter above.",
+        )
+
+    data_path = f"data/{data_route}/parquet"
+    level = scope.get("level")
+    user_districts = scope.get("districts") or []
+    if isinstance(user_districts, str):
+        user_districts = [user_districts]
+
+    where = _selection_where(level, location, user_districts, districts, facilities, program, start_date, end_date)
+
+    demo_flag_cols = [f"demo_{i}" for i in range(len(mandatory_demographics))]
+    enc_flag_cols = [f"enc_{i}" for i in range(len(mandatory_encounters))]
+
+    select_parts = [
+        f"{PERSON_ID_} AS person_id",
+        f"MAX({FACILITY_}) AS facility",
+        f"MAX({IDENTIFIER_}) AS identifier",
+        f"MAX({FIRST_NAME_}) AS given_name",
+        f"MAX({LAST_NAME_}) AS family_name",
+    ]
+    for col, flag in zip(mandatory_demographics, demo_flag_cols):
+        select_parts.append(f"MAX(CASE WHEN {_presence_expr(col)} THEN 1 ELSE 0 END) AS {flag}")
+    for enc, flag in zip(mandatory_encounters, enc_flag_cols):
+        safe_enc = str(enc).replace("'", "''")
+        select_parts.append(f"MAX(CASE WHEN {ENCOUNTER_} = '{safe_enc}' THEN 1 ELSE 0 END) AS {flag}")
+
+    try:
+        df = DataStorage.query_duckdb(
+            f"SELECT {', '.join(select_parts)} FROM '{data_path}' WHERE {where} GROUP BY {PERSON_ID_}"
+        )
+    except Exception:
+        df = pd.DataFrame()
+
+    if df.empty:
+        return _empty_state(
+            "No records match the current filters",
+            "Try widening the date range, clearing the facility filter, or choosing a different programme.",
+        )
+
+    demo_label_map = dict(DEMOGRAPHIC_FIELD_OPTIONS)
+    df["demographics_complete"] = df[demo_flag_cols].eq(1).all(axis=1) if demo_flag_cols else True
+    df["encounters_complete"] = df[enc_flag_cols].eq(1).all(axis=1) if enc_flag_cols else True
+    df["is_complete"] = df["demographics_complete"] & df["encounters_complete"]
+
+    total_patients = len(df)
+    complete_count = int(df["is_complete"].sum())
+    incomplete_count = total_patients - complete_count
+    completeness_rate = (complete_count / total_patients * 100) if total_patients else 0.0
+
+    metrics_strip = html.Div(
+        [
+            _kpi_card("Patients evaluated", f"{total_patients:,}"),
+            _kpi_card("Complete records", f"{complete_count:,}"),
+            _kpi_card("Incomplete records", f"{incomplete_count:,}"),
+            _kpi_card("Completeness rate", f"{completeness_rate:.1f}%"),
+        ],
+        className="dq-kpi-row",
+    )
+
+    facility_summary = (
+        df.groupby("facility")
+        .agg(Patients=("person_id", "count"), Complete=("is_complete", "sum"))
+        .reset_index()
+        .rename(columns={"facility": "Facility"})
+    )
+    facility_summary["Incomplete"] = facility_summary["Patients"] - facility_summary["Complete"]
+    facility_summary["Completeness %"] = (facility_summary["Complete"] / facility_summary["Patients"] * 100).round(1)
+    facility_summary = facility_summary.sort_values("Completeness %")
+
+    facility_table = dash_table.DataTable(
+        columns=[{"name": c, "id": c} for c in ["Facility", "Patients", "Complete", "Incomplete", "Completeness %"]],
+        data=facility_summary.to_dict("records"),
+        page_size=15,
+        sort_action="native",
+    )
+
+    def _missing(row, cols, flags, label_fn):
+        missing = [label_fn(c) for c, f in zip(cols, flags) if row[f] == 0]
+        return ", ".join(missing) if missing else "—"
+
+    incomplete_df = df[~df["is_complete"]].copy()
+    if not incomplete_df.empty:
+        incomplete_df["Missing Demographics"] = incomplete_df.apply(
+            lambda r: _missing(r, mandatory_demographics, demo_flag_cols, lambda c: demo_label_map.get(c, c)), axis=1
+        )
+        incomplete_df["Missing Encounters"] = incomplete_df.apply(
+            lambda r: _missing(r, mandatory_encounters, enc_flag_cols, lambda e: e), axis=1
+        )
+        incomplete_df = incomplete_df.rename(columns={
+            "identifier": "Identifier", "facility": "Facility",
+            "given_name": "Given Name", "family_name": "Family Name",
+        })
+        display_cols = ["Identifier", "Facility", "Given Name", "Family Name", "Missing Demographics", "Missing Encounters"]
+        incomplete_table = dash_table.DataTable(
+            columns=[{"name": c, "id": c} for c in display_cols],
+            data=incomplete_df[display_cols].to_dict("records"),
+            page_size=15,
+            sort_action="native",
+        )
+    else:
+        incomplete_table = html.Div("No incomplete patient records at this scope.", className="dq-empty-state")
+
+    return html.Div(
+        [
+            metrics_strip,
+            html.Div(
+                [html.H4("Completeness by facility", className="dq-panel-title"), facility_table],
+                className="dq-panel",
+            ),
+            html.Div(
+                [
+                    html.H4("Incomplete patient records", className="dq-panel-title"),
+                    html.Div(
+                        "Patients missing at least one mandatory demographic field or encounter.",
+                        className="dq-panel-note",
+                    ),
+                    incomplete_table,
+                ],
+                className="dq-panel",
+            ),
         ]
     )
