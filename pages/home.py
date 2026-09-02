@@ -5,6 +5,7 @@ import plotly.express as px
 import os
 import json
 import numpy as np
+import urllib.parse
 from pathlib import Path
 from dash.exceptions import PreventUpdate
 from flask import request
@@ -201,10 +202,36 @@ def _default_date_window(route: str = 'default'):
                 return periods.min().date(), periods.max().date()
         except Exception:
             pass
-    latest = _latest_available_date(route)
-    anchor = latest.date() if latest is not None else datetime.now().date()
+    if route == 'dhis2':
+        # DHIS2 syncs on a monthly grain -- "Today" would otherwise land on
+        # the real calendar date, which DHIS2 has no data for yet. Anchor to
+        # its own last-reported date instead.
+        latest = _latest_available_date(route)
+        anchor = latest.date() if latest is not None else datetime.now().date()
+    else:
+        # Regular (MAHIS) routes: "Today" is the literal calendar date,
+        # regardless of when the warehouse was last refreshed. Anchoring to
+        # MAX(Date) in the warehouse here instead made "Today" silently mean
+        # "whenever the last fetch happened to run" -- e.g. showing
+        # yesterday's data as "Today" whenever today's fetch hasn't run yet.
+        anchor = datetime.now().date()
     start = anchor - pd.Timedelta(days=29)
     return start, anchor
+
+
+def _default_relative_period_window(route: str = 'default'):
+    """The date window DEFAULT_RELATIVE_PERIOD ('Today' by default) actually
+    resolves to, anchored the same way sync_picker_with_logic and
+    update_dashboard's "clear filters" path anchor it (to the latest
+    available data, not the literal calendar date). This is what the date
+    range picker should show before anything has been touched -- the
+    unrelated 30-day _default_date_window fallback was leaking into the
+    picker's own initial value, so the very first render (before Apply/Clear
+    Filters is ever clicked) silently used a different window than
+    DEFAULT_RELATIVE_PERIOD implies.
+    """
+    _, default_end = _default_date_window(route)
+    return get_relative_date_range(DEFAULT_RELATIVE_PERIOD, current_date=default_end)
 
 
 def _is_dhis2_mnid_report(selected_reports: list[str], menu_json: list[dict]) -> bool:
@@ -439,7 +466,16 @@ def get_enabled_dashboard_menu():
     config = load_dashboard_tab_config()
 
     if config["mode"] == "mnh_only":
-        allowed_reports = {"Maternal Health"}
+        # "mnh_only" means Maternal & Newborn Health only (see the MNH-*
+        # naming used throughout this feature -- MNH-Beginnings, MNH-MoH,
+        # MNH-Nest360) -- restricting to just the "Maternal Health" report
+        # name silently dropped the separate top-level "Newborn" report,
+        # which only DHIS2 route ever showed (there, Newborn is loaded as
+        # a companion tab bundled *inside* the "Maternal Health" render,
+        # bypassing this menu filter entirely -- MAHIS route treats them
+        # as two fully separate top-level reports, so it needs both names
+        # listed here explicitly).
+        allowed_reports = {"Maternal Health", "Newborn"}
     elif config["visible_reports"]:
         allowed_reports = set(config["visible_reports"])
     else:
@@ -483,7 +519,7 @@ path = os.getcwd()
 # BUILD CHARTS
 PREMIUM_DASHBOARD_REPORTS = {"Maternal and Child Health"}
 
-def _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, is_network=False):
+def _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, programs=None, is_network=False):
     """Return SQL WHERE clause parts for the given scope and level.
 
     is_network=True omits the per-facility filter so the network query covers
@@ -510,40 +546,177 @@ def _scope_where_parts(effective_level, location, districts, user_districts, fac
             parts.append(f"{FACILITY_} IN ({quoted_facilities})")
     if age:
         parts.append(f"{AGE_GROUP_} = '{age}'")
+    if programs:
+        quoted_programs = ", ".join([f"'{p}'" for p in programs])
+        parts.append(f"{PROGRAM_} IN ({quoted_programs})")
     return parts
+
+
+def _format_active_filter(label, value):
+    """Render one filter as 'Label[value]', or 'Label[*]' when multiple values
+    are selected. Returns None when the filter has nothing selected."""
+    if not value:
+        return None
+    if isinstance(value, (list, tuple)):
+        display = value[0] if len(value) == 1 else "*"
+    else:
+        display = value
+    return f"{label}[{display}]"
+
+
+def _build_active_filters_display(period_type, facilities, programs, districts):
+    """Minimal 'Active Filters: ...' summary (bold orange), shown only when at
+    least one of the four tracked filters is set. Returns
+    (banner_children, clear_link_style) -- clear-filters-link itself lives in
+    the static layout (see filter-period-text's sibling) and is just toggled
+    via style here, since it has to already exist at page load."""
+    active_parts = [
+        p for p in (
+            _format_active_filter("Period", period_type),
+            _format_active_filter("Facility", facilities),
+            _format_active_filter("Program", programs),
+            _format_active_filter("District", districts),
+        ) if p
+    ]
+    if not active_parts:
+        return "", {"display": "none"}
+    banner = html.Span(
+        f"Active Filters: {', '.join(active_parts)}",
+        style={"fontWeight": "700", "color": "#f59e0b"},
+    )
+    link_style = {"color": "#2563eb", "textDecoration": "underline",
+                  "cursor": "pointer", "fontWeight": "400", "marginLeft": "6px"}
+    return banner, link_style
+
+
+def _extract_crosstab_drill_down(triggered_id, active_cells, table_data_list, table_ids, store_data_list, store_ids):
+    """A crosstab table (helpers.visualizations.create_crosstab_table) stores
+    an "index_click_map" -- logical name ("District"/"Facility") -> actual
+    flat column id -- whenever District and/or Facility are part of its
+    index. Clicking one of those index cells should drill straight into the
+    app's own District/Facility filters. Returns (district_value,
+    facility_value) pulled from the clicked row, or (None, None) if the
+    trigger wasn't a qualifying click (wrong widget, non-index cell, or that
+    crosstab has no District/Facility in its index at all)."""
+    if not isinstance(triggered_id, dict) or triggered_id.get("type") != "crosstab-table":
+        return None, None
+
+    uid = triggered_id.get("index")
+    table_pos = next((i for i, tid in enumerate(table_ids) if tid.get("index") == uid), None)
+    if table_pos is None:
+        return None, None
+
+    active_cell = active_cells[table_pos]
+    if not active_cell:
+        return None, None
+
+    store_pos = next((i for i, sid in enumerate(store_ids) if sid.get("index") == uid), None)
+    if store_pos is None:
+        return None, None
+
+    index_click_map = (store_data_list[store_pos] or {}).get("index_click_map") or {}
+    if active_cell.get("column_id") not in index_click_map.values():
+        return None, None
+
+    rows = table_data_list[table_pos] or []
+    row_idx = active_cell.get("row")
+    if row_idx is None or row_idx >= len(rows):
+        return None, None
+    row = rows[row_idx]
+
+    district_val = row.get(index_click_map[DISTRICT_]) if DISTRICT_ in index_click_map else None
+    facility_val = row.get(index_click_map[FACILITY_]) if FACILITY_ in index_click_map else None
+    return district_val, facility_val
+
+
+def _resolve_crosstab_toggle(drill_district, drill_facility, current_districts, current_facilities):
+    """First click on a District/Facility index cell drills into it; clicking
+    a location that's already the exact current selection undoes it instead
+    of re-applying it. Returns (new_districts, new_facilities) -- either is
+    None when that dimension wasn't part of this click's crosstab (e.g. an
+    index with only District) and shouldn't be touched at all; otherwise a
+    list, possibly empty when undoing."""
+    already_drilled = (
+        (not drill_district or current_districts == [drill_district])
+        and (not drill_facility or current_facilities == [drill_facility])
+    )
+    new_districts = ([] if already_drilled else [drill_district]) if drill_district else None
+    new_facilities = ([] if already_drilled else [drill_facility]) if drill_facility else None
+    return new_districts, new_facilities
+
+
+@callback(
+    Output('dashboard-district-filter', 'value', allow_duplicate=True),
+    Output('dashboard-facility-filter', 'value', allow_duplicate=True),
+    Input({"type": "crosstab-table", "index": ALL}, "active_cell"),
+    State({"type": "crosstab-table", "index": ALL}, "data"),
+    State({"type": "crosstab-table", "index": ALL}, "id"),
+    State({"type": "crosstab-data-store", "index": ALL}, "data"),
+    State({"type": "crosstab-data-store", "index": ALL}, "id"),
+    State('dashboard-district-filter', 'value'),
+    State('dashboard-facility-filter', 'value'),
+    prevent_initial_call=True,
+)
+def sync_filters_from_crosstab_click(active_cells, table_data_list, table_ids, store_data_list, store_ids,
+                                     current_districts, current_facilities):
+    """Keeps the filter drawer's own District/Facility dropdowns in sync with
+    a crosstab drill-down click -- the actual re-render is update_dashboard's
+    job (same click is also one of its Inputs), this just mirrors the
+    resulting values into the dropdown widgets so they're correct if the
+    drawer gets opened afterwards."""
+    district_val, facility_val = _extract_crosstab_drill_down(
+        ctx.triggered_id, active_cells, table_data_list, table_ids, store_data_list, store_ids
+    )
+    if district_val is None and facility_val is None:
+        raise PreventUpdate
+
+    new_districts, new_facilities = _resolve_crosstab_toggle(
+        district_val, facility_val, current_districts, current_facilities
+    )
+    return (
+        new_districts if new_districts is not None else no_update,
+        new_facilities if new_facilities is not None else no_update,
+    )
 
 
 def build_charts_from_json(filtered_query, filtered_with_range_query, delta_days, dashboards_json, filter_summary=None,
                           start_date=None, end_date=None, data_path=DATA_PATH_, facility_code=None, scope_meta=None, url_object=None, initial_tab=None):
-    
-    config = dashboards_json
-    count_items_per_row = config.get("count_items_per_row") or 5
 
-    # Route MNID dashboard configs to the dedicated MNID renderer.
-    if config.get('dashboard_type') == 'mnid':
-        return render_mnid_dashboard(
-            filtered=filtered_query,
-            data_opd=filtered_with_range_query,
-            data_path=data_path,
-            config=config,
-            facility_code=facility_code or 'Unknown',
-            start_date=str(start_date)[:10] if start_date else '',
-            end_date=str(end_date)[:10] if end_date else '',
-            scope_meta=scope_meta,
-            initial_tab=initial_tab,
-        )
-    if config.get("report_name") in PREMIUM_DASHBOARD_REPORTS:
-        return build_premium_dashboard(filtered_query, filtered_with_range_query, delta_days, config, filter_summary=filter_summary)
+    try:
+        config = dashboards_json
+        count_items_per_row = config.get("count_items_per_row") or 5
 
-    # Build metrics from counts section
-    metrics = build_metrics_section(filtered_query,filtered_with_range_query, delta_days, data_path, config["visualization_types"]["counts"], url_object)
-    charts = build_charts_section(filtered_query, filtered_with_range_query, delta_days, data_path, config["visualization_types"]["charts"]["sections"])
+        # Route MNID dashboard configs to the dedicated MNID renderer.
+        if config.get('dashboard_type') == 'mnid':
+            return render_mnid_dashboard(
+                filtered=filtered_query,
+                data_opd=filtered_with_range_query,
+                data_path=data_path,
+                config=config,
+                facility_code=facility_code or 'Unknown',
+                start_date=str(start_date)[:10] if start_date else '',
+                end_date=str(end_date)[:10] if end_date else '',
+                scope_meta=scope_meta,
+                initial_tab=initial_tab,
+            )
+        if config.get("report_name") in PREMIUM_DASHBOARD_REPORTS:
+            return build_premium_dashboard(filtered_query, filtered_with_range_query, delta_days, config, filter_summary=filter_summary)
 
-    return html.Div([
-        html.Div(style={"display": "grid","gridTemplateColumns": f"repeat({count_items_per_row}, 1fr)",
-                        "gap": "15px", "marginBottom": "30px","overflowX": "auto"}, children=metrics),
-        charts
-    ])
+        # Build metrics from counts section
+        metrics = build_metrics_section(filtered_query,filtered_with_range_query, delta_days, 
+                                        data_path, config["visualization_types"]["counts"], url_object,
+                                        start_date=start_date, end_date=end_date)
+        charts = build_charts_section(filtered_query, filtered_with_range_query, delta_days, data_path, config["visualization_types"]["charts"]["sections"])
+
+        return html.Div([
+            html.Div(style={"display": "grid","gridTemplateColumns": f"repeat({count_items_per_row}, 1fr)",
+                            "gap": "15px", "marginBottom": "30px","overflowX": "auto"}, children=metrics),
+            charts
+        ])
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return html.Div(f"Errors were returned while processing the dashboard: {e}", style={"color":"red"})
 
 
 def _error_dashboard_content(message: str, detail: str | None = None):
@@ -832,19 +1005,8 @@ layout = html.Div(
                                 min_date_allowed="2023-01-01",
                                 max_date_allowed="2050-01-01",
                                 initial_visible_month=datetime.now(),
-                                # This is the DatePickerRange's static initial value, computed
-                                # once at layout-build time -- there's no selected report yet
-                                # to check via _is_dhis2_mnid_report, but MNID_DATA_SOURCE is a
-                                # global config flag, so gate directly on the data source like
-                                # _is_dhis2_mnid_report itself does. Getting this wrong matters:
-                                # sync_picker_with_logic (which normally corrects a stale/wrong
-                                # relative-period window) has prevent_initial_call=True, so it
-                                # never runs on first page load -- whatever lands here is what
-                                # the very first render (and the first update_dashboard call,
-                                # since resolve_window() preserves any range that overlaps
-                                # DHIS2's data instead of replacing it) actually uses.
-                                start_date=_default_date_window('dhis2' if get_mnid_data_source().source == 'dhis2' else 'default')[0],
-                                end_date=_default_date_window('dhis2' if get_mnid_data_source().source == 'dhis2' else 'default')[1],
+                                start_date=_default_relative_period_window()[0],
+                                end_date=_default_relative_period_window()[1],
                                 display_format='YYYY-MM-DD',
                                 className="modern-datepicker",
                                 number_of_months_shown=1,
@@ -858,6 +1020,16 @@ layout = html.Div(
                                          for name in get_dashboard_names()],
                                 value=[], multi=True, clearable=True,
                                 className="modern-dropdown",
+                            ),
+                        ]),
+                        # Program Filter (raw Program column, options from this
+                        # route's dcc_dropdown_json/dropdowns.json["programs"])
+                        html.Div(id="dashboard-program-filter-group", className="filter-group", children=[
+                            html.Label("Program", className="filter-label"),
+                            dcc.Dropdown(
+                                id='dashboard-program-filter',
+                                options=[], value=[], multi=True, clearable=True,
+                                className="modern-dropdown", placeholder="Select program(s)",
                             ),
                         ]),
                         # Program Category Filter
@@ -965,7 +1137,18 @@ layout = html.Div(
                             style={"fontWeight":"400",
                                    "color":"grey",
                                    "fontSize":"12px"}
-                            )
+                            ),
+                        # Static from page load (hidden by default) rather than
+                        # nested inside filter-period-text's dynamic children --
+                        # Dash's frontend rejects a plain Input id that isn't
+                        # part of the initial layout, so this has to always
+                        # exist and just be toggled via style instead.
+                        html.Span(
+                            "clear filters",
+                            id="clear-filters-link",
+                            n_clicks=0,
+                            style={"display": "none"},
+                        ),
                     ],
                 ),
                 # Menu Section
@@ -1238,10 +1421,14 @@ _KPI_PAGE_SIZE = 15
     State({"type": "kpi-patient-ids",  "index": ALL}, "data"),
     State({"type": "kpi-val-click",    "index": ALL}, "id"),
     State({"type": "kpi-name",  "index": ALL}, "data"),
+    State({"type": "kpi-start-date",  "index": ALL}, "data"),
+    State({"type": "kpi-end-date",  "index": ALL}, "data"),
     State("url-params-store", "data"),
     prevent_initial_call=True,
 )
-def _kpi_patient_modal(n_clicks_list, n_close, n_backdrop, ids_list, id_list,kpi_name, urlparams):
+def _kpi_patient_modal(n_clicks_list, n_close, n_backdrop, 
+                       ids_list, id_list,kpi_name,
+                       start_date, end_date, urlparams):
     triggered = ctx.triggered_id
 
     if triggered in ("kpi-patient-modal-close", "kpi-patient-modal-backdrop"):
@@ -1268,7 +1455,7 @@ def _kpi_patient_modal(n_clicks_list, n_close, n_backdrop, ids_list, id_list,kpi
     data_route = (urlparams or {}).get("route", ["default"])[0]
     data_path  = f"data/{data_route}/parquet"
 
-    df = create_line_list_basic_modal(unique_col, data_path, patient_ids)
+    df = create_line_list_basic_modal(unique_col, data_path, patient_ids, list(set(start_date)), list(set(end_date)))
     title = f"Patient List — {kpi_title} - ({len(patient_ids):,} Total Records)"
 
     modal_data = {
@@ -1391,6 +1578,7 @@ dash.clientside_callback(
 
 @callback(
     Output('scrolling-menu', 'children'),
+    Output('dashboard-menu-section', 'style'),
     [
         Input('dashboard-interval-update-today', 'n_intervals'),
         Input('active-button-store', 'data'),
@@ -1400,11 +1588,16 @@ dash.clientside_callback(
 def update_menu(interval, color, urlparams):
     try:
         urlparams = urlparams or {}
+        # ?...&selected_only=true hides the report-switcher menu entirely
+        # (the whole section, not just an empty scrolling-menu inside it), so
+        # only the one dashboard named via &dashboard_id=... is shown.
+        if str(urlparams.get('selected_only', ["false"])[0]).strip().lower() == "true":
+            return [], {"display": "none"}
         data_route = urlparams.get('route', ["default"])[0]
         user_data = _load_user_registry(data_route)
         user_row, _scope = _resolve_user_scope(urlparams, user_data)
         if user_row is None:
-            return []
+            return [], {}
 
         user_id = int(user_row.get('user_id', '0')) 
         user_uuid = user_row.get('uuid')
@@ -1465,13 +1658,13 @@ def update_menu(interval, color, urlparams):
                         ]
         
         if user_uuid == DEMO_UUID:
-            return all_buttons
+            return all_buttons, {}
         else:
-            return general_summary_button + filtered_buttons + filtered_buttons_limited
+            return general_summary_button + filtered_buttons + filtered_buttons_limited, {}
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return []
+        return [], {}
 
 
 @callback(
@@ -1495,35 +1688,59 @@ def _save_mnid_executive_tab(tab_value):
 @callback(
     Output('active-button-store', 'data'),
     Input({"type": "menu-button", "name": ALL}, "n_clicks"),
-    prevent_initial_call=True,
+    Input('url-params-store', 'data'),
+    State('active-button-store', 'data'),
 )
-def _set_active_button(menu_clicks):
-    # Split out of update_dashboard so active-button-store.data isn't written
-    # by the same callback that reads dashboard-moh-level-filter.value -- that
-    # combination is what created a Dash dependency cycle with
-    # toggle_moh_level_visibility (which writes dashboard-moh-level-filter.value
-    # from active-button-store.data). Only a menu-button click ever changes
-    # which report is active, so this mirrors update_dashboard's own
-    # clicked_name logic without needing moh_level as an input at all.
+def _set_active_button(menu_clicks, urlparams, current_active):
     ctx = callback_context
-    if not ctx.triggered:
+    triggered_id = ctx.triggered[0]['prop_id'] if ctx.triggered else None
+
+    if triggered_id and "menu-button" in triggered_id:
+        triggered = ctx.triggered[0]
+
+        if not triggered.get('value'):
+            raise PreventUpdate
+        prop_dict = json.loads(triggered_id.split('.')[0])
+        return prop_dict['name']
+
+    # Otherwise this fired from url-params-store (page load or URL change) --
+    # only act if the URL actually names a known report via dashboard_id, so
+    # a report can be opened directly by putting that parameter in the URL.
+    dashboard_id = (urlparams or {}).get('dashboard_id', [None])[0]
+    if not dashboard_id:
         raise PreventUpdate
-    triggered = ctx.triggered[0]
-    triggered_id = triggered['prop_id']
-    if "menu-button" not in triggered_id:
+    report_name = next(
+        (d.get('report_name') for d in load_dashboard_menu() if d.get('report_id') == dashboard_id),
+        None,
+    )
+    if not report_name or report_name == current_active:
         raise PreventUpdate
-    # scrolling-menu's buttons are fully regenerated (fresh component
-    # instances) every time update_menu re-runs -- e.g. on the periodic
-    # dashboard-interval-update-today tick -- which re-fires this
-    # pattern-matching Input even though nothing was actually clicked. Without
-    # this guard that spurious fire (n_clicks None/0) would overwrite
-    # active-button-store with whichever button happened to report the
-    # "trigger" (in practice always General Summary, the first button built),
-    # silently kicking the user back to General Summary mid-session.
-    if not triggered.get('value'):
+    return report_name
+
+
+@callback(
+    Output('url', 'search'),
+    Input('active-button-store', 'data'),
+    State('url', 'search'),
+)
+def sync_dashboard_id_to_url(active_report, current_search):
+    """Keep ?...&dashboard_id=<report_id> in the URL matching whichever
+    report is active -- fires on the initial default too (General Summary),
+    not just on a menu click, so the URL always reflects what's on screen and
+    a report can be reopened later (or shared) via that parameter directly."""
+    report_id = next(
+        (d.get('report_id') for d in load_dashboard_menu() if d.get('report_name') == active_report),
+        None,
+    )
+    if not report_id:
         raise PreventUpdate
-    prop_dict = json.loads(triggered_id.split('.')[0])
-    return prop_dict['name']
+
+    params = urllib.parse.parse_qs((current_search or "").lstrip('?'))
+    if params.get('dashboard_id', [None])[0] == report_id:
+        raise PreventUpdate
+
+    params['dashboard_id'] = [report_id]
+    return "?" + urllib.parse.urlencode({k: v[0] for k, v in params.items()})
 
 
 def _resolve_filter_cascade(level, districts, moh_level, active_report, urlparams, data_route):
@@ -1720,21 +1937,47 @@ def sync_filter_cascade(level, districts, moh_level, urlparams, active_report):
 
 
 @callback(
+    Output('dashboard-program-filter', 'options'),
+    Input('url-params-store', 'data'),
+)
+def load_program_filter_options(urlparams):
+    data_route = (urlparams or {}).get('route', ["default"])[0]
+    dropdowns_path = os.path.join(path, f'data/{data_route}', 'dcc_dropdown_json', 'dropdowns.json')
+    try:
+        with open(dropdowns_path, 'r') as f:
+            programs = json.load(f).get('programs', [])
+    except (FileNotFoundError, json.JSONDecodeError):
+        programs = []
+    return [{'label': p, 'value': p} for p in programs]
+
+
+@callback(
     [Output('dashboard-container', 'children'),
      Output('dashboard-level-filter', 'value'),
      Output('filter-period-text', 'children'),
+     Output('clear-filters-link', 'style'),
      Output('dashboard-render-state', 'data')],
     [
-        # Only these four re-render the dashboard immediately: clicking "Apply
-        # Filters", clicking a menu button, or navigating (URL/route change).
-        # Every actual filter control below is a State, not an Input, so
-        # changing a dropdown or the date range no longer applies live --
-        # the user has to click Apply Filters first. District/Facility
-        # dropdown *options* are refreshed live by sync_filter_cascade above.
+        # Only these five re-render the dashboard immediately: clicking "Apply
+        # Filters", clicking a menu button, navigating (URL/route change), or
+        # clicking "clear filters". Every actual filter control below is a
+        # State, not an Input, so changing a dropdown or the date range no
+        # longer applies live -- the user has to click Apply Filters first.
+        # District/Facility dropdown *options* are refreshed live by
+        # sync_filter_cascade above.
         Input('dashboard-btn-generate', 'n_clicks'),
         Input({"type": "menu-button", "name": ALL}, "n_clicks"),
         Input('url', 'pathname'),
         Input('url-params-store', 'data'),
+        Input('clear-filters-link', 'n_clicks'),
+        Input({"type": "crosstab-table", "index": ALL}, "active_cell"),
+        # Input, not State: active-button-store can change from a callback
+        # other than a menu-button click (_set_active_button resolving
+        # ?...&dashboard_id=... on page load) -- as a State, update_dashboard
+        # only ever saw whatever it happened to already be at the moment url
+        # -params-store fired, which was still the "General Summary" default
+        # if _set_active_button's own resolution hadn't landed yet by then.
+        Input('active-button-store', 'data'),
     ],
     [
         State('dashboard-date-range-picker', 'start_date'),
@@ -1744,19 +1987,47 @@ def sync_filter_cascade(level, districts, moh_level, urlparams, active_report):
         State('dashboard-facility-filter', 'value'),
         State('dashboard-overview-filter', 'value'),
         State('dashboard-category-filter', 'value'),
+        State('dashboard-program-filter', 'value'),
         State('dashboard-moh-level-filter', 'value'),
         State('dashboard-age-filter', 'value'),
-        State('active-button-store', 'data'),
+        State('dashboard-period-type-filter', 'value'),
         State('mnid-active-tab-store', 'data'),
+        State({"type": "crosstab-table", "index": ALL}, "data"),
+        State({"type": "crosstab-table", "index": ALL}, "id"),
+        State({"type": "crosstab-data-store", "index": ALL}, "data"),
+        State({"type": "crosstab-data-store", "index": ALL}, "id"),
     ],
 )
-def update_dashboard(gen, menu_clicks, pathname, urlparams,
+def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosstab_active_cells, current_active,
                      start_date, end_date, level,
-                     districts, facilities, overview, category,
-                     moh_level, age, current_active, active_mnid_tab):
+                     districts, facilities, overview, category, programs,
+                     moh_level, age, period_type, active_mnid_tab,
+                     crosstab_data_list, crosstab_table_ids, crosstab_store_data_list, crosstab_store_ids):
     try:
         ctx = callback_context
         triggered_id = ctx.triggered[0]['prop_id'] if ctx.triggered else None
+
+        is_clearing_filters = triggered_id == 'clear-filters-link.n_clicks'
+
+        drill_district, drill_facility = _extract_crosstab_drill_down(
+            ctx.triggered_id, crosstab_active_cells, crosstab_data_list,
+            crosstab_table_ids, crosstab_store_data_list, crosstab_store_ids,
+        )
+        if drill_district is not None or drill_facility is not None:
+            new_districts, new_facilities = _resolve_crosstab_toggle(
+                drill_district, drill_facility, districts, facilities
+            )
+            districts = new_districts if new_districts is not None else districts
+            facilities = new_facilities if new_facilities is not None else facilities
+        if is_clearing_filters:
+            # "clear filters" both re-renders the dashboard unfiltered and
+            # blanks the Active Filters banner -- resetting just the dropdown
+            # widgets (as dashboard-btn-reset does) wouldn't touch either of
+            # those, since this callback is the only thing that writes them.
+            # start_date/end_date get reset further down, once default_end
+            # (the anchor date) is available.
+            districts, facilities, programs = [], [], []
+            category, age, period_type = "All", None, DEFAULT_RELATIVE_PERIOD
 
         data_route = (urlparams or {}).get('route', ["default"])[0]
         dataset_version = _dataset_version_token(data_route)
@@ -1769,13 +2040,6 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams,
             url_district = (urlparams or {}).get('district')
             if url_district:
                 districts = list(url_district)
-
-        # Determine which report to show. scrolling-menu's buttons are fully
-        # regenerated on every update_menu re-run (e.g. the periodic
-        # dashboard-interval-update-today tick), which re-fires this
-        # pattern-matching Input with no real click behind it -- guard on a
-        # truthy n_clicks so a spurious fire doesn't silently reset the
-        # selected report back to General Summary.
         clicked_name = current_active
         if (
             triggered_id and "menu-button" in triggered_id
@@ -1796,9 +2060,27 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams,
         default_start, default_end = _default_date_window(date_route)
         if date_route == 'dhis2':
             start_date, end_date = _resolve_dhis2_date_window(start_date, end_date)
+        if is_clearing_filters:
+            # Recompute from DEFAULT_RELATIVE_PERIOD directly (not the
+            # unrelated 30-day _default_date_window fallback) so "clear
+            # filters" reloads exactly the window Relative Period would
+            # resolve to, anchored the same way sync_picker_with_logic
+            # anchors it (to the latest available data, not the literal
+            # calendar date).
+            start_date, end_date = get_relative_date_range(DEFAULT_RELATIVE_PERIOD, current_date=default_end)
         start_dt = pd.to_datetime(start_date or default_start).replace(hour=0, minute=0, second=0)
         end_dt = pd.to_datetime(end_date or default_end).replace(hour=23, minute=59, second=59)
-        default_start_date = start_dt - pd.Timedelta(days=DEFAULT_DASHBOARD_DAYS)
+        # network_query below is deliberately widened by DEFAULT_DASHBOARD_DAYS
+        # to give trend/comparison charts some historical context beyond the
+        # exact selected range -- but a single specific day (Today, Yesterday,
+        # or any custom one-day range) is a request to see *that day*, not a
+        # week ending on it. Padding it backward regardless silently turned
+        # "Today" into a 7-day window for any report that reads from
+        # network_df instead of the exactly-scoped filtered_query, which is
+        # not what selecting "Today" means. Only apply the padding when a
+        # real multi-day range was actually selected.
+        is_single_day_selection = start_dt.date() == end_dt.date()
+        default_start_date = start_dt if is_single_day_selection else start_dt - pd.Timedelta(days=DEFAULT_DASHBOARD_DAYS)
 
         location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
         DATA_PATH_ = f"data/{data_route}/parquet"
@@ -1811,7 +2093,7 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams,
         )
         if resolved is None:
             return (html.Div("Unauthorized User. Please contact system administrator."), level,
-                    "", {'status': 'unauthorized'})
+                    "", {"display": "none"}, {'status': 'unauthorized'})
 
         scope           = resolved['scope']
         user_level      = resolved['user_level']
@@ -1830,8 +2112,8 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams,
         active_dists = (districts or user_districts) if effective_level == 'district' else (districts or [])
         delta_days = max((end_dt - start_dt).days, 1)
 
-        filtered_parts = _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, is_network=False)
-        network_parts  = _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, is_network=True)
+        filtered_parts = _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, programs=programs, is_network=False)
+        network_parts  = _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, programs=programs, is_network=True)
         scope_suffix   = (" AND " + " AND ".join(filtered_parts)) if filtered_parts else ""
         network_suffix = (" AND " + " AND ".join(network_parts))  if network_parts  else ""
 
@@ -1919,12 +2201,12 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams,
             ]))
 
         dashboard_content = html.Div(rendered) if len(rendered) > 1 else (rendered[0] if rendered else html.Div("No dashboard selected."))
-
-        
+        banner_children, clear_link_style = _build_active_filters_display(period_type, facilities, programs, districts)
         return (
             dashboard_content,
             level,
-            f"{start_dt} - {end_dt}",
+            banner_children,
+            clear_link_style,
             {
                 'status': 'ok',
                 'selected_reports': selected_reports,
@@ -1957,6 +2239,7 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams,
                 html.P(f"{type(e).__name__}", style={"color": "#64748b", "fontSize": "12px", "fontWeight": "600"}),
                 html.P(str(e), style={"color": "#94A3B8", "fontSize": "12px"}),
             ]),
+            dash.no_update,
             dash.no_update,
             dash.no_update,
             dash.no_update,
@@ -2002,20 +2285,8 @@ def sync_picker_with_logic(period_type, n, current_active, urlparams):
         return (s or default_start), (e or default_end), 'Last 6 Months'
 
     if triggered_id == "dashboard-interval-update-today":
-        # This used to silently snap Custom Date Range back to "Today"
-        # every 10 minutes whenever Relative Period was still on its
-        # default "Today" value -- stomping any custom range picked in the
-        # meantime, with no way to tell the two apart. Reporting dashboards
-        # don't need a live-ticking "today"; leave whatever's shown alone.
         raise PreventUpdate
     if triggered_id == "active-button-store":
-        # Same stomping bug as the interval tick above, just from a
-        # different trigger: switching the active top-level report re-fires
-        # this callback, and with Relative Period still sitting on whatever
-        # it was last set to, the code below would silently overwrite a
-        # custom range back to that stale relative period's dates. Leave
-        # whatever's currently in the picker alone here. (The DHIS2/"Today"
-        # auto-switch above already handled the one case worth overriding.)
         raise PreventUpdate
     if period_type:
         s, e = get_relative_date_range(period_type, current_date=anchor)
@@ -2030,12 +2301,14 @@ def sync_picker_with_logic(period_type, n, current_active, urlparams):
      Output('dashboard-facility-filter', 'value', allow_duplicate=True),
      Output('dashboard-overview-filter', 'value', allow_duplicate=True),
      Output('dashboard-category-filter', 'value', allow_duplicate=True),
+     Output('dashboard-program-filter', 'value', allow_duplicate=True),
      Output('dashboard-age-filter', 'value', allow_duplicate=True)],
-    Input('dashboard-btn-reset', 'n_clicks'),
+    [Input('dashboard-btn-reset', 'n_clicks'),
+     Input('clear-filters-link', 'n_clicks')],
     prevent_initial_call=True
 )
-def reset_ui_controls(n_clicks):
-    return DEFAULT_RELATIVE_PERIOD, None, [], [], [], "All", None
+def reset_ui_controls(reset_clicks, clear_link_clicks):
+    return DEFAULT_RELATIVE_PERIOD, None, [], [], [], "All", [], None
 
 @callback(
     [Output('dashboard-period-type-filter', 'style'),

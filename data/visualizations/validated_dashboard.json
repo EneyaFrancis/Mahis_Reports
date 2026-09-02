@@ -8,6 +8,7 @@
       "counts": [
         {
           "id": "count_5f0a560b",
+          "display": "True",
           "name": "All Attendance",
           "level": "facility",
           "flag": "ok",
@@ -15,7 +16,7 @@
           "href": "program_reports",
           "drill_down": "True",
           "filters": {
-            "measure": "nunique",
+            "measure": "count",
             "unique": "person_id",
             "variable1": "Program",
             "variable2": "Encounter",
@@ -24,15 +25,18 @@
             "variable5": "ValueN",
             "variable6": "Value",
             "variable7": "Gender"
-          }
+          },
+          "group_by": "Program",
+          "custom_sql":""
         },
         {
           "id": "count_62ca9185",
+          "display": "True",
           "name": "Attendance Male",
           "level": "facility",
           "drill_down": "True",
           "filters": {
-            "measure": "nunique",
+            "measure": "count",
             "unique": "person_id",
             "variable1": "Program",
             "variable2": "Encounter",
@@ -43,15 +47,18 @@
             "variable7": "Gender",
             "value7": "Male",
             "variable8": "Age_Group"
-          }
+          },
+          "group_by": "Program",
+          "custom_sql":""
         },
         {
           "id": "count_6668a9a4",
+          "display": "True",
           "name": "Attendance Female",
           "level": "facility",
           "drill_down": "True",
           "filters": {
-            "measure": "nunique",
+            "measure": "count",
             "unique": "person_id",
             "variable1": "Program",
             "variable2": "Encounter",
@@ -62,10 +69,13 @@
             "variable7": "Gender",
             "value7": "Female",
             "variable8": "Age_Group"
-          }
+          },
+          "group_by": "Program",
+          "custom_sql":""
         },
         {
           "id": "count_2cbb623e",
+          "display": "True",
           "name": "Active Health Facilities",
           "level": "facility",
           "filters": {
@@ -91,6 +101,7 @@
         },
         {
           "id": "count_aade5941",
+          "display": "True",
           "name": "Active MAHIS Programs",
           "level": "facility",
           "filters": {
@@ -116,6 +127,7 @@
         },
         {
           "id": "count_94807bef",
+          "display": "True",
           "name": "Active Users",
           "level": "facility",
           "filters": {
@@ -141,6 +153,7 @@
         },
         {
           "id": "count_f9c74c60",
+          "display": "True",
           "name": "Avg Patient Registration Time (Mins)",
           "level": "facility",
           "filters": {
@@ -169,6 +182,7 @@
         },
         {
           "id": "count_c02cf51axy",
+          "display": "True",
           "name": "Avg Lab Orders - Lab Results (Mins)",
           "level": "facility",
           "filters": {
@@ -197,6 +211,7 @@
         },
         {
           "id": "count_c02cf51a",
+          "display": "True",
           "name": "Avg Patient Arrival - Exit Duration (Mins)",
           "level": "facility",
           "filters": {
@@ -222,6 +237,7 @@
         },
         {
           "id": "count_cde8771bxy",
+          "display": "True",
           "name": "Returning Patients",
           "level": "facility",
           "display_average": "True",
@@ -236,18 +252,22 @@
             "variable6": "Value",
             "variable7": "Gender",
             "variable8": "new_revisit",
-            "value8": "Revisit"
-          }
+            "value8": ""
+          },
+          "group_by":"Program",
+          "custom_sql":"SELECT DISTINCT v.person_id, v.Date FROM 'data' v INNER JOIN (SELECT DISTINCT person_id, MIN(Date) AS first_visit_date FROM 'data' GROUP BY person_id) fv ON v.person_id = fv.person_id WHERE v.date > fv.first_visit_date "
         }
       ],
       "charts": {
         "sections": [
           {
             "section_name": "Facility Summary",
+            "display": "True",
             "chart_items_per_row": 1,
             "items": [
               {
                 "id": "chart_pivot_summary",
+                "display": "True",
                 "name": "Locations",
                 "type": "CrossTab",
                 "level": "facility",
@@ -259,19 +279,13 @@
                     "District",
                     "Facility"
                   ],
-                  "columns": [
-                    "Program",
-                    "Encounter"
-                  ],
+                  "columns": ["Program"],
                   "values_col": "person_id",
                   "title": "Attendance by Health Facility and Program",
                   "unique_column": "person_id",
                   "aggfunc": "nunique",
-                  "filter_col1": "Encounter",
-                  "filter_val1": [
-                    "Registration",
-                    "Dispensing"
-                  ],
+                  "filter_col1": "",
+                  "filter_val1": "",
                   "filter_col2": "",
                   "filter_val2": "",
                   "filter_col3": "",
@@ -294,10 +308,10 @@
                       "ANC CONNECT PROGRAM": "ANC CONNECT"
                     },
                     "Encounter": {
-                      "Visit": "Start",
-                      "ANC Visit": "Start",
-                      "Registration": "Start",
-                      "Dispensing": "End"
+                      "Visit": "Visit Start",
+                      "ANC Visit": "Visit Start",
+                      "Registration": "Visit Start",
+                      "Dispensing": "Visit End"
                     }
                   }
                 }
@@ -306,14 +320,50 @@
           },
           {
             "section_name": "Encounters and Trend",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
-                "id": "chart_3faf4437",
-                "name": "Daily OPD Attendance - Last 7 Days",
-                "type": "Line",
+                "id": "chart_gen_prog_1",
+                "display": "True",
+                "name": "Program Encounters",
+                "type": "Column",
+                "level": "facility",
                 "filters": {
                   "measure": "nunique",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "title": "Program Encounters",
+                  "x_col": "Encounter",
+                  "y_col": "person_id",
+                  "x_title": "Encounter",
+                  "y_title": "Number of Patients",
+                  "unique_column": "person_id",
+                  "legend_title": "",
+                  "color": "",
+                  "filter_headers": {
+                    "column":"Program",
+                    "default":"OPD Program"
+                  },
+                  "filter_col1": "",
+                  "filter_val1": "",
+                  "filter_col2": "",
+                  "filter_val2": "",
+                  "filter_col3": "",
+                  "filter_val3": "",
+                  "filter_col4": "",
+                  "filter_val4": "",
+                  "filter_col5": "",
+                  "filter_val5": ""
+                }
+              },
+              {
+                "id": "chart_3faf4437",
+                "display": "True",
+                "name": "Daily Patient Attendance - Last 7 Days",
+                "type": "Line",
+                "filters": {
+                  "measure": "count",
                   "unique": "any",
                   "duration_default": "7days",
                   "title": "Daily Patient Attendance - Last 7 Days",
@@ -333,46 +383,20 @@
                   "x_title": "Date",
                   "y_title": "Number of Patients",
                   "legend_title": "Legend",
-                  "color": ""
-                }
-              },
-              {
-                "id": "chart_gen_prog_1",
-                "name": "Attendance by Program",
-                "type": "Column",
-                "level": "facility",
-                "filters": {
-                  "measure": "nunique",
-                  "unique": "any",
-                  "duration_default": "any",
-                  "title": "Patient Attendance by Program",
-                  "x_col": "Program",
-                  "y_col": "person_id",
-                  "x_title": "Program",
-                  "y_title": "Number of Patients",
-                  "unique_column": "person_id",
-                  "legend_title": "Gender",
-                  "color": "Gender",
-                  "filter_col1": "",
-                  "filter_val1": "",
-                  "filter_col2": "",
-                  "filter_val2": "",
-                  "filter_col3": "",
-                  "filter_val3": "",
-                  "filter_col4": "",
-                  "filter_val4": "",
-                  "filter_col5": "",
-                  "filter_val5": ""
+                  "color": "",
+                  "group_by":"Program"
                 }
               }
             ]
           },
           {
             "section_name": "Gender and Age Groups",
+            "display": "False",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_bbce8169",
+                "display": "True",
                 "name": "Age Gender Disaggregation",
                 "type": "Histogram",
                 "level": "facility",
@@ -401,6 +425,7 @@
               },
               {
                 "id": "chart_9396087d",
+                "display": "True",
                 "name": "Gender Disaggregation",
                 "type": "Pie",
                 "level": "facility",
@@ -429,15 +454,17 @@
           },
           {
             "section_name": "Patient Flow Analysis",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_gen_flow_1",
+                "display": "True",
                 "name": "New vs Returning \u2013 Last 30 Days",
                 "type": "NewReturningSplit",
                 "level": "facility",
                 "filters": {
-                  "measure": "nunique",
+                  "measure": "count",
                   "unique": "any",
                   "duration_default": "30days",
                   "title": "New vs Returning Patients \u2013 Last 30 Days",
@@ -457,11 +484,13 @@
                   "filter_val4": "",
                   "filter_col5": [],
                   "filter_val5": "",
-                  "chart_mode": "line"
+                  "chart_mode": "line",
+                  "group_by":"Program"
                 }
               },
               {
                 "id": "chart_gen_flow_2",
+                "display": "True",
                 "name": "New vs Returning Patient Split",
                 "type": "NewReturningSplit",
                 "level": "facility",
@@ -488,10 +517,12 @@
           },
           {
             "section_name": "Patient Origins",
+            "display": "False",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_gen_origin_1",
+                "display": "True",
                 "name": "Top 10 Patient Home Districts",
                 "type": "Bar",
                 "level": "facility",
@@ -520,6 +551,7 @@
               },
               {
                 "id": "chart_gen_origin_2",
+                "display": "True",
                 "name": "Top 10 Patient Home Areas (TA)",
                 "type": "Bar",
                 "level": "facility",
@@ -550,10 +582,12 @@
           },
           {
             "section_name": "Demographic Breakdown",
+            "display": "True",
             "chart_items_per_row": 1,
             "items": [
               {
                 "id": "chart_gen_cross_1",
+                "display": "True",
                 "name": "Attendance by Gender and Age Group",
                 "type": "CrossTab",
                 "level": "facility",
@@ -561,7 +595,7 @@
                   "measure": "nunique",
                   "unique": "any",
                   "duration_default": "any",
-                  "title": "Attendance by Gender \u00d7 Age Group",
+                  "title": "Attendance by Gender and Age Group",
                   "index_col1": "Age_Group",
                   "columns": [
                     "Gender"
@@ -576,171 +610,20 @@
                   "filter_col3": "",
                   "filter_val3": "",
                   "rename": {},
-                  "replace": ""
+                  "replace": "",
+                  "group_by":"Program"
                 }
               }
             ]
           },
           {
             "section_name": "User Analytics",
-            "chart_items_per_row": 3,
-            "items": [
-              {
-                "id": "chart_79405336",
-                "name": "Top 10 Users by Encounter Count",
-                "type": "Bar",
-                "level": "facility",
-                "filters": {
-                  "measure": "count",
-                  "unique": "any",
-                  "duration_default": "any",
-                  "title": "Top 10 Users \u2013 Encounters Processed",
-                  "label_col": "User",
-                  "value_col": "encounter_id",
-                  "x_title": "Encounters Processed",
-                  "y_title": "User",
-                  "unique_column": "encounter_id",
-                  "top_n": "10",
-                  "filter_col1": "",
-                  "filter_val1": "",
-                  "filter_col2": "",
-                  "filter_val2": "",
-                  "filter_col3": "",
-                  "filter_val3": "",
-                  "filter_col4": "",
-                  "filter_val4": "",
-                  "filter_col5": "",
-                  "filter_val5": ""
-                }
-              },
-              {
-                "id": "chart_user_patients_1",
-                "name": "Top 10 Users by Unique Patients Seen",
-                "type": "Bar",
-                "level": "facility",
-                "filters": {
-                  "measure": "nunique",
-                  "unique": "any",
-                  "duration_default": "any",
-                  "title": "Top 10 Users \u2013 Unique Patients Seen",
-                  "label_col": "User",
-                  "value_col": "person_id",
-                  "x_title": "Unique Patients",
-                  "y_title": "User",
-                  "unique_column": "person_id",
-                  "top_n": "10",
-                  "filter_col1": "",
-                  "filter_val1": "",
-                  "filter_col2": "",
-                  "filter_val2": "",
-                  "filter_col3": "",
-                  "filter_val3": "",
-                  "filter_col4": "",
-                  "filter_val4": "",
-                  "filter_col5": "",
-                  "filter_val5": ""
-                }
-              },
-              {
-                "id": "chart_0ca3eb77",
-                "name": "Daily Active Users \u2013 Last 30 Days",
-                "type": "Line",
-                "level": "facility",
-                "filters": {
-                  "measure": "nunique",
-                  "unique": "any",
-                  "duration_default": "30days",
-                  "title": "Daily Active Users \u2013 Last 30 Days",
-                  "date_col": "Date",
-                  "y_col": "User",
-                  "x_title": "Date",
-                  "y_title": "Active Users",
-                  "unique_column": "User",
-                  "legend_title": "Legend",
-                  "color": "",
-                  "filter_col1": [],
-                  "filter_val1": "",
-                  "filter_col2": [],
-                  "filter_val2": "",
-                  "filter_col3": [],
-                  "filter_val3": "",
-                  "filter_col4": [],
-                  "filter_val4": "",
-                  "filter_col5": [],
-                  "filter_val5": ""
-                }
-              }
-            ]
-          },
-          {
-            "section_name": "User Workload Distribution",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
-                "id": "chart_user_prog_1",
-                "name": "Users Active per Program",
-                "type": "Column",
-                "level": "facility",
-                "filters": {
-                  "measure": "nunique",
-                  "unique": "any",
-                  "duration_default": "any",
-                  "title": "Distinct Users Active per Program",
-                  "x_col": "Program",
-                  "y_col": "User",
-                  "x_title": "Program",
-                  "y_title": "Distinct Users",
-                  "unique_column": "User",
-                  "legend_title": "Legend",
-                  "color": "",
-                  "filter_col1": "",
-                  "filter_val1": "",
-                  "filter_col2": "",
-                  "filter_val2": "",
-                  "filter_col3": "",
-                  "filter_val3": "",
-                  "filter_col4": "",
-                  "filter_val4": "",
-                  "filter_col5": "",
-                  "filter_val5": ""
-                }
-              },
-              {
-                "id": "chart_user_enc_type_1",
-                "name": "Encounter Type Volume",
-                "type": "Bar",
-                "level": "facility",
-                "filters": {
-                  "measure": "count",
-                  "unique": "any",
-                  "duration_default": "any",
-                  "title": "Encounter Volume by Type \u2013 Top 15",
-                  "label_col": "Encounter",
-                  "value_col": "encounter_id",
-                  "x_title": "Total Encounters",
-                  "y_title": "Encounter Type",
-                  "unique_column": "encounter_id",
-                  "top_n": "15",
-                  "filter_col1": "",
-                  "filter_val1": "",
-                  "filter_col2": "",
-                  "filter_val2": "",
-                  "filter_col3": "",
-                  "filter_val3": "",
-                  "filter_col4": "",
-                  "filter_val4": "",
-                  "filter_col5": "",
-                  "filter_val5": ""
-                }
-              }
-            ]
-          },
-          {
-            "section_name": "User Activity by Encounter Type",
-            "chart_items_per_row": 1,
-            "items": [
-              {
                 "id": "chart_user_cross_1",
+                "display": "True",
                 "name": "User Activity by Encounter Type",
                 "type": "CrossTab",
                 "level": "facility",
@@ -748,7 +631,7 @@
                   "measure": "nunique",
                   "unique": "any",
                   "duration_default": "any",
-                  "title": "User Activity by Faciliy",
+                  "title": "Number of Records Created by User",
                   "index_col1": [
                     "Facility",
                     "User"
@@ -779,7 +662,198 @@
                   },
                   "replace": ""
                 }
+              },
+              {
+                "id": "chart_0ca3eb77",
+                "display": "True",
+                "name": "Daily Active Users \u2013 Last 30 Days",
+                "type": "Line",
+                "level": "facility",
+                "filters": {
+                  "measure": "nunique",
+                  "unique": "any",
+                  "duration_default": "30days",
+                  "title": "Daily Active Users \u2013 Last 30 Days",
+                  "date_col": "Date",
+                  "y_col": "User",
+                  "x_title": "Date",
+                  "y_title": "Active Users",
+                  "unique_column": "User",
+                  "legend_title": "Legend",
+                  "color": "",
+                  "filter_col1": [],
+                  "filter_val1": "",
+                  "filter_col2": [],
+                  "filter_val2": "",
+                  "filter_col3": [],
+                  "filter_val3": "",
+                  "filter_col4": [],
+                  "filter_val4": "",
+                  "filter_col5": [],
+                  "filter_val5": ""
+                }
+              },
+              {
+                "id": "chart_user_time_range",
+                "display": "True",
+                "name": "User Clinical Task Hours",
+                "type": "TimeRange",
+                "level": "facility",
+                "filters": {
+                  "measure": "time_range",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "index_col1": [
+                    "Facility",
+                    "User"
+                  ],
+                  "datetime_col": "Date",
+                  "start_label": "Start Time",
+                  "end_label": "End Time",
+                  "title": "Time a User Starts and Ends Clinical Tasks",
+                  "unique_column": "person_id",
+                  "filter_col1": "",
+                  "filter_val1": "",
+                  "filter_col2": "",
+                  "filter_val2": "",
+                  "filter_col3": "",
+                  "filter_val3": "",
+                  "rename": {},
+                  "replace": {}
+                }
               }
+            ]
+          },
+          {
+            "section_name": "User Workload Distribution",
+            "display": "False",
+            "chart_items_per_row": 2,
+            "items": [
+              {
+                "id": "chart_user_prog_1",
+                "display": "True",
+                "name": "Users Active per Program",
+                "type": "Column",
+                "level": "facility",
+                "filters": {
+                  "measure": "nunique",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "title": "Distinct Users Active per Program",
+                  "x_col": "Program",
+                  "y_col": "User",
+                  "x_title": "Program",
+                  "y_title": "Distinct Users",
+                  "unique_column": "User",
+                  "legend_title": "Legend",
+                  "color": "",
+                  "filter_col1": "",
+                  "filter_val1": "",
+                  "filter_col2": "",
+                  "filter_val2": "",
+                  "filter_col3": "",
+                  "filter_val3": "",
+                  "filter_col4": "",
+                  "filter_val4": "",
+                  "filter_col5": "",
+                  "filter_val5": ""
+                }
+              },
+              {
+                "id": "chart_user_enc_type_1",
+                "display": "True",
+                "name": "Encounter Type Volume",
+                "type": "Bar",
+                "level": "facility",
+                "filters": {
+                  "measure": "count",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "title": "Encounter Volume by Type \u2013 Top 15",
+                  "label_col": "Encounter",
+                  "value_col": "encounter_id",
+                  "x_title": "Total Encounters",
+                  "y_title": "Encounter Type",
+                  "unique_column": "encounter_id",
+                  "top_n": "15",
+                  "filter_col1": "",
+                  "filter_val1": "",
+                  "filter_col2": "",
+                  "filter_val2": "",
+                  "filter_col3": "",
+                  "filter_val3": "",
+                  "filter_col4": "",
+                  "filter_val4": "",
+                  "filter_col5": "",
+                  "filter_val5": ""
+                }
+              }
+            ]
+          },
+          {
+            "section_name": "User Activity by Encounter Type",
+            "display": "False",
+            "chart_items_per_row": 1,
+            "items": [
+              {
+                "id": "chart_79405336",
+                "display": "True",
+                "name": "Top 10 Users by Encounter Count",
+                "type": "Bar",
+                "level": "facility",
+                "filters": {
+                  "measure": "count",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "title": "Top 10 Users \u2013 Encounters Processed",
+                  "label_col": "User",
+                  "value_col": "encounter_id",
+                  "x_title": "Encounters Processed",
+                  "y_title": "User",
+                  "unique_column": "encounter_id",
+                  "top_n": "10",
+                  "filter_col1": "",
+                  "filter_val1": "",
+                  "filter_col2": "",
+                  "filter_val2": "",
+                  "filter_col3": "",
+                  "filter_val3": "",
+                  "filter_col4": "",
+                  "filter_val4": "",
+                  "filter_col5": "",
+                  "filter_val5": ""
+                }
+              },
+              {
+                "id": "chart_user_patients_1",
+                "display": "True",
+                "name": "Top 10 Users by Unique Patients Seen",
+                "type": "Bar",
+                "level": "facility",
+                "filters": {
+                  "measure": "nunique",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "title": "Top 10 Users \u2013 Unique Patients Seen",
+                  "label_col": "User",
+                  "value_col": "person_id",
+                  "x_title": "Unique Patients",
+                  "y_title": "User",
+                  "unique_column": "person_id",
+                  "top_n": "10",
+                  "filter_col1": "",
+                  "filter_val1": "",
+                  "filter_col2": "",
+                  "filter_val2": "",
+                  "filter_col3": "",
+                  "filter_val3": "",
+                  "filter_col4": "",
+                  "filter_val4": "",
+                  "filter_col5": "",
+                  "filter_val5": ""
+                }
+              }
+              
             ]
           }
         ]
@@ -794,6 +868,7 @@
       "counts": [
         {
           "id": "count_8065b921",
+          "display": "True",
           "name": "All Attendance",
           "level": "facility",
           "flag": "ok",
@@ -816,6 +891,7 @@
         },
         {
           "id": "count_fc025099",
+          "display": "True",
           "name": "Attendance Male",
           "level": "facility",
           "drill_down": "True",
@@ -838,6 +914,7 @@
         },
         {
           "id": "count_3e34fe5b",
+          "display": "True",
           "name": "Attendance Female",
           "level": "facility",
           "drill_down": "True",
@@ -860,6 +937,7 @@
         },
         {
           "id": "count_23742029",
+          "display": "True",
           "name": "Attendance Under 5",
           "level": "facility",
           "drill_down": "True",
@@ -882,6 +960,7 @@
         },
         {
           "id": "count_aefd91dc",
+          "display": "True",
           "name": "Attendance Over 5",
           "level": "facility",
           "drill_down": "True",
@@ -904,6 +983,7 @@
         },
         {
           "id": "count_e730ec0a",
+          "display": "True",
           "name": "Malaria Cases (Confirmed + Unconfirmed)",
           "level": "facility",
           "drill_down": "True",
@@ -926,6 +1006,7 @@
         },
         {
           "id": "count_36b1263c",
+          "display": "True",
           "name": "Malaria in Under 5",
           "level": "facility",
           "drill_down": "True",
@@ -949,6 +1030,7 @@
         },
         {
           "id": "count_d6d78d50",
+          "display": "True",
           "name": "Admissions",
           "level": "facility",
           "drill_down": "True",
@@ -976,6 +1058,7 @@
         },
         {
           "id": "count_39f11f5e",
+          "display": "True",
           "name": "Discharged Home",
           "level": "facility",
           "drill_down": "True",
@@ -1003,6 +1086,7 @@
         },
         {
           "id": "count_fa751a13",
+          "display": "True",
           "name": "Died",
           "level": "facility",
           "flag": "danger",
@@ -1034,10 +1118,12 @@
         "sections": [
           {
             "section_name": "OPD Attendance Overview",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_10b2901xcs",
+                "display": "True",
                 "name": "Patient Encounters in OPD",
                 "type": "Column",
                 "level": "facility",
@@ -1069,6 +1155,7 @@
               },
               {
                 "id": "chart_opd_trend_30",
+                "display": "True",
                 "name": "Daily OPD Attendance \u2013 Last 30 Days",
                 "type": "Line",
                 "level": "facility",
@@ -1102,10 +1189,12 @@
           },
           {
             "section_name": "Clinical Summary",
+            "display": "True",
             "chart_items_per_row": 3,
             "items": [
               {
                 "id": "chart_d180fcaf",
+                "display": "True",
                 "name": "Top Patient Complaints",
                 "type": "Bar",
                 "level": "facility",
@@ -1134,6 +1223,7 @@
               },
               {
                 "id": "chart_0f4bd788",
+                "display": "True",
                 "name": "Common Patient Diagnoses",
                 "type": "Bar",
                 "level": "facility",
@@ -1162,6 +1252,7 @@
               },
               {
                 "id": "chart_opd_outcomes_pie",
+                "display": "True",
                 "name": "Patient Outcome Distribution",
                 "type": "Pie",
                 "level": "facility",
@@ -1190,10 +1281,12 @@
           },
           {
             "section_name": "Diagnoses and Gender Disaggregation",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_opd_diag_gender",
+                "display": "True",
                 "name": "Top Diagnoses by Gender",
                 "type": "Bar",
                 "level": "facility",
@@ -1223,6 +1316,7 @@
               },
               {
                 "id": "chart_opd_cross_gender_age",
+                "display": "True",
                 "name": "Attendance by Gender and Age Group",
                 "type": "CrossTab",
                 "level": "facility",
@@ -1256,10 +1350,12 @@
           },
           {
             "section_name": "Patient Outcomes Trend",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_opd_outcome_trend",
+                "display": "True",
                 "name": "Patient Outcome Trend \u2013 Last 30 Days",
                 "type": "Line",
                 "level": "facility",
@@ -1293,6 +1389,7 @@
               },
               {
                 "id": "chart_028db8f4",
+                "display": "True",
                 "name": "Patients with Family Medical History",
                 "type": "Bar",
                 "level": "facility",
@@ -1323,10 +1420,12 @@
           },
           {
             "section_name": "Lab Orders and Treatment",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_0fd2e773",
+                "display": "True",
                 "name": "Lab Orders by Type",
                 "type": "Column",
                 "level": "facility",
@@ -1356,6 +1455,7 @@
               },
               {
                 "id": "chart_ef45ae8fDISP",
+                "display": "True",
                 "name": "Top 10 Drugs Dispensed and Quantities",
                 "type": "Bar",
                 "level": "facility",
@@ -1386,10 +1486,12 @@
           },
           {
             "section_name": "Malaria Disease",
+            "display": "True",
             "chart_items_per_row": 3,
             "items": [
               {
                 "id": "chart_29ea85d8",
+                "display": "True",
                 "name": "Malaria Cases \u2013 Last 30 Days",
                 "type": "Line",
                 "level": "facility",
@@ -1423,6 +1525,7 @@
               },
               {
                 "id": "chart_opd_malaria_age",
+                "display": "True",
                 "name": "Malaria Cases by Age Group",
                 "type": "Column",
                 "level": "facility",
@@ -1452,6 +1555,7 @@
               },
               {
                 "id": "chart_ef45aexg",
+                "display": "True",
                 "name": "Malaria Drugs Dispensed",
                 "type": "Bar",
                 "level": "facility",
@@ -1497,6 +1601,7 @@
       "counts": [
         {
           "id": "count_ncd_1",
+          "display": "True",
           "name": "Total NCD Attendance",
           "level": "facility",
           "flag": "ok",
@@ -1511,6 +1616,7 @@
         },
         {
           "id": "count_ncd_2",
+          "display": "True",
           "name": "Attendance Male",
           "level": "facility",
           "drill_down": "False",
@@ -1525,6 +1631,7 @@
         },
         {
           "id": "count_ncd_3",
+          "display": "True",
           "name": "Attendance Female",
           "level": "facility",
           "drill_down": "False",
@@ -1539,6 +1646,7 @@
         },
         {
           "id": "count_ncd_4",
+          "display": "True",
           "name": "New NCD Patients",
           "level": "facility",
           "display_average": "True",
@@ -1554,6 +1662,7 @@
         },
         {
           "id": "count_ncd_5",
+          "display": "True",
           "name": "Patient transferred in",
           "level": "facility",
           "display_average": "True",
@@ -1569,6 +1678,7 @@
         },
         {
           "id": "count_ncd_6",
+          "display": "True",
           "name": "New Diabetes Cases",
           "drill_down": "False",
           "level": "facility",
@@ -1585,6 +1695,7 @@
         },
         {
           "id": "count_ncd_7",
+          "display": "True",
           "name": "New Diabetes Type 1 Cases",
           "drill_down": "False",
           "level": "facility",
@@ -1601,6 +1712,7 @@
         },
         {
           "id": "count_ncd_8",
+          "display": "True",
           "name": "New Diabetes Type 2 Cases",
           "drill_down": "False",
           "level": "facility",
@@ -1617,6 +1729,7 @@
         },
         {
           "id": "count_ncd_9",
+          "display": "True",
           "name": "New Hypertension Cases",
           "drill_down": "False",
           "level": "facility",
@@ -1633,6 +1746,7 @@
         },
         {
           "id": "count_ncd_10",
+          "display": "True",
           "name": "Total New Patients",
           "level": "facility",
           "drill_down": "False",
@@ -1652,10 +1766,12 @@
         "sections": [
           {
             "section_name": "Attendance and Demographics",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_ncd_1",
+                "display": "True",
                 "name": "NCD Attendance \u2013 Last 30 Days",
                 "type": "Line",
                 "level": "facility",
@@ -1687,6 +1803,7 @@
               },
               {
                 "id": "chart_ncd_2",
+                "display": "True",
                 "name": "Age Distribution of NCD Patients",
                 "type": "Histogram",
                 "level": "facility",
@@ -1719,10 +1836,12 @@
           },
           {
             "section_name": "NCD Type Analysis",
+            "display": "True",
             "chart_items_per_row": 3,
             "items": [
               {
                 "id": "chart_ncd_6",
+                "display": "True",
                 "name": "NCD Type \u2013 New Patients",
                 "type": "Column",
                 "level": "facility",
@@ -1752,6 +1871,7 @@
               },
               {
                 "id": "chart_ncd_7",
+                "display": "True",
                 "name": "NCD Type \u2013 Existing Patients",
                 "type": "Column",
                 "level": "facility",
@@ -1781,6 +1901,7 @@
               },
               {
                 "id": "chart_ncd_type_gender",
+                "display": "True",
                 "name": "NCD Diagnosis \u00d7 Gender",
                 "type": "CrossTab",
                 "level": "facility",
@@ -1814,10 +1935,12 @@
           },
           {
             "section_name": "Risk Factors",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_ncd_3",
+                "display": "True",
                 "name": "Alcohol Risk Factor",
                 "type": "Pie",
                 "level": "facility",
@@ -1847,6 +1970,7 @@
               },
               {
                 "id": "chart_ncd_4",
+                "display": "True",
                 "name": "Smoking Risk Factor",
                 "type": "Pie",
                 "level": "facility",
@@ -1878,10 +2002,12 @@
           },
           {
             "section_name": "Complications and Treatment",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_ncd_8",
+                "display": "True",
                 "name": "NCD Complications \u2013 Foot",
                 "type": "Pie",
                 "level": "facility",
@@ -1911,6 +2037,7 @@
               },
               {
                 "id": "chart_ncd_9",
+                "display": "True",
                 "name": "Aggregate NCD Drugs Dispensed",
                 "type": "PivotTable",
                 "level": "facility",
@@ -1942,10 +2069,12 @@
           },
           {
             "section_name": "NCD Geographic Distribution",
+            "display": "True",
             "chart_items_per_row": 1,
             "items": [
               {
                 "id": "chart_ncd_5",
+                "display": "True",
                 "name": "NCD Patient Locations",
                 "type": "PivotTable",
                 "level": "facility",
@@ -1992,6 +2121,7 @@
       "counts": [
         {
           "id": "count_mnh_anc_001",
+          "display": "True",
           "name": "ANC Women With 2+ Tetanus Doses",
           "level": "facility",
           "filters": {
@@ -2009,6 +2139,7 @@
         },
         {
           "id": "count_mnh_lab_001",
+          "display": "True",
           "name": "Deliveries At This Facility",
           "level": "facility",
           "filters": {
@@ -2025,6 +2156,7 @@
         },
         {
           "id": "count_mnh_lab_002",
+          "display": "True",
           "name": "Caesarean Sections",
           "level": "facility",
           "filters": {
@@ -2041,6 +2173,7 @@
         },
         {
           "id": "count_mnh_lab_003",
+          "display": "True",
           "name": "Skilled Delivery Staff Recorded",
           "level": "facility",
           "filters": {
@@ -2052,6 +2185,7 @@
         },
         {
           "id": "count_mnh_pnc_001",
+          "display": "True",
           "name": "PNC Mothers Within 48 Hours",
           "level": "facility",
           "filters": {
@@ -2065,6 +2199,7 @@
         },
         {
           "id": "count_mnh_pnc_002",
+          "display": "True",
           "name": "PNC Babies Reviewed",
           "level": "facility",
           "filters": {
@@ -2076,6 +2211,7 @@
         },
         {
           "id": "count_mnh_pnc_003",
+          "display": "True",
           "name": "Mothers HIV Positive In PNC",
           "level": "facility",
           "filters": {
@@ -2094,6 +2230,7 @@
         },
         {
           "id": "count_mnh_pnc_004",
+          "display": "True",
           "name": "Babies Receiving BCG",
           "level": "facility",
           "filters": {
@@ -2116,9 +2253,11 @@
         "sections": [
           {
             "section_name": "Antenatal Care (ANC)",
+            "display": "True",
             "items": [
               {
                 "id": "chart_mnh_anc_001",
+                "display": "True",
                 "name": "ANC Visits Over Time",
                 "type": "Line",
                 "level": "facility",
@@ -2138,6 +2277,7 @@
               },
               {
                 "id": "chart_mnh_anc_002",
+                "display": "True",
                 "name": "Pregnancy Planning Status",
                 "type": "Pie",
                 "level": "facility",
@@ -2155,6 +2295,7 @@
               },
               {
                 "id": "chart_mnh_anc_003",
+                "display": "True",
                 "name": "Blood Group Rhesus Distribution",
                 "type": "Pie",
                 "level": "facility",
@@ -2172,6 +2313,7 @@
               },
               {
                 "id": "chart_mnh_anc_004",
+                "display": "True",
                 "name": "Tetanus Dose Distribution",
                 "type": "Bar",
                 "level": "facility",
@@ -2191,6 +2333,7 @@
               },
               {
                 "id": "chart_mnh_anc_005",
+                "display": "True",
                 "name": "ANC HIV Testing Status",
                 "type": "Pie",
                 "level": "facility",
@@ -2208,6 +2351,7 @@
               },
               {
                 "id": "chart_mnh_anc_006",
+                "display": "True",
                 "name": "ITN Given During ANC",
                 "type": "Pie",
                 "level": "facility",
@@ -2227,9 +2371,11 @@
           },
           {
             "section_name": "Labour and Delivery",
+            "display": "True",
             "items": [
               {
                 "id": "chart_mnh_lab_001",
+                "display": "True",
                 "name": "Place of Delivery",
                 "type": "Pie",
                 "level": "facility",
@@ -2247,6 +2393,7 @@
               },
               {
                 "id": "chart_mnh_lab_002",
+                "display": "True",
                 "name": "Mode of Delivery",
                 "type": "Pie",
                 "level": "facility",
@@ -2264,6 +2411,7 @@
               },
               {
                 "id": "chart_mnh_lab_003",
+                "display": "True",
                 "name": "Obstetric Complications",
                 "type": "Bar",
                 "level": "facility",
@@ -2283,6 +2431,7 @@
               },
               {
                 "id": "chart_mnh_lab_004",
+                "display": "True",
                 "name": "Newborn Complications at Birth",
                 "type": "Bar",
                 "level": "facility",
@@ -2302,6 +2451,7 @@
               },
               {
                 "id": "chart_mnh_lab_005",
+                "display": "True",
                 "name": "Newborn Care Given",
                 "type": "Bar",
                 "level": "facility",
@@ -2321,6 +2471,7 @@
               },
               {
                 "id": "chart_mnh_lab_006",
+                "display": "True",
                 "name": "Birth Outcome at Delivery",
                 "type": "Pie",
                 "level": "facility",
@@ -2338,6 +2489,7 @@
               },
               {
                 "id": "chart_mnh_lab_007",
+                "display": "True",
                 "name": "Vitamin K Given at Birth",
                 "type": "Pie",
                 "level": "facility",
@@ -2355,6 +2507,7 @@
               },
               {
                 "id": "chart_mnh_lab_008",
+                "display": "True",
                 "name": "Delivery Cadre Mix",
                 "type": "Bar",
                 "level": "facility",
@@ -2374,6 +2527,7 @@
               },
               {
                 "id": "chart_mnh_lab_009",
+                "display": "True",
                 "name": "Referral Reasons",
                 "type": "Bar",
                 "level": "facility",
@@ -2395,9 +2549,11 @@
           },
           {
             "section_name": "Postnatal Care (PNC)",
+            "display": "True",
             "items": [
               {
                 "id": "chart_mnh_pnc_001",
+                "display": "True",
                 "name": "PNC Check Periods",
                 "type": "Bar",
                 "level": "facility",
@@ -2417,6 +2573,7 @@
               },
               {
                 "id": "chart_mnh_pnc_002",
+                "display": "True",
                 "name": "Mother Final Status",
                 "type": "Pie",
                 "level": "facility",
@@ -2434,6 +2591,7 @@
               },
               {
                 "id": "chart_mnh_pnc_003",
+                "display": "True",
                 "name": "Baby Final Status",
                 "type": "Pie",
                 "level": "facility",
@@ -2451,6 +2609,7 @@
               },
               {
                 "id": "chart_mnh_pnc_004",
+                "display": "True",
                 "name": "Postnatal Complications",
                 "type": "Bar",
                 "level": "facility",
@@ -2470,6 +2629,7 @@
               },
               {
                 "id": "chart_mnh_pnc_005",
+                "display": "True",
                 "name": "Baby Immunisations Recorded",
                 "type": "Bar",
                 "level": "facility",
@@ -2489,6 +2649,7 @@
               },
               {
                 "id": "chart_mnh_pnc_006",
+                "display": "True",
                 "name": "Exclusive Breastfeeding Status",
                 "type": "Pie",
                 "level": "facility",
@@ -2506,6 +2667,7 @@
               },
               {
                 "id": "chart_mnh_pnc_007",
+                "display": "True",
                 "name": "Mother HIV Status in PNC",
                 "type": "Pie",
                 "level": "facility",
@@ -2523,6 +2685,7 @@
               },
               {
                 "id": "chart_mnh_pnc_008",
+                "display": "True",
                 "name": "Family Planning Counselling",
                 "type": "Pie",
                 "level": "facility",
@@ -2540,6 +2703,7 @@
               },
               {
                 "id": "chart_mnh_pnc_009",
+                "display": "True",
                 "name": "Family Planning Method Chosen",
                 "type": "Bar",
                 "level": "facility",
@@ -2559,6 +2723,7 @@
               },
               {
                 "id": "chart_mnh_pnc_010",
+                "display": "True",
                 "name": "Low Birth Weight / KMC",
                 "type": "Pie",
                 "level": "facility",
@@ -2576,6 +2741,7 @@
               },
               {
                 "id": "chart_mnh_pnc_011",
+                "display": "True",
                 "name": "Vitamin K Given in PNC",
                 "type": "Pie",
                 "level": "facility",
@@ -3186,32 +3352,26 @@
         }
       },
       {
-        "id": "mnid_lab_prog_006",
-        "label": "Overall caesarean section rate",
-        "category": "Labour",
-        "target": 15,
+        "id": "mnid_nb_overview_001",
+        "label": "Outborn babies",
+        "category": "Newborn",
+        "target": 10,
         "target_mode": "min",
-        "status": "tracked",
+        "status": "overview_only",
         "numerator_filters": {
           "unique": "person_id",
-          "variable1": "mnid_labour_csection",
-          "value1": "Yes"
+          "variable1": "mnid_newborn_outborn",
+          "value1": "Yes",
+          "variable2": "Age_Group",
+          "value2": "Under 5"
         },
         "denominator_filters": {
           "unique": "person_id",
           "variable1": "Service_Area",
-          "value1": "Labour"
-        },
-        "note": "Monitoring rate \u2014 lower limit 15% reflects CEmONC access threshold. Emergency versus elective caesarean section split is still awaiting data."
-      },
-      {
-        "id": "mnid_nb_prog_008",
-        "label": "Low birthweight newborns",
-        "category": "Labour",
-        "target": 12,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Same underlying data as the Newborn-category indicator of the same name -- shown here too so it is prioritized in Labour & Delivery Run Charts, since birth weight is recorded at delivery."
+          "value1": "Newborn",
+          "variable2": "Age_Group",
+          "value2": "Under 5"
+        }
       },
       {
         "id": "mnid_lab_prog_008",
@@ -3289,6 +3449,25 @@
           "value1": "Labour"
         },
         "note": "Covers azithromycin prophylaxis and surgical antibiotic prophylaxis (ampicillin, cefazolin, benzylpenicillin)."
+      },
+      {
+        "id": "mnid_lab_prog_006",
+        "label": "Overall caesarean section rate",
+        "category": "Labour",
+        "target": 15,
+        "target_mode": "min",
+        "status": "tracked",
+        "numerator_filters": {
+          "unique": "person_id",
+          "variable1": "mnid_labour_csection",
+          "value1": "Yes"
+        },
+        "denominator_filters": {
+          "unique": "person_id",
+          "variable1": "Service_Area",
+          "value1": "Labour"
+        },
+        "note": "Monitoring rate \u2014 lower limit 15% reflects CEmONC access threshold. Emergency versus elective caesarean section split is still awaiting data."
       },
       {
         "id": "mnid_lab_core_001",
@@ -3438,140 +3617,6 @@
           "value1": "Labour"
         },
         "note": "Uses birth weight documentation linked to the delivery episode or immediate newborn record for the same client."
-      },
-      {
-        "id": "mnid_lab_core_totalbirths",
-        "label": "Total Births",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator (Analytics sum of live births + stillbirths). No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_freshstillbirths",
-        "label": "Fresh Stillbirths",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_maceratedstillbirths",
-        "label": "Macerated Stillbirths",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_pph",
-        "label": "Obstetric complication: PPH",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_eclampsia",
-        "label": "Obstetric complication: Eclampsia",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_obstructedlabour",
-        "label": "Obstetric complication: Obstructed labour",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_ruptureduterus",
-        "label": "Obstetric complication: Ruptured uterus",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_signalantibiotics",
-        "label": "Signal: Parenteral antibiotics",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_signalmgso4",
-        "label": "Signal: Anticonvulsants (MgSO4)",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_signaloxytocics",
-        "label": "Signal: Oxytocics",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_signalplacenta",
-        "label": "Signal: Manual placenta removal",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_signalmva",
-        "label": "Signal: MVA / retained products",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_signalassisted",
-        "label": "Signal: Assisted vaginal delivery",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_signalbloodtransfusion",
-        "label": "Signal: Blood transfusion",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_nb_overview_001",
-        "label": "Outborn babies",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "overview_only",
-        "numerator_filters": {
-          "unique": "person_id",
-          "variable1": "mnid_newborn_outborn",
-          "value1": "Yes",
-          "variable2": "Age_Group",
-          "value2": "Under 5"
-        },
-        "denominator_filters": {
-          "unique": "person_id",
-          "variable1": "Service_Area",
-          "value1": "Newborn",
-          "variable2": "Age_Group",
-          "value2": "Under 5"
-        }
       },
       {
         "id": "mnid_pnc_overview_001",
@@ -3807,14 +3852,6 @@
         }
       },
       {
-        "id": "mnid_nb_core_admissions",
-        "label": "Neonatal Admissions",
-        "category": "Newborn",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
         "id": "mnid_nb_overview_004",
         "label": "iKMC Initiated",
         "category": "Newborn",
@@ -3923,8 +3960,7 @@
           "value1": "Newborn",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        },
-        "measure": "Counts babies who received Kangaroo Mother Care during their stay, over admitted babies in the eligible weight band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
+        }
       },
       {
         "id": "mnid_nb_prog_008",
@@ -4015,8 +4051,7 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Tracked using pulse oximeter or oxygen saturation documentation captured at neonatal admission.",
-        "measure": "Counts babies who had blood-oxygen measured at admission, over all admitted babies. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
+        "note": "Tracked using pulse oximeter or oxygen saturation documentation captured at neonatal admission."
       },
       {
         "id": "mnid_nb_prog_012",
@@ -4038,8 +4073,7 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Tracked from bilirubin-related measurement concepts documented in newborn care.",
-        "measure": "Counts babies who had bilirubin tested, over babies with a clinical diagnosis of pathological jaundice. Coverage trend line chart (no QI control chart for this one)."
+        "note": "Tracked from bilirubin-related measurement concepts documented in newborn care."
       },
       {
         "id": "mnid_nb_prog_013",
@@ -4083,8 +4117,7 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Uses clinical jaundice and phototherapy treatment documentation as the newborn jaundice care pathway proxy.",
-        "measure": "Counts babies who required AND received phototherapy, over babies who required phototherapy. QI control chart (program & multi-country) + coverage run chart with target/median lines (country & facility)."
+        "note": "Uses clinical jaundice and phototherapy treatment documentation as the newborn jaundice care pathway proxy."
       },
       {
         "id": "mnid_nb_prog_015",
@@ -4172,26 +4205,15 @@
           "value1": "1000-1499g",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        },
-        "measure": "ALL babies 1000-1499g should receive CPAP regardless of symptoms. Counts babies in this band who got CPAP, over admitted babies in this band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
-      },
-      {
-        "id": "mnid_nb_core_cpap1000_1499",
-        "label": "Babies between 1000-1499g who receive prophylactic CPAP",
-        "category": "Newborn",
-        "target": 100,
-        "status": "tracked",
-        "note": "Per NEST-IT Indicators Guide: ALL babies 1000-1499g should receive CPAP regardless of symptoms (unlike the 1500-1999g band, which only needs it if symptomatic). Sourced from the NEST360 excel workbook (Prophy CPAP column).",
-        "measure": "ALL babies 1000-1499g should receive CPAP regardless of symptoms. Counts babies in this band who got CPAP, over admitted babies in this band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
+        }
       },
       {
         "id": "mnid_nb_core_004",
         "label": "Babies between 1500-1999g who receive prophylactic CPAP",
         "category": "Newborn",
-        "target": 100,
-        "status": "tracked",
-        "note": "Tracked from birth-weight bands plus newborn CPAP treatment observations already normalized into the parquet. This remains a weight-band proxy because respiratory distress syndrome is not modeled separately.",
-        "measure": "Babies 1500-1999g only need CPAP if symptomatic (RDS + hypoxia). Counts babies who got CPAP, over admitted babies in this band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
+        "target": 80,
+        "status": "awaiting_baseline",
+        "note": "Tracked from birth-weight bands plus newborn CPAP treatment observations already normalized into the parquet. This remains a weight-band proxy because respiratory distress syndrome is not modeled separately."
       },
       {
         "id": "mnid_nb_core_005",
@@ -4213,8 +4235,7 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Jaundice identification used as phototherapy proxy (MAHIS clinical jaundice \u2192 phototherapy care pathway).",
-        "measure": "Counts babies who required AND received phototherapy, over babies who required phototherapy. QI control chart (program & multi-country) + coverage run chart with target/median lines (country & facility)."
+        "note": "Jaundice identification used as phototherapy proxy (MAHIS clinical jaundice \u2192 phototherapy care pathway)."
       },
       {
         "id": "mnid_nb_core_006",
@@ -4235,8 +4256,7 @@
           "value1": "Yes",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        },
-        "measure": "ALL babies with a clinical sepsis diagnosis should start antibiotics. Counts babies who got antibiotics, over babies diagnosed with sepsis. QI control chart (program & multi-country) + coverage run chart with target/median lines (country & facility)."
+        }
       },
       {
         "id": "mnid_nb_core_007",
@@ -4257,8 +4277,7 @@
           "value1": "Newborn",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        },
-        "measure": "Counts babies with body temp >=36.5C at admission, over admitted babies who had temperature taken at admission. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
+        }
       },
       {
         "id": "mnid_nb_core_008",
@@ -4280,8 +4299,7 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Proxy from admission thermal status \u2014 longitudinal stay temperature not yet in extract.",
-        "measure": "Counts babies with body temp >=36.5C at any point after admission (excluding the admission reading itself), over admitted babies who had temperature taken during their stay. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
+        "note": "Proxy from admission thermal status \u2014 longitudinal stay temperature not yet in extract."
       },
       {
         "id": "nest360_pulse_oximeter_used_at_admission",
@@ -4301,8 +4319,7 @@
           "unique": "person_id",
           "variable1": "Service_Area",
           "value1": "Newborn"
-        },
-        "measure": "Counts babies who had blood-oxygen measured at admission, over all admitted babies. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
+        }
       },
       {
         "id": "nest360_temperature_taken_at_admission",
@@ -4764,6 +4781,118 @@
         }
       },
       {
+        "id": "mnid_lab_core_totalbirths",
+        "label": "Total Births",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator (Analytics sum of live births + stillbirths). No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_freshstillbirths",
+        "label": "Fresh Stillbirths",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_maceratedstillbirths",
+        "label": "Macerated Stillbirths",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_pph",
+        "label": "Obstetric complication: PPH",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_eclampsia",
+        "label": "Obstetric complication: Eclampsia",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_obstructedlabour",
+        "label": "Obstetric complication: Obstructed labour",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_ruptureduterus",
+        "label": "Obstetric complication: Ruptured uterus",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_signalantibiotics",
+        "label": "Signal: Parenteral antibiotics",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_signalmgso4",
+        "label": "Signal: Anticonvulsants (MgSO4)",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_signaloxytocics",
+        "label": "Signal: Oxytocics",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_signalplacenta",
+        "label": "Signal: Manual placenta removal",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_signalmva",
+        "label": "Signal: MVA / retained products",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_signalassisted",
+        "label": "Signal: Assisted vaginal delivery",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_signalbloodtransfusion",
+        "label": "Signal: Blood transfusion",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
         "id": "mnid_pnc_core_motherscomplications",
         "label": "Mothers with postnatal complications",
         "category": "PNC",
@@ -4850,69 +4979,6 @@
         "target": 90,
         "status": "tracked",
         "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_nb_core_complicationsepsis",
-        "label": "Newborn complication: Sepsis",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Lower is better (a complication, not a treatment). Approximate DHIS2-side category; sourced from the NEST360 excel workbook (Sepsis column)."
-      },
-      {
-        "id": "mnid_nb_core_complicationother",
-        "label": "Newborn complication: Other",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Lower is better. Real DHIS2-sourced complication category (no longer an excel Jaundice stand-in -- see mnid_nb_core_jaundice for that)."
-      },
-      {
-        "id": "mnid_nb_core_complicationasphyxia",
-        "label": "Newborn complication: Asphyxia",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Lower is better. Real DHIS2-sourced complication category (no longer an excel RDS stand-in -- see mnid_nb_core_rds for that)."
-      },
-      {
-        "id": "mnid_nb_core_hypothermiaadmission",
-        "label": "Neonatal hypothermia on admission",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Lower is better -- this counts hypothermia CASES, not the 'not hypothermic' success rate. Sourced from the NEST360 excel workbook (Hypo on Admin column)."
-      },
-      {
-        "id": "mnid_nb_core_hypothermiastay",
-        "label": "Neonatal hypothermia during stay",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Lower is better -- this counts hypothermia CASES, not the 'not hypothermic' success rate. Sourced from the NEST360 excel workbook (Hypo during Stay column)."
-      },
-      {
-        "id": "mnid_nb_core_jaundice",
-        "label": "Newborn complication: Jaundice",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Lower is better (a complication, not a treatment). Sourced from the NEST360 excel workbook (Jaundice column) -- its own dedicated indicator, not a stand-in for a DHIS2 category."
-      },
-      {
-        "id": "mnid_nb_core_rds",
-        "label": "Newborn complication: RDS",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Lower is better. Sourced from the NEST360 excel workbook (RDS column) -- its own dedicated indicator, not a stand-in for a DHIS2 category."
       }
     ],
     "mnid_categories": [
@@ -5409,32 +5475,26 @@
         }
       },
       {
-        "id": "mnid_lab_prog_006",
-        "label": "Overall caesarean section rate",
-        "category": "Labour",
-        "target": 15,
+        "id": "mnid_nb_overview_001",
+        "label": "Outborn babies",
+        "category": "Newborn",
+        "target": 10,
         "target_mode": "min",
-        "status": "tracked",
+        "status": "overview_only",
         "numerator_filters": {
           "unique": "person_id",
-          "variable1": "mnid_labour_csection",
-          "value1": "Yes"
+          "variable1": "mnid_newborn_outborn",
+          "value1": "Yes",
+          "variable2": "Age_Group",
+          "value2": "Under 5"
         },
         "denominator_filters": {
           "unique": "person_id",
           "variable1": "Service_Area",
-          "value1": "Labour"
-        },
-        "note": "Monitoring rate \u2014 lower limit 15% reflects CEmONC access threshold. Emergency versus elective caesarean section split is still awaiting data."
-      },
-      {
-        "id": "mnid_nb_prog_008",
-        "label": "Low birthweight newborns",
-        "category": "Labour",
-        "target": 12,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Same underlying data as the Newborn-category indicator of the same name -- shown here too so it is prioritized in Labour & Delivery Run Charts, since birth weight is recorded at delivery."
+          "value1": "Newborn",
+          "variable2": "Age_Group",
+          "value2": "Under 5"
+        }
       },
       {
         "id": "mnid_lab_prog_008",
@@ -5512,6 +5572,25 @@
           "value1": "Labour"
         },
         "note": "Covers azithromycin prophylaxis and surgical antibiotic prophylaxis (ampicillin, cefazolin, benzylpenicillin)."
+      },
+      {
+        "id": "mnid_lab_prog_006",
+        "label": "Overall caesarean section rate",
+        "category": "Labour",
+        "target": 15,
+        "target_mode": "min",
+        "status": "tracked",
+        "numerator_filters": {
+          "unique": "person_id",
+          "variable1": "mnid_labour_csection",
+          "value1": "Yes"
+        },
+        "denominator_filters": {
+          "unique": "person_id",
+          "variable1": "Service_Area",
+          "value1": "Labour"
+        },
+        "note": "Monitoring rate \u2014 lower limit 15% reflects CEmONC access threshold. Emergency versus elective caesarean section split is still awaiting data."
       },
       {
         "id": "mnid_lab_core_001",
@@ -5661,140 +5740,6 @@
           "value1": "Labour"
         },
         "note": "Uses birth weight documentation linked to the delivery episode or immediate newborn record for the same client."
-      },
-      {
-        "id": "mnid_lab_core_totalbirths",
-        "label": "Total Births",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator (Analytics sum of live births + stillbirths). No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_freshstillbirths",
-        "label": "Fresh Stillbirths",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_maceratedstillbirths",
-        "label": "Macerated Stillbirths",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_pph",
-        "label": "Obstetric complication: PPH",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_eclampsia",
-        "label": "Obstetric complication: Eclampsia",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_obstructedlabour",
-        "label": "Obstetric complication: Obstructed labour",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_ruptureduterus",
-        "label": "Obstetric complication: Ruptured uterus",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_signalantibiotics",
-        "label": "Signal: Parenteral antibiotics",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_signalmgso4",
-        "label": "Signal: Anticonvulsants (MgSO4)",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_signaloxytocics",
-        "label": "Signal: Oxytocics",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_signalplacenta",
-        "label": "Signal: Manual placenta removal",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_signalmva",
-        "label": "Signal: MVA / retained products",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_signalassisted",
-        "label": "Signal: Assisted vaginal delivery",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_lab_core_signalbloodtransfusion",
-        "label": "Signal: Blood transfusion",
-        "category": "Labour",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_nb_overview_001",
-        "label": "Outborn babies",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "overview_only",
-        "numerator_filters": {
-          "unique": "person_id",
-          "variable1": "mnid_newborn_outborn",
-          "value1": "Yes",
-          "variable2": "Age_Group",
-          "value2": "Under 5"
-        },
-        "denominator_filters": {
-          "unique": "person_id",
-          "variable1": "Service_Area",
-          "value1": "Newborn",
-          "variable2": "Age_Group",
-          "value2": "Under 5"
-        }
       },
       {
         "id": "mnid_pnc_overview_001",
@@ -6030,14 +5975,6 @@
         }
       },
       {
-        "id": "mnid_nb_core_admissions",
-        "label": "Neonatal Admissions",
-        "category": "Newborn",
-        "target": 0,
-        "status": "tracked",
-        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
         "id": "mnid_nb_overview_004",
         "label": "iKMC Initiated",
         "category": "Newborn",
@@ -6146,8 +6083,7 @@
           "value1": "Newborn",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        },
-        "measure": "Counts babies who received Kangaroo Mother Care during their stay, over admitted babies in the eligible weight band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
+        }
       },
       {
         "id": "mnid_nb_prog_008",
@@ -6238,8 +6174,7 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Tracked using pulse oximeter or oxygen saturation documentation captured at neonatal admission.",
-        "measure": "Counts babies who had blood-oxygen measured at admission, over all admitted babies. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
+        "note": "Tracked using pulse oximeter or oxygen saturation documentation captured at neonatal admission."
       },
       {
         "id": "mnid_nb_prog_012",
@@ -6261,8 +6196,7 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Tracked from bilirubin-related measurement concepts documented in newborn care.",
-        "measure": "Counts babies who had bilirubin tested, over babies with a clinical diagnosis of pathological jaundice. Coverage trend line chart (no QI control chart for this one)."
+        "note": "Tracked from bilirubin-related measurement concepts documented in newborn care."
       },
       {
         "id": "mnid_nb_prog_013",
@@ -6306,8 +6240,7 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Uses clinical jaundice and phototherapy treatment documentation as the newborn jaundice care pathway proxy.",
-        "measure": "Counts babies who required AND received phototherapy, over babies who required phototherapy. QI control chart (program & multi-country) + coverage run chart with target/median lines (country & facility)."
+        "note": "Uses clinical jaundice and phototherapy treatment documentation as the newborn jaundice care pathway proxy."
       },
       {
         "id": "mnid_nb_prog_015",
@@ -6395,26 +6328,15 @@
           "value1": "1000-1499g",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        },
-        "measure": "ALL babies 1000-1499g should receive CPAP regardless of symptoms. Counts babies in this band who got CPAP, over admitted babies in this band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
-      },
-      {
-        "id": "mnid_nb_core_cpap1000_1499",
-        "label": "Babies between 1000-1499g who receive prophylactic CPAP",
-        "category": "Newborn",
-        "target": 100,
-        "status": "tracked",
-        "note": "Per NEST-IT Indicators Guide: ALL babies 1000-1499g should receive CPAP regardless of symptoms (unlike the 1500-1999g band, which only needs it if symptomatic). Sourced from the NEST360 excel workbook (Prophy CPAP column).",
-        "measure": "ALL babies 1000-1499g should receive CPAP regardless of symptoms. Counts babies in this band who got CPAP, over admitted babies in this band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
+        }
       },
       {
         "id": "mnid_nb_core_004",
         "label": "Babies between 1500-1999g who receive prophylactic CPAP",
         "category": "Newborn",
-        "target": 100,
-        "status": "tracked",
-        "note": "Tracked from birth-weight bands plus newborn CPAP treatment observations already normalized into the parquet. This remains a weight-band proxy because respiratory distress syndrome is not modeled separately.",
-        "measure": "Babies 1500-1999g only need CPAP if symptomatic (RDS + hypoxia). Counts babies who got CPAP, over admitted babies in this band. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
+        "target": 80,
+        "status": "awaiting_baseline",
+        "note": "Tracked from birth-weight bands plus newborn CPAP treatment observations already normalized into the parquet. This remains a weight-band proxy because respiratory distress syndrome is not modeled separately."
       },
       {
         "id": "mnid_nb_core_005",
@@ -6436,8 +6358,7 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Jaundice identification used as phototherapy proxy (MAHIS clinical jaundice \u2192 phototherapy care pathway).",
-        "measure": "Counts babies who required AND received phototherapy, over babies who required phototherapy. QI control chart (program & multi-country) + coverage run chart with target/median lines (country & facility)."
+        "note": "Jaundice identification used as phototherapy proxy (MAHIS clinical jaundice \u2192 phototherapy care pathway)."
       },
       {
         "id": "mnid_nb_core_006",
@@ -6458,8 +6379,7 @@
           "value1": "Yes",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        },
-        "measure": "ALL babies with a clinical sepsis diagnosis should start antibiotics. Counts babies who got antibiotics, over babies diagnosed with sepsis. QI control chart (program & multi-country) + coverage run chart with target/median lines (country & facility)."
+        }
       },
       {
         "id": "mnid_nb_core_007",
@@ -6480,8 +6400,7 @@
           "value1": "Newborn",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        },
-        "measure": "Counts babies with body temp >=36.5C at admission, over admitted babies who had temperature taken at admission. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
+        }
       },
       {
         "id": "mnid_nb_core_008",
@@ -6503,8 +6422,119 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Proxy from admission thermal status \u2014 longitudinal stay temperature not yet in extract.",
-        "measure": "Counts babies with body temp >=36.5C at any point after admission (excluding the admission reading itself), over admitted babies who had temperature taken during their stay. QI control chart (program) + coverage run chart with target/median lines (country & facility)."
+        "note": "Proxy from admission thermal status \u2014 longitudinal stay temperature not yet in extract."
+      },
+      {
+        "id": "mnid_lab_core_totalbirths",
+        "label": "Total Births",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator (Analytics sum of live births + stillbirths). No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_freshstillbirths",
+        "label": "Fresh Stillbirths",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_maceratedstillbirths",
+        "label": "Macerated Stillbirths",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_pph",
+        "label": "Obstetric complication: PPH",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_eclampsia",
+        "label": "Obstetric complication: Eclampsia",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_obstructedlabour",
+        "label": "Obstetric complication: Obstructed labour",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_ruptureduterus",
+        "label": "Obstetric complication: Ruptured uterus",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_signalantibiotics",
+        "label": "Signal: Parenteral antibiotics",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_signalmgso4",
+        "label": "Signal: Anticonvulsants (MgSO4)",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_signaloxytocics",
+        "label": "Signal: Oxytocics",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_signalplacenta",
+        "label": "Signal: Manual placenta removal",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_signalmva",
+        "label": "Signal: MVA / retained products",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_signalassisted",
+        "label": "Signal: Assisted vaginal delivery",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
+      },
+      {
+        "id": "mnid_lab_core_signalbloodtransfusion",
+        "label": "Signal: Blood transfusion",
+        "category": "Labour",
+        "target": 0,
+        "status": "tracked",
+        "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
       },
       {
         "id": "mnid_pnc_core_motherscomplications",
@@ -6593,69 +6623,6 @@
         "target": 90,
         "status": "tracked",
         "note": "DHIS2-only indicator. No MAHIS numerator/denominator filters are defined, so this shows no data in MAHIS mode."
-      },
-      {
-        "id": "mnid_nb_core_complicationsepsis",
-        "label": "Newborn complication: Sepsis",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Lower is better (a complication, not a treatment). Approximate DHIS2-side category; sourced from the NEST360 excel workbook (Sepsis column)."
-      },
-      {
-        "id": "mnid_nb_core_complicationother",
-        "label": "Newborn complication: Other",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Lower is better. Real DHIS2-sourced complication category (no longer an excel Jaundice stand-in -- see mnid_nb_core_jaundice for that)."
-      },
-      {
-        "id": "mnid_nb_core_complicationasphyxia",
-        "label": "Newborn complication: Asphyxia",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Lower is better. Real DHIS2-sourced complication category (no longer an excel RDS stand-in -- see mnid_nb_core_rds for that)."
-      },
-      {
-        "id": "mnid_nb_core_hypothermiaadmission",
-        "label": "Neonatal hypothermia on admission",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Lower is better -- this counts hypothermia CASES, not the 'not hypothermic' success rate. Sourced from the NEST360 excel workbook (Hypo on Admin column)."
-      },
-      {
-        "id": "mnid_nb_core_hypothermiastay",
-        "label": "Neonatal hypothermia during stay",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Lower is better -- this counts hypothermia CASES, not the 'not hypothermic' success rate. Sourced from the NEST360 excel workbook (Hypo during Stay column)."
-      },
-      {
-        "id": "mnid_nb_core_jaundice",
-        "label": "Newborn complication: Jaundice",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Lower is better (a complication, not a treatment). Sourced from the NEST360 excel workbook (Jaundice column) -- its own dedicated indicator, not a stand-in for a DHIS2 category."
-      },
-      {
-        "id": "mnid_nb_core_rds",
-        "label": "Newborn complication: RDS",
-        "category": "Newborn",
-        "target": 10,
-        "target_mode": "min",
-        "status": "tracked",
-        "note": "Lower is better. Sourced from the NEST360 excel workbook (RDS column) -- its own dedicated indicator, not a stand-in for a DHIS2 category."
       }
     ],
     "mnid_categories": [
@@ -6670,6 +6637,7 @@
       "counts": [
         {
           "id": "count_imm_1",
+          "display": "True",
           "name": "Total Attendance",
           "level": "facility",
           "drill_down": "True",
@@ -6682,6 +6650,7 @@
         },
         {
           "id": "count_imm_2",
+          "display": "True",
           "name": "Attendance Under 5",
           "level": "facility",
           "filters": {
@@ -6695,6 +6664,7 @@
         },
         {
           "id": "count_imm_3",
+          "display": "True",
           "name": "Attendance Under 2",
           "level": "facility",
           "filters": {
@@ -6708,6 +6678,7 @@
         },
         {
           "id": "count_imm_4",
+          "display": "True",
           "name": "Attendance Under 1",
           "level": "facility",
           "filters": {
@@ -6721,6 +6692,7 @@
         },
         {
           "id": "count_imm_5",
+          "display": "True",
           "name": "Attendance Over 5",
           "level": "facility",
           "filters": {
@@ -6734,6 +6706,7 @@
         },
         {
           "id": "count_imm_6",
+          "display": "True",
           "name": "Protected at Birth",
           "level": "facility",
           "filters": {
@@ -6751,6 +6724,7 @@
         },
         {
           "id": "count_imm_7",
+          "display": "True",
           "name": "Penta 1 doses",
           "level": "facility",
           "filters": {
@@ -6768,6 +6742,7 @@
         },
         {
           "id": "count_imm_8",
+          "display": "True",
           "name": "Penta 3 doses",
           "level": "facility",
           "filters": {
@@ -6785,6 +6760,7 @@
         },
         {
           "id": "count_imm_9",
+          "display": "True",
           "name": "MR 1 doses",
           "level": "facility",
           "filters": {
@@ -6802,6 +6778,7 @@
         },
         {
           "id": "count_imm_10",
+          "display": "True",
           "name": "MR 2 doses",
           "level": "facility",
           "filters": {
@@ -6822,9 +6799,11 @@
         "sections": [
           {
             "section_name": "Summary",
+            "display": "True",
             "items": [
               {
                 "id": "chart_imm_1",
+                "display": "True",
                 "name": "Daily vaccinated clients - Last 7 days",
                 "type": "Line",
                 "level": "facility",
@@ -6848,6 +6827,7 @@
               },
               {
                 "id": "chart_imm_2",
+                "display": "True",
                 "name": "Vaccines administered",
                 "type": "Column",
                 "level": "facility",
@@ -6871,6 +6851,7 @@
               },
               {
                 "id": "chart_imm_3",
+                "display": "True",
                 "name": "Clients Disaggregation by Gender",
                 "type": "Pie",
                 "level": "facility",
@@ -6896,6 +6877,7 @@
               },
               {
                 "id": "chart_imm_4",
+                "display": "True",
                 "name": "Doses Age and Gender Disaggregation",
                 "type": "CrossTab",
                 "level": "facility",
@@ -6941,6 +6923,7 @@
       "counts": [
         {
           "id": "count_4ad87d16",
+          "display": "True",
           "name": "Total Attendance (All departments)",
           "level": "facility",
           "filters": {
@@ -6966,6 +6949,7 @@
         },
         {
           "id": "count_bcdcbca3",
+          "display": "True",
           "name": "Screened for HIV",
           "level": "facility",
           "filters": {
@@ -6989,6 +6973,7 @@
         },
         {
           "id": "count_faf63ca3",
+          "display": "True",
           "name": "Screened - Status Positive",
           "level": "facility",
           "filters": {
@@ -7020,6 +7005,7 @@
         },
         {
           "id": "count_0283a090",
+          "display": "True",
           "name": "Screened - Status Negative",
           "level": "facility",
           "filters": {
@@ -7051,6 +7037,7 @@
         },
         {
           "id": "count_0de77f74",
+          "display": "True",
           "name": "Screen - Status Unknown",
           "level": "facility",
           "filters": {
@@ -7082,6 +7069,7 @@
         },
         {
           "id": "count_5562d5cb",
+          "display": "True",
           "name": "Positive Clients on ART",
           "level": "facility",
           "filters": {
@@ -7112,6 +7100,7 @@
         },
         {
           "id": "count_0e431b2d",
+          "display": "True",
           "name": "HIV Test Orders (MaHIS)",
           "level": "facility",
           "filters": {
@@ -7141,6 +7130,7 @@
         },
         {
           "id": "count_eb37080f",
+          "display": "True",
           "name": "HIV Tests Conducted",
           "level": "facility",
           "filters": {
@@ -7172,6 +7162,7 @@
         },
         {
           "id": "count_064c9d4e",
+          "display": "True",
           "name": "Test Result New Positive",
           "level": "facility",
           "filters": {
@@ -7203,6 +7194,7 @@
         },
         {
           "id": "count_24042ce3",
+          "display": "True",
           "name": "HIV Patients Screened for AHD",
           "level": "facility",
           "filters": {
@@ -7236,10 +7228,12 @@
         "sections": [
           {
             "section_name": "Program Attendance and Screening",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_561d6d95",
+                "display": "True",
                 "name": "Attendance by Program",
                 "type": "Column",
                 "level": "facility",
@@ -7269,6 +7263,7 @@
               },
               {
                 "id": "chart_a5c5623b",
+                "display": "True",
                 "name": "Daily Patient Screening \u2013 Last 30 Days",
                 "type": "Line",
                 "level": "facility",
@@ -7304,10 +7299,12 @@
           },
           {
             "section_name": "HIV Test Results",
+            "display": "True",
             "chart_items_per_row": 3,
             "items": [
               {
                 "id": "chart_be90e105",
+                "display": "True",
                 "name": "Patient Test Results",
                 "type": "Pie",
                 "level": "facility",
@@ -7340,6 +7337,7 @@
               },
               {
                 "id": "chart_6d35c12c",
+                "display": "True",
                 "name": "HIV Testing Outcomes",
                 "type": "Bar",
                 "level": "facility",
@@ -7372,6 +7370,7 @@
               },
               {
                 "id": "chart_bf5c1b0d",
+                "display": "True",
                 "name": "Daily HIV Tests \u2013 Last 30 Days",
                 "type": "Line",
                 "level": "facility",
@@ -7405,10 +7404,12 @@
           },
           {
             "section_name": "HIV Results Disaggregation",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_hiv_gender_results",
+                "display": "True",
                 "name": "HIV Results by Gender",
                 "type": "Column",
                 "level": "facility",
@@ -7438,6 +7439,7 @@
               },
               {
                 "id": "chart_hiv_cascade",
+                "display": "True",
                 "name": "HIV Testing Cascade \u2013 Gender \u00d7 Age Group",
                 "type": "CrossTab",
                 "level": "facility",
@@ -7471,10 +7473,12 @@
           },
           {
             "section_name": "Linkage to Care",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_4c6f8e9c",
+                "display": "True",
                 "name": "Screened HIV Patients On ART",
                 "type": "Column",
                 "level": "facility",
@@ -7508,6 +7512,7 @@
               },
               {
                 "id": "chart_b564da26",
+                "display": "True",
                 "name": "Linkage With ScanForm",
                 "type": "Pie",
                 "level": "facility",
@@ -7557,6 +7562,7 @@
       "counts": [
         {
           "id": "count_121400f6",
+          "display": "True",
           "name": "Patients Screened for HIV",
           "level": "facility",
           "flag": "ok",
@@ -7576,6 +7582,7 @@
         },
         {
           "id": "count_1f7400bf",
+          "display": "True",
           "name": "HIV Status - New Positive",
           "level": "facility",
           "filters": {
@@ -7607,6 +7614,7 @@
         },
         {
           "id": "count_60b8d34f",
+          "display": "True",
           "name": "HIV Status - Previous Positive",
           "filters": {
             "measure": "count",
@@ -7637,6 +7645,7 @@
         },
         {
           "id": "count_60b8d34fg",
+          "display": "True",
           "name": "HIV Status - Unknown/Missing",
           "filters": {
             "measure": "count",
@@ -7667,6 +7676,7 @@
         },
         {
           "id": "count_8c6aebed",
+          "display": "True",
           "name": "Patients on ART",
           "filters": {
             "measure": "count",
@@ -7693,6 +7703,7 @@
         },
         {
           "id": "count_ea6f5d0d",
+          "display": "True",
           "name": "Screened for AHD",
           "filters": {
             "measure": "nunique",
@@ -7719,6 +7730,7 @@
         },
         {
           "id": "count_ea6f5d0d1",
+          "display": "True",
           "name": "Children <5 Years",
           "filters": {
             "measure": "nunique",
@@ -7738,6 +7750,7 @@
         },
         {
           "id": "count_ea6f5d0d2",
+          "display": "True",
           "name": "Patients with CD4 <200",
           "filters": {
             "measure": "nunique",
@@ -7765,6 +7778,7 @@
         },
         {
           "id": "count_ea6f5d0d3",
+          "display": "True",
           "name": "WHO Stage 3 or 4 ",
           "filters": {
             "measure": "nunique",
@@ -7798,6 +7812,7 @@
         },
         {
           "id": "count_ea6f5d0d4",
+          "display": "True",
           "name": "Viral Load > 1000 copies",
           "filters": {
             "measure": "nunique",
@@ -7828,6 +7843,7 @@
         },
         {
           "id": "count_ea6f5d0d4xd",
+          "display": "True",
           "name": "HIV Admissions",
           "filters": {
             "measure": "count_set",
@@ -7851,6 +7867,7 @@
         },
         {
           "id": "calculated101",
+          "display": "True",
           "name": "% HIV Patients Screened",
           "flag": "ok",
           "filters": {
@@ -7863,10 +7880,12 @@
         "sections": [
           {
             "section_name": "HIV SCREENING",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_d3b7b75a",
+                "display": "True",
                 "name": "Attendance By Program",
                 "type": "Column",
                 "filters": {
@@ -7895,6 +7914,7 @@
               },
               {
                 "id": "chart_6a133940",
+                "display": "True",
                 "name": "Proportion of Patients Screened for HIV Status",
                 "type": "Line",
                 "filters": {
@@ -7923,6 +7943,7 @@
               },
               {
                 "id": "chart_08380039",
+                "display": "True",
                 "name": "Status of HIV Patients During Screening",
                 "type": "Pie",
                 "level": "facility",
@@ -7961,6 +7982,7 @@
               },
               {
                 "id": "chart_d3b7b75add",
+                "display": "True",
                 "name": "ART Status of HIV Positive Patients",
                 "type": "Column",
                 "filters": {
@@ -7993,10 +8015,12 @@
           },
           {
             "section_name": "AHD Screening",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_6a133940",
+                "display": "True",
                 "name": "Proportion of HIV Positive Patients Screened for AHD",
                 "type": "Line",
                 "filters": {
@@ -8025,6 +8049,7 @@
               },
               {
                 "id": "chart_cdb8f2ec",
+                "display": "True",
                 "name": "Top 15 AHD Presenting Complaints (Symptoms)",
                 "type": "Bar",
                 "filters": {
@@ -8054,6 +8079,7 @@
               },
               {
                 "id": "chart_02d1942a",
+                "display": "True",
                 "name": "AHD WHO Clinical Staging",
                 "type": "Column",
                 "filters": {
@@ -8086,6 +8112,7 @@
               },
               {
                 "id": "chart_0f339442",
+                "display": "True",
                 "name": "AHD LabTests conducted",
                 "type": "Bar",
                 "filters": {
@@ -8117,10 +8144,12 @@
           },
           {
             "section_name": "AHD Screening and Results",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_02d1942a",
+                "display": "True",
                 "name": "AHD WHO Clinical Staging",
                 "type": "Column",
                 "filters": {
@@ -8153,6 +8182,7 @@
               },
               {
                 "id": "chart_0f339442",
+                "display": "True",
                 "name": "AHD LabTests conducted",
                 "type": "Bar",
                 "filters": {
@@ -8198,6 +8228,7 @@
       "counts": [
         {
           "id": "count_f3d40bex",
+          "display": "True",
           "name": "Enrolled Neonates",
           "level": "facility",
           "filters": {
@@ -8228,6 +8259,7 @@
         },
         {
           "id": "count_f3d40be9",
+          "display": "True",
           "name": "Triaged Neonates",
           "level": "facility",
           "filters": {
@@ -8257,6 +8289,7 @@
         },
         {
           "id": "count_1c32fed6",
+          "display": "True",
           "name": "Review of Systems done",
           "level": "facility",
           "filters": {
@@ -8286,6 +8319,7 @@
         },
         {
           "id": "count_1f41f4fb",
+          "display": "True",
           "name": "Systematic Examination Done",
           "level": "facility",
           "filters": {
@@ -8315,6 +8349,7 @@
         },
         {
           "id": "count_1f41f4fx",
+          "display": "True",
           "name": "Treated Neonates",
           "level": "facility",
           "filters": {
@@ -8344,6 +8379,7 @@
         },
         {
           "id": "count_b616b468",
+          "display": "True",
           "name": "Admitted to Nursery",
           "level": "facility",
           "filters": {
@@ -8377,6 +8413,7 @@
         },
         {
           "id": "count_77f7fc8d",
+          "display": "True",
           "name": "Outcome Referred",
           "level": "facility",
           "filters": {
@@ -8408,6 +8445,7 @@
         },
         {
           "id": "count_06f2a808",
+          "display": "True",
           "name": "Outcome Death <24 Hours",
           "level": "facility",
           "filters": {
@@ -8441,6 +8479,7 @@
         },
         {
           "id": "count_1af94e5f",
+          "display": "True",
           "name": "Outcome Death >24 Hours",
           "level": "facility",
           "filters": {
@@ -8474,6 +8513,7 @@
         },
         {
           "id": "count_d399565b",
+          "display": "True",
           "name": "Outcome Neonatal Dealth",
           "level": "facility",
           "filters": {
@@ -8505,10 +8545,12 @@
         "sections": [
           {
             "section_name": "Neonatal Enrolment and Encounters",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_neo_trend",
+                "display": "True",
                 "name": "Daily Neonatal Enrolments \u2013 Last 30 Days",
                 "type": "Line",
                 "level": "facility",
@@ -8543,6 +8585,7 @@
               },
               {
                 "id": "chart_neo_enc",
+                "display": "True",
                 "name": "Neonatal Encounters by Type",
                 "type": "Column",
                 "level": "facility",
@@ -8575,10 +8618,12 @@
           },
           {
             "section_name": "Clinical Summary",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_neo_diseases",
+                "display": "True",
                 "name": "Newborn Diseases \u2013 Top 10",
                 "type": "Bar",
                 "level": "facility",
@@ -8607,6 +8652,7 @@
               },
               {
                 "id": "chart_neo_outcomes_pie",
+                "display": "True",
                 "name": "Neonatal Admission Outcomes",
                 "type": "Pie",
                 "level": "facility",
@@ -8635,10 +8681,12 @@
           },
           {
             "section_name": "Mortality and Outcomes Analysis",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_neo_death",
+                "display": "True",
                 "name": "Top 10 Causes of Death",
                 "type": "Bar",
                 "level": "facility",
@@ -8667,6 +8715,7 @@
               },
               {
                 "id": "chart_neo_outcome_col",
+                "display": "True",
                 "name": "Admission Outcomes Over Period",
                 "type": "Column",
                 "level": "facility",
@@ -8698,10 +8747,12 @@
           },
           {
             "section_name": "Demographic Breakdown",
+            "display": "True",
             "chart_items_per_row": 2,
             "items": [
               {
                 "id": "chart_neo_gender",
+                "display": "True",
                 "name": "Neonatal Admissions by Gender",
                 "type": "Pie",
                 "level": "facility",
@@ -8731,6 +8782,7 @@
               },
               {
                 "id": "chart_neo_mortality_trend",
+                "display": "True",
                 "name": "Neonatal Outcome Trend \u2013 Last 30 Days",
                 "type": "Line",
                 "level": "facility",
@@ -8768,6 +8820,451 @@
     "count_items_per_row": 5,
     "associated_programs": [
       "NEONATAL PROGRAM"
+    ],
+    "access": "global"
+  },
+  {
+    "report_id": "report_ipd7c41b9",
+    "report_name": "IPD Summary",
+    "date_created": "2026-08-28",
+    "count_items_per_row": 5,
+    "visualization_types": {
+      "counts": [
+        {
+          "id": "count_ipd_total",
+          "display": "True",
+          "name": "Total Patients Admitted",
+          "level": "facility",
+          "flag": "ok",
+          "display_average": "True",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "variable3": "concept_name",
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "variable7": "Gender",
+            "variable8": "Age_Group"
+          }
+        },
+        {
+          "id": "count_ipd_male",
+          "display": "True",
+          "name": "Male Admissions",
+          "level": "facility",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "variable3": "concept_name",
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "variable7": "Gender",
+            "value7": "Male",
+            "variable8": "Age_Group"
+          }
+        },
+        {
+          "id": "count_ipd_female",
+          "display": "True",
+          "name": "Female Admissions",
+          "level": "facility",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "variable3": "concept_name",
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "variable7": "Gender",
+            "value7": "Female",
+            "variable8": "Age_Group"
+          }
+        },
+        {
+          "id": "count_ipd_under5",
+          "display": "True",
+          "name": "Admissions Under 5",
+          "level": "facility",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "variable3": "concept_name",
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "variable7": "Gender",
+            "variable8": "Age_Group",
+            "value8": "Under 5"
+          }
+        },
+        {
+          "id": "count_ipd_over5",
+          "display": "True",
+          "name": "Admissions Over 5",
+          "level": "facility",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "variable3": "concept_name",
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "variable7": "Gender",
+            "variable8": "Age_Group",
+            "value8": "Over 5"
+          }
+        },
+        {
+          "id": "count_ipd_priority_triage",
+          "display": "True",
+          "name": "Priority Triage Cases",
+          "level": "facility",
+          "flag": "warn",
+          "display_average": "True",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "value2": [
+              "Vitals"
+            ],
+            "variable3": "concept_name",
+            "value3": [
+              "Triage Result"
+            ],
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "value6": "Priority",
+            "variable7": "Gender",
+            "variable8": "Age_Group"
+          }
+        },
+        {
+          "id": "count_ipd_hiv_positive",
+          "display": "True",
+          "name": "HIV Positive Inpatients",
+          "level": "facility",
+          "flag": "warn",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "value2": [
+              "Medical in patient"
+            ],
+            "variable3": "concept_name",
+            "value3": [
+              "HIV"
+            ],
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "value6": "Positive",
+            "variable7": "Gender",
+            "variable8": "Age_Group"
+          }
+        },
+        {
+          "id": "count_ipd_referred_specialty",
+          "display": "True",
+          "name": "Referred to Specialty",
+          "level": "facility",
+          "flag": "ok",
+          "display_average": "True",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "value2": [
+              "Awaiting specialty"
+            ],
+            "variable3": "concept_name",
+            "value3": [
+              "Speciality Department"
+            ],
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "variable7": "Gender",
+            "variable8": "Age_Group"
+          }
+        },
+        {
+          "id": "count_ipd_absconded",
+          "display": "True",
+          "name": "Absconded Patients",
+          "level": "facility",
+          "flag": "danger",
+          "drill_down": "True",
+          "filters": {
+            "measure": "nunique",
+            "unique": "person_id",
+            "variable1": "Program",
+            "value1": [
+              "IPD Program"
+            ],
+            "variable2": "Encounter",
+            "value2": [
+              "Awaiting specialty"
+            ],
+            "variable3": "concept_name",
+            "value3": [
+              "Date Of Absconding"
+            ],
+            "variable4": "obs_value_coded",
+            "variable5": "ValueN",
+            "variable6": "Value",
+            "variable7": "Gender",
+            "variable8": "Age_Group"
+          }
+        },
+        {
+          "id": "calculated_ipd_abscond_rate",
+          "display": "True",
+          "name": "% Admissions Absconded",
+          "level": "facility",
+          "flag": "danger",
+          "filters": {
+            "measure": "calculated",
+            "expression": "count_ipd_absconded/count_ipd_total*100"
+          }
+        }
+      ],
+      "charts": {
+        "sections": [
+          {
+            "section_name": "IPD Admissions Overview",
+            "display": "True",
+            "chart_items_per_row": 2,
+            "items": [
+              {
+                "id": "chart_ipd_encounters",
+                "display": "True",
+                "name": "Patient Encounters in IPD",
+                "type": "Column",
+                "level": "facility",
+                "filters": {
+                  "measure": "nunique",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "filter_col1": "Program",
+                  "filter_val1": "IPD Program",
+                  "filter_col2": "",
+                  "filter_val2": "",
+                  "filter_col3": "",
+                  "filter_val3": "",
+                  "title": "Patient Encounters in IPD",
+                  "x_col": "Encounter",
+                  "y_col": "person_id",
+                  "x_title": "Encounter Type",
+                  "y_title": "Patients",
+                  "unique_column": "person_id",
+                  "legend_title": "Legend",
+                  "color": ""
+                }
+              },
+              {
+                "id": "chart_ipd_trend_30",
+                "display": "True",
+                "name": "Daily IPD Admissions – Last 30 Days",
+                "type": "Line",
+                "level": "facility",
+                "filters": {
+                  "measure": "nunique",
+                  "unique": "any",
+                  "duration_default": "30days",
+                  "date_col": "Date",
+                  "filter_col1": [
+                    "Program"
+                  ],
+                  "filter_val1": "IPD Program",
+                  "filter_col2": [],
+                  "filter_val2": "",
+                  "filter_col3": [],
+                  "filter_val3": "",
+                  "title": "Daily IPD Admissions – Last 30 Days",
+                  "y_col": "person_id",
+                  "x_title": "Date",
+                  "y_title": "Patients",
+                  "unique_column": "person_id",
+                  "legend_title": "Legend",
+                  "color": ""
+                }
+              }
+            ]
+          },
+          {
+            "section_name": "Clinical Profile and Case Mix",
+            "display": "True",
+            "chart_items_per_row": 3,
+            "items": [
+              {
+                "id": "chart_ipd_diagnoses",
+                "display": "True",
+                "name": "Top Differential Diagnoses",
+                "type": "Bar",
+                "level": "facility",
+                "filters": {
+                  "measure": "nunique",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "filter_col1": "Program",
+                  "filter_val1": "IPD Program",
+                  "filter_col2": "Encounter",
+                  "filter_val2": "Diagnosis",
+                  "filter_col3": "",
+                  "filter_val3": "",
+                  "title": "Top Differential Diagnoses",
+                  "label_col": "obs_value_coded",
+                  "value_col": "encounter_id",
+                  "x_title": "Encounters",
+                  "y_title": "Diagnosis",
+                  "unique_column": "encounter_id",
+                  "top_n": "10"
+                }
+              },
+              {
+                "id": "chart_ipd_triage_pie",
+                "display": "True",
+                "name": "Triage Result Distribution",
+                "type": "Pie",
+                "level": "facility",
+                "filters": {
+                  "measure": "nunique",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "filter_col1": "Program",
+                  "filter_val1": "IPD Program",
+                  "filter_col2": "Encounter",
+                  "filter_val2": "Vitals",
+                  "filter_col3": "concept_name",
+                  "filter_val3": "Triage Result",
+                  "title": "Triage Result Distribution",
+                  "names_col": "Value",
+                  "values_col": "person_id",
+                  "unique_column": "person_id",
+                  "colormap": {}
+                }
+              },
+              {
+                "id": "chart_ipd_age_gender",
+                "display": "True",
+                "name": "Age and Gender Distribution of Admissions",
+                "type": "Histogram",
+                "level": "facility",
+                "filters": {
+                  "measure": "nunique",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "filter_col1": "Program",
+                  "filter_val1": "IPD Program",
+                  "filter_col2": "",
+                  "filter_val2": "",
+                  "filter_col3": "",
+                  "filter_val3": "",
+                  "title": "Age and Gender Distribution of Admissions",
+                  "age_col": "Age",
+                  "gender_col": "Gender",
+                  "bin_size": 5,
+                  "x_title": "Age Group",
+                  "y_title": "Patients"
+                }
+              }
+            ]
+          },
+          {
+            "section_name": "Inpatient Monitoring",
+            "display": "True",
+            "chart_items_per_row": 1,
+            "items": [
+              {
+                "id": "chart_ipd_fluid_balance",
+                "display": "True",
+                "name": "Recorded Fluid Intake and Output Volumes",
+                "type": "Column",
+                "level": "facility",
+                "filters": {
+                  "measure": "sum",
+                  "unique": "any",
+                  "duration_default": "any",
+                  "filter_col1": "Program",
+                  "filter_val1": "IPD Program",
+                  "filter_col2": "Encounter",
+                  "filter_val2": "Fluid Balance and Stool Monitoring",
+                  "filter_col3": "concept_name",
+                  "filter_val3": [
+                    "IV fluids",
+                    "Oral Fluids",
+                    "Water",
+                    "Phala",
+                    "Urine Volume",
+                    "Vomit Volume"
+                  ],
+                  "title": "Recorded Fluid Intake and Output Volumes (ml)",
+                  "x_col": "concept_name",
+                  "y_col": "ValueN",
+                  "x_title": "Fluid Type",
+                  "y_title": "Volume (ml)",
+                  "unique_column": "person_id",
+                  "legend_title": "Fluid Type",
+                  "color": ""
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "associated_programs": [
+      "IPD Program"
     ],
     "access": "global"
   }

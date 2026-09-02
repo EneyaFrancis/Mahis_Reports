@@ -204,7 +204,7 @@ layout = html.Div(
                         html.Div(
                             className="parameter-group",
                             children=[
-                                html.Label("Program", className="parameter-label"),
+                                html.Label("Program", className="config-label"),
                                 dcc.Dropdown(
                                     id='program_filter',
                                     options=[
@@ -222,7 +222,7 @@ layout = html.Div(
                         html.Div(
                             className="parameter-group",
                             children=[
-                                html.Label("Report Name", className="parameter-label"),
+                                html.Label("Report Name", className="config-label"),
                                 dcc.Dropdown(
                                     id='report_name',
                                     options=[
@@ -240,7 +240,7 @@ layout = html.Div(
                         html.Div(
                             className="parameter-group",
                             children=[
-                                html.Label("Year", className="parameter-label"),
+                                html.Label("Year", className="config-label"),
                                 dcc.Dropdown(
                                     id='year-filter',
                                     options=[
@@ -258,7 +258,7 @@ layout = html.Div(
                         html.Div(
                             className="parameter-group",
                             children=[
-                                html.Label("Period Type", className="parameter-label"),
+                                html.Label("Period Type", className="config-label"),
                                 dcc.Dropdown(
                                     id='period_type-filter',
                                     options=[
@@ -276,7 +276,7 @@ layout = html.Div(
                         html.Div(
                             className="parameter-group",
                             children=[
-                                html.Label("Week/Month/Quarter", className="parameter-label"),
+                                html.Label("Week/Month/Quarter", className="config-label"),
                                 dcc.Dropdown(
                                     id='month-filter',
                                     options=[
@@ -294,7 +294,7 @@ layout = html.Div(
                             id ='facilities',
                             className="parameter-group",
                             children=[
-                                html.Label("Select Facility", className="parameter-label"),
+                                html.Label("Select Facility", className="config-label"),
                                 dcc.Dropdown(
                                     id='facility-filter',
                                     options=[

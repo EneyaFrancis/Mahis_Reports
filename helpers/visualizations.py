@@ -4,7 +4,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import dash
 import operator
-from dash import dash_table, html, dcc, callback, Input, Output, State, MATCH
+from dash import dash_table, html, dcc, callback, Input, Output, State, MATCH, ALL
+from dash.exceptions import PreventUpdate
 from dash_iconify import DashIconify
 import re
 from datetime import datetime, timedelta
@@ -19,8 +20,9 @@ from data_storage import DataStorage
 
 pd.options.mode.chained_assignment = None
 
-from config import (PERSON_ID_, ENCOUNTER_ID_, DATE_, CONCEPT_NAME_,DATA_PATH_,FIRST_NAME_, LAST_NAME_, 
-                    VALUE_DATETIME_, AGE_, GENDER_, HOME_DISTRICT_, TA_, VILLAGE_, IDENTIFIER_)
+from config import (PERSON_ID_, ENCOUNTER_ID_, DATE_, CONCEPT_NAME_,DATA_PATH_,FIRST_NAME_, LAST_NAME_,
+                    VALUE_DATETIME_, AGE_, GENDER_, HOME_DISTRICT_, TA_, VILLAGE_, IDENTIFIER_,PROGRAM_,
+                    DISTRICT_, FACILITY_)
 
 
 THEME = {
@@ -31,14 +33,15 @@ THEME = {
     # Gender/binary split (green + amber)
     "gender":   ["#006401", "#f59e0b", "#0d9488", "#7c3aed", "#dc2626"],
     # Single bar / line (no color grouping)
-    "single":   "#006401",
+    "single":   "#FFFFFF",
     # Table accent colours
-    "table_header":       "#525E52",
-    "table_header_text":  "#ffffff",
-    "table_row_alt":      "#f2f9f2",
-    "table_index_bg":     "#e8f5e8",
-    "table_active_bg":    "#d4edda",
-    "table_active_border":"#006401",
+    "table_header":       "#DDEBDD",
+    "table_header_text":  "#0F172A",
+    "table_row_alt":      "#EEEEEE",
+    "table_index_bg":     "#f4f4f4",
+    "table_active_bg":    "#ffffff",
+    "table_active_border":"#FFFFFF",
+    "chart_fill": "#006401",
 }
 
 def _prepare_data_for_visualization(df, unique_column, apply_deduplication=True):
@@ -448,7 +451,8 @@ def build_filter_query(cols, vals,data_path, unique_column, isSet, start_date, e
         return f"SELECT DISTINCT {unique_column_str} FROM '{data_path}' WHERE {query_filter} AND {where_clause}"
     return f"{where_clause}"
 
-def create_count(query_fiter,data_path, aggregation='count', unique_column=PERSON_ID_, *filters, start_date=None, end_date=None):
+def create_count(query_fiter,data_path, aggregation='count', unique_column=PERSON_ID_, *filters,
+                  start_date=None, end_date=None, group_by=None, custom_sql=None):
 
     isSet = False
     unique_column = _normalize_filter_value(unique_column)
@@ -471,10 +475,26 @@ def create_count(query_fiter,data_path, aggregation='count', unique_column=PERSO
         query = build_filter_query(col, val,data_path, unique_column, isSet, start_date, end_date)
         queries.append(query)
 
-
-    joined_query =f"SELECT DISTINCT {unique_column}, {DATE_}::DATE FROM '{data_path}' WHERE {query_fiter} AND "  + " AND ".join(queries)
-    if not queries:
-        joined_query = f"SELECT DISTINCT {unique_column}, {DATE_}::DATE FROM '{data_path}' WHERE {query_fiter}"
+    if custom_sql:
+        custom_sql = custom_sql.replace("data", data_path)
+        # Full escape hatch: the JSON author owns the entire query from here,
+        # built on top of the same query_fiter every other count uses.
+        joined_query =  f"{custom_sql} AND {query_fiter}"
+    elif group_by:
+        # Adds the group_by column to the select/group-by so the query stays
+        # correct per-group, without changing what gets returned below --
+        # unique_column is still a plain column in the result (it's part of
+        # the GROUP BY key), Value is just along for the ride, unused here.
+        where_clause = query_fiter + ((" AND " + " AND ".join(queries)) if queries else "")
+        joined_query = (
+            f"SELECT {unique_column}, {DATE_}::DATE, {group_by}, COUNT(*) AS Value"
+            f" FROM '{data_path}' WHERE {where_clause}"
+            f" GROUP BY {unique_column}, {DATE_}::DATE, {group_by}"
+        )
+    else:
+        joined_query =f"SELECT DISTINCT {unique_column}, {DATE_}::DATE FROM '{data_path}' WHERE {query_fiter} AND "  + " AND ".join(queries)
+        if not queries:
+            joined_query = f"SELECT DISTINCT {unique_column}, {DATE_}::DATE FROM '{data_path}' WHERE {query_fiter}"
     if aggregation == "time_diff_mins":
         joined_query = (joined_query.replace(unique_column, 
                                             f"({unique_column}), DATEDIFF('minute', MIN({DATE_}), MAX({DATE_})) AS patient_session_minutes")
@@ -483,7 +503,7 @@ def create_count(query_fiter,data_path, aggregation='count', unique_column=PERSO
     result = DataStorage.query_duckdb(joined_query)
     unique_patients = result[unique_column].unique().tolist()
     if aggregation == 'count':
-        return len(result.drop_duplicates()), unique_patients
+        return len(result), unique_patients
     elif aggregation == 'nunique':
         return len(result[unique_column].unique().tolist()), unique_patients
     elif aggregation == 'list':
@@ -505,6 +525,8 @@ def create_count_sets(
     start_date=None,
     end_date=None,
     same_day=False,
+    group_by=None,
+    custom_sql=None,
 ):
     isSet = True
     unique_column = _normalize_filter_value(unique_column)
@@ -514,6 +536,14 @@ def create_count_sets(
 
     # Scalar ID column: strip any ", Date::DATE" suffix and SQL casts (e.g. "person_id, Date::DATE" → "person_id")
     pid_col = unique_column.split(",")[0].split("::")[0].strip()
+
+    if custom_sql:
+        # Full escape hatch, same convention as create_count: the JSON author
+        # owns the entire query from here, built on the same query_fiter.
+        joined_query = query_fiter + custom_sql
+        result = DataStorage.query_duckdb(joined_query)
+        unique_patients = result[unique_column].unique().tolist()
+        return result[pid_col].nunique(), unique_patients
 
     set_filters = []
     non_set_filters = []
@@ -557,15 +587,22 @@ def create_count_sets(
         return result[pid_col].nunique(), unique_patients
 
     # Default: conditions may live on different rows / different dates.
-    outer = f"SELECT DISTINCT {pid_col} FROM '{data_path}' WHERE {query_fiter}"
     in_clauses = [
         f"{pid_col} IN (SELECT DISTINCT {pid_col} FROM '{data_path}' WHERE {q.split('WHERE ', 1)[1]})"
         for q in queries
     ]
-    if in_clauses:
-        final_query = outer + " AND " + " AND ".join(in_clauses)
+    where_full = query_fiter + ((" AND " + " AND ".join(in_clauses)) if in_clauses else "")
+    if group_by:
+        # Same principle as create_count: adds the column to select/group-by
+        # without changing what's returned -- pid_col stays a plain column
+        # in the result (it's part of the GROUP BY key), Value is unused here.
+        final_query = (
+            f"SELECT {pid_col}, {group_by}, COUNT(*) AS Value"
+            f" FROM '{data_path}' WHERE {where_full}"
+            f" GROUP BY {pid_col}, {group_by}"
+        )
     else:
-        final_query = outer
+        final_query = f"SELECT DISTINCT {pid_col} FROM '{data_path}' WHERE {where_full}"
     # print("Create countset", final_query, "\n\n")
     result = DataStorage.query_duckdb(final_query)
     unique_patients = result[unique_column].unique().tolist()
@@ -597,11 +634,11 @@ def create_sum(query_fiter,data_path, unique_column=PERSON_ID_, num_field='Value
     return result[num_field].sum(), unique_patients
 
 
-def create_column_chart(query_fiter,data_path, x_col, y_col, title, x_title, y_title,
+def _build_column_figure(query_fiter,data_path, x_col, y_col, title, x_title, y_title,
                         unique_column=PERSON_ID_, legend_title=None,
                         color=None, filter_col1=None, filter_value1=None,
                         filter_col2=None, filter_value2=None,
-                        filter_col3=None, filter_value3=None, aggregation='count', 
+                        filter_col3=None, filter_value3=None, aggregation='count',
                         custom_fields=None, height=400, responsive=True,
                         show_values=True, sort_by_value=True, max_categories=None):
     """
@@ -716,7 +753,7 @@ def create_column_chart(query_fiter,data_path, x_col, y_col, title, x_title, y_t
         
         # Apply theme single-color
         fig.update_traces(
-            marker_color=THEME["single"],
+            marker_color=THEME["chart_fill"],
             marker_line_color="#004a01",
             marker_line_width=1,
             opacity=0.85
@@ -825,13 +862,153 @@ def create_column_chart(query_fiter,data_path, x_col, y_col, title, x_title, y_t
     
     return fig
 
-def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_title, 
+
+def _normalize_filter_headers(filter_headers):
+    """filter_headers can be a single {"column": ..., "default": ...} dict or
+    a list of them; normalize to a list of valid entries (skip anything
+    without a "column")."""
+    if not filter_headers:
+        return []
+    headers = filter_headers if isinstance(filter_headers, list) else [filter_headers]
+    return [h for h in headers if isinstance(h, dict) and h.get("column")]
+
+
+def _column_filter_where(column_value_pairs):
+    """Build 'AND'-joined 'col = value' conditions for the truthy pairs."""
+    parts = []
+    for col, val in column_value_pairs:
+        if col and val:
+            escaped = str(val).replace("'", "''")
+            parts.append(f"{col} = '{escaped}'")
+    return " AND ".join(parts)
+
+
+def create_column_chart(query_fiter, data_path, x_col, y_col, title, x_title, y_title,
+                        unique_column=PERSON_ID_, legend_title=None,
+                        color=None, filter_col1=None, filter_value1=None,
+                        filter_col2=None, filter_value2=None,
+                        filter_col3=None, filter_value3=None, aggregation='count',
+                        custom_fields=None, height=400, responsive=True,
+                        show_values=True, sort_by_value=True, max_categories=None,
+                        filter_headers=None):
+    """
+    Column chart, optionally with header dropdown filters (filter_headers),
+    following the same design as create_crosstab_table's index/columns
+    filters. Each header is {"column": ..., "default": ...}: "default"
+    pre-filters the chart to that value; with no default, the dropdown still
+    lets the user pick any value from that column but nothing is filtered up
+    front. With no filter_headers at all, this returns a plain figure exactly
+    as before -- no wrapper, no filter UI.
+    """
+    headers = _normalize_filter_headers(filter_headers)
+    rest_args = (data_path, x_col, y_col, title, x_title, y_title,
+                 unique_column, legend_title, color, filter_col1, filter_value1,
+                 filter_col2, filter_value2, filter_col3, filter_value3, aggregation,
+                 custom_fields, height, responsive, show_values, sort_by_value, max_categories)
+
+    if not headers:
+        return _build_column_figure(query_fiter, *rest_args)
+
+    default_where = _column_filter_where([(h["column"], h.get("default")) for h in headers])
+    initial_query_fiter = f"{query_fiter} AND {default_where}" if default_where else query_fiter
+    initial_figure = _build_column_figure(initial_query_fiter, *rest_args)
+
+    dropdown_specs = []
+    for h in headers:
+        col = h["column"]
+        try:
+            opts_df = DataStorage.query_duckdb(
+                f"SELECT DISTINCT {col} FROM '{data_path}' WHERE {query_fiter} AND {col} IS NOT NULL ORDER BY {col}"
+            )
+            options = opts_df[col].dropna().astype(str).tolist() if not opts_df.empty else []
+        except Exception:
+            options = []
+        dropdown_specs.append({"column": col, "default": h.get("default"), "options": options})
+
+    uid = uuid.uuid4().hex[:8]
+
+    filter_controls = [
+        dcc.Dropdown(
+            id={"type": "column-chart-filter", "index": uid, "col": spec["column"]},
+            options=[{"label": v, "value": v} for v in spec["options"]],
+            value=spec["default"] or None,
+            placeholder=f"Filter {spec['column']}",
+            clearable=True,
+            style={"width": "170px", "fontSize": "12px"},
+        )
+        for spec in dropdown_specs
+    ]
+
+    return html.Div([
+        html.Div(
+            [
+                html.H4(title, style={
+                    "margin": "0", "fontFamily": "Arial, sans-serif", "fontSize": "16px",
+                    "fontWeight": "bold", "color": "#2c3e50",
+                }),
+                html.Div(filter_controls, style={
+                    "display": "flex", "gap": "8px", "alignItems": "center",
+                    "justifyContent": "flex-end", "flexWrap": "wrap",
+                }),
+            ],
+            style={
+                "display": "flex", "justifyContent": "space-between", "alignItems": "center",
+                "flexWrap": "wrap", "gap": "8px", "marginBottom": "8px",
+            },
+        ),
+        dcc.Store(id={"type": "column-chart-store", "index": uid}, data={
+            "query_fiter": query_fiter, "data_path": data_path, "x_col": x_col, "y_col": y_col,
+            "title": title, "x_title": x_title, "y_title": y_title, "unique_column": unique_column,
+            "legend_title": legend_title, "color": color,
+            "filter_col1": filter_col1, "filter_value1": filter_value1,
+            "filter_col2": filter_col2, "filter_value2": filter_value2,
+            "filter_col3": filter_col3, "filter_value3": filter_value3,
+            "aggregation": aggregation, "custom_fields": custom_fields,
+            "height": height, "responsive": responsive, "show_values": show_values,
+            "sort_by_value": sort_by_value, "max_categories": max_categories,
+        }),
+        dcc.Graph(id={"type": "column-chart-graph", "index": uid}, figure=initial_figure),
+    ], className="card-2")
+
+
+@callback(
+    Output({"type": "column-chart-graph", "index": MATCH}, "figure"),
+    Input({"type": "column-chart-filter", "index": MATCH, "col": ALL}, "value"),
+    State({"type": "column-chart-filter", "index": MATCH, "col": ALL}, "id"),
+    State({"type": "column-chart-store", "index": MATCH}, "data"),
+    prevent_initial_call=True,
+)
+def _filter_column_chart(values, ids, store_data):
+    """Re-run the column chart's SQL with the dropdown-selected column=value
+    filters applied, mirroring create_crosstab_table's filter design."""
+    if not store_data:
+        return dash.no_update
+
+    extra_where = _column_filter_where([(id_dict.get("col"), val) for val, id_dict in zip(values, ids)])
+    base_where = store_data["query_fiter"]
+    effective_where = f"{base_where} AND {extra_where}" if extra_where else base_where
+
+    return _build_column_figure(
+        effective_where, store_data["data_path"], store_data["x_col"], store_data["y_col"],
+        store_data["title"], store_data["x_title"], store_data["y_title"],
+        store_data["unique_column"], store_data["legend_title"], store_data["color"],
+        store_data["filter_col1"], store_data["filter_value1"],
+        store_data["filter_col2"], store_data["filter_value2"],
+        store_data["filter_col3"], store_data["filter_value3"],
+        store_data["aggregation"], store_data["custom_fields"],
+        store_data["height"], store_data["responsive"], store_data["show_values"],
+        store_data["sort_by_value"], store_data["max_categories"],
+    )
+
+
+def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_title,
                       y_title, unique_column=PERSON_ID_, 
                       legend_title=None, color=None, filter_col1=None, 
                       filter_value1=None, filter_col2=None, 
                       filter_value2=None, filter_col3=None, 
                       filter_value3=None, aggregation='count', 
-                      custom_fields=None, *args, height=400, responsive=True,
+                      custom_fields=None,group_by=None, 
+                      *args, height=400, responsive=True,
                       show_avg_line=True, show_trend_line=False,
                       date_granularity='day', smooth_lines=False,
                       show_annotations=True, forecast_periods=0):
@@ -900,6 +1077,23 @@ def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_titl
             f" GROUP BY {date_expr}, {color}"
             f" ORDER BY date_trunc"
         )
+    elif group_by:
+        sub_query = (
+                f"SELECT {date_expr} AS date_trunc, {group_by}, {agg_expr} AS metric_value"
+                f" FROM '{data_path}'"
+                f" WHERE {where_clause}"
+                f" GROUP BY {date_expr}, {group_by}"
+                f" ORDER BY date_trunc"
+            )
+        joined_query = f"""
+                        SELECT 
+                            date_trunc,
+                            SUM(metric_value) AS metric_value
+                        FROM (
+                                {sub_query}
+                            )
+                        GROUP BY date_trunc
+                    """
     else:
         joined_query = (
             f"SELECT {date_expr} AS date_trunc, {agg_expr} AS metric_value"
@@ -952,19 +1146,18 @@ def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_titl
     summary = summary.rename(columns={'metric_value': 'count'})
 
     # Create figure
-    # template='plotly_white' is passed explicitly (not left to plotly's
-    # global default) because apply_default_cascade() only reads the shared
-    # pio.templates.default singleton when template=None -- under concurrent
-    # Dash requests, two threads building a chart at the same instant can
-    # race on that singleton's lazily-built _props and crash with
-    # "ValueError: Invalid value" deep in plotly's basedatatypes internals.
-    # Passing template explicitly skips that shared-state read entirely.
-    if color:
+    # group_by shapes the SQL the same way color does (one row per
+    # date_trunc x category, not one row per date) whenever color itself
+    # isn't set -- the figure has to split into one line per category the
+    # same way, or plotly just connects every category's point at each date
+    # in row order, drawing one distorted zigzag "line" instead of several.
+    series_col = color
+    if series_col:
         fig = px.line(
             summary,
             x='date_trunc',
             y='count',
-            color=color,
+            color=series_col,
             color_discrete_sequence=THEME["primary"],
             template='plotly_white',
             title=None  # Title added in layout
@@ -974,7 +1167,7 @@ def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_titl
             summary,
             x='date_trunc',
             y='count',
-            color_discrete_sequence=[THEME["single"]],
+            color_discrete_sequence=[THEME["chart_fill"]],
             template='plotly_white',
             title=None
         )
@@ -1112,7 +1305,7 @@ def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_titl
         ),
         'template': 'plotly_white',
         'legend_title': dict(
-            text=legend_title if legend_title else (color if color else ""),
+            text=legend_title if legend_title else (series_col if series_col else ""),
             font=dict(size=12, color='#2c3e50')
         ),
         'legend': dict(
@@ -1196,9 +1389,9 @@ def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_titl
 
 
 def create_new_returning_chart(
-    query_fiter,data_path,
+    query_fiter, data_path,
     title,
-    chart_mode='pie',           # 'pie' | 'line'
+    chart_mode='pie',
     date_col=DATE_,
     unique_column=PERSON_ID_,
     filter_col1=None, filter_value1=None,
@@ -1207,17 +1400,13 @@ def create_new_returning_chart(
     custom_fields=None,
     height=400,
     hole_size=0.45,
+    group_by=None,
 ):
     """
     Classify patients in the filtered window as 'New' or 'Returning'.
 
-    'New'       = the person_id has no record anywhere in the dataset before
-                  the earliest date found in the current filtered window.
-    'Returning' = the person_id has at least one earlier record.
-
-    Uses a CTE so only two DuckDB passes are needed:
-      1. Find prior patients (Date < range start, no scope filter needed).
-      2. LEFT JOIN against the filtered window, count distinct person_ids.
+    'New'       = patient's first ever visit falls within the filtered window
+    'Returning' = patient has at least one visit BEFORE the filtered window
     """
     isSet = False
     filter_pairs = [
@@ -1232,39 +1421,43 @@ def create_new_returning_chart(
             if isinstance(col, list):
                 col = col[0]
             val = _normalize_filter_value(val)
-            conditions.append(build_filter_query(col, val,data_path, unique_column, isSet, None, None))
+            conditions.append(build_filter_query(col, val, data_path, unique_column, isSet, None, None))
 
     where_clause = query_fiter + ((" AND " + " AND ".join(conditions)) if conditions else "")
 
-    # ── CTE: find patients with any record before the current range start ─────
-    prior_cte = f"""
-        WITH range_start AS (
-            SELECT MIN({date_col}) AS min_date
+    # ── CTE: Find first visit date for each patient ──────────────────────────
+    # This finds the absolute first visit date for each patient across ALL data
+    first_visits_cte = f"""
+        WITH first_visits AS (
+            SELECT DISTINCT {unique_column}, MIN({date_col}) AS first_visit_date
             FROM '{data_path}'
-            WHERE {where_clause}
-        ),
-        prior_patients AS (
-            SELECT DISTINCT {unique_column}
-            FROM '{data_path}', range_start
-            WHERE {date_col} < range_start.min_date
+            GROUP BY {unique_column}
         )
     """
 
     if chart_mode == 'line':
-        sql = prior_cte + f"""
+        group_by_select = f", {group_by}" if group_by else ""
+        group_by_groupby = f", {group_by}" if group_by else ""
+        
+        sql = first_visits_cte + f"""
         SELECT
             CAST(f.{date_col} AS DATE)                                       AS date_trunc,
-            CASE WHEN p.{unique_column} IS NOT NULL THEN 'Returning'
-                 ELSE 'New' END                                               AS patient_type,
+            CASE WHEN f.{date_col} = fv.first_visit_date THEN 'New'
+                 ELSE 'Returning' END                                         AS patient_type{group_by_select},
             COUNT(DISTINCT f.{unique_column})                                 AS metric_value
         FROM '{data_path}' f
-        LEFT JOIN prior_patients p ON f.{unique_column} = p.{unique_column}
+        INNER JOIN first_visits fv ON f.{unique_column} = fv.{unique_column}
         WHERE {where_clause}
-        GROUP BY date_trunc, patient_type
+        GROUP BY date_trunc, patient_type{group_by_groupby}
         ORDER BY date_trunc
         """
+        
         df = DataStorage.query_duckdb(sql)
         df = apply_calculated_fields(df, custom_fields)
+        
+        if group_by and not df.empty:
+            df = df.groupby(['date_trunc', 'patient_type'], as_index=False)['metric_value'].sum()
+            
         if df.empty:
             return go.Figure().update_layout(title=dict(text=f'<b>{title}</b>', x=0.5),
                                              height=height, paper_bgcolor='#ffffff')
@@ -1291,18 +1484,26 @@ def create_new_returning_chart(
         )
 
     else:  # pie / donut
-        sql = prior_cte + f"""
+        group_by_select = f", {group_by}" if group_by else ""
+        group_by_groupby = f", {group_by}" if group_by else ""
+        
+        sql = first_visits_cte + f"""
         SELECT
-            CASE WHEN p.{unique_column} IS NOT NULL THEN 'Returning'
-                 ELSE 'New' END                       AS patient_type,
-            COUNT(DISTINCT f.{unique_column})          AS metric_value
+            CASE WHEN f.{date_col} = fv.first_visit_date THEN 'New'
+                 ELSE 'Returning' END                                         AS patient_type{group_by_select},
+            COUNT(DISTINCT f.{unique_column})                                 AS metric_value
         FROM '{data_path}' f
-        LEFT JOIN prior_patients p ON f.{unique_column} = p.{unique_column}
+        INNER JOIN first_visits fv ON f.{unique_column} = fv.{unique_column}
         WHERE {where_clause}
-        GROUP BY patient_type
+        GROUP BY patient_type{group_by_groupby}
         """
+        
         df = DataStorage.query_duckdb(sql)
         df = apply_calculated_fields(df, custom_fields)
+        
+        if group_by and not df.empty:
+            df = df.groupby(['patient_type'], as_index=False)['metric_value'].sum()
+            
         if df.empty:
             return go.Figure().update_layout(title=dict(text=f'<b>{title}</b>', x=0.5),
                                              height=height, paper_bgcolor='#ffffff')
@@ -1664,7 +1865,149 @@ def create_pivot_table(query_fiter,data_path, index_col, columns_col, values_col
     )
 
     return table, pivot
- 
+
+
+def create_time_range_table(
+    query_fiter, data_path, index_col, datetime_col, title,
+    start_label="Start Time", end_label="End Time",
+    unique_column=PERSON_ID_,
+    filter_col1=None, filter_value1=None,
+    filter_col2=None, filter_value2=None,
+    filter_col3=None, filter_value3=None,
+    rename={}, replace={}, custom_fields=None,
+    page_size=5,
+):
+    """
+    Group by index_col and show the time-of-day (not the date) of the
+    earliest and latest datetime_col value in each group -- e.g. "what time
+    does each User's first/last recorded activity fall at" (Start Time / End
+    Time). MIN/MAX of the same column as two named columns doesn't fit
+    create_pivot_table's single values_col + aggfunc + pivot shape, so this
+    is its own function; same table look otherwise. Returns (html.Div, DataFrame).
+    """
+    isSet = False
+    filter_pairs = [
+        (filter_col1, filter_value1),
+        (filter_col2, filter_value2),
+        (filter_col3, filter_value3),
+    ]
+    conditions = []
+    for col, val in filter_pairs:
+        if col is not None and val is not None:
+            col = _normalize_filter_value(col)
+            if isinstance(col, list):
+                col = col[0]
+            val = _normalize_filter_value(val)
+            conditions.append(build_filter_query(col, val, data_path, unique_column, isSet, None, None))
+
+    where_clause = query_fiter + ((" AND " + " AND ".join(conditions)) if conditions else "")
+
+    index_cols = list(index_col) if isinstance(index_col, (list, tuple)) else [index_col]
+    group_sql = ", ".join(index_cols)
+
+    joined_query = (
+        f"SELECT {group_sql}, MIN({datetime_col}) AS __start_dt__, MAX({datetime_col}) AS __end_dt__"
+        f" FROM '{data_path}'"
+        f" WHERE {where_clause}"
+        f" GROUP BY {group_sql}"
+    )
+    data = DataStorage.query_duckdb(joined_query)
+    data = apply_calculated_fields(data, custom_fields)
+
+    data[start_label] = pd.to_datetime(data["__start_dt__"]).dt.strftime('%H:%M:%S')
+    data[end_label] = pd.to_datetime(data["__end_dt__"]).dt.strftime('%H:%M:%S')
+    data = data.drop(columns=["__start_dt__", "__end_dt__"])
+
+    data = _apply_replace(data.rename(columns=rename), replace)
+    data.columns = [str(c) for c in data.columns]
+
+    num_index_cols = len(index_cols)
+    index_col_ids = [str(c) for c in data.columns[:num_index_cols]]
+
+    dash_columns = [{"name": col, "id": col} for col in data.columns]
+    data_records = data.to_dict("records")
+
+    style_data_conditional = [
+        {"if": {"row_index": "odd"}, "backgroundColor": THEME["table_row_alt"]},
+        {"if": {"state": "active"}, "backgroundColor": THEME["table_active_bg"], "border": f"1px solid {THEME['table_active_border']}", "color": "#2c3e50"},
+    ]
+    for col_id in index_col_ids:
+        style_data_conditional.append({
+            "if": {"column_id": col_id},
+            "fontWeight": "bold",
+            "backgroundColor": THEME["table_index_bg"],
+            "color": "#2c3e50",
+            "textAlign": "left",
+        })
+
+    table = html.Div(
+        [
+            html.H4(
+                title,
+                style={
+                    "textAlign": "center",
+                    "marginBottom": "16px",
+                    "marginTop": "12px",
+                    "fontFamily": "Arial, sans-serif",
+                    "fontSize": "15px",
+                    "fontWeight": "bold"
+                },
+            ),
+            html.Div(
+                dash_table.DataTable(
+                    columns=dash_columns,
+                    data=data_records,
+                    page_size=page_size,
+                    page_action="native",
+                    sort_action="native",
+                    sort_mode="multi",
+                    style_header={
+                        "backgroundColor": THEME["table_header"],
+                        "color": THEME["table_header_text"],
+                        "fontWeight": "bold",
+                        "fontFamily": "Arial, sans-serif",
+                        "textAlign": "center",
+                        "fontSize": "13px",
+                        "height": "22px",
+                        "lineHeight": "22px",
+                        "whiteSpace": "normal",
+                        "borderBottom": "2px solid #ffffff",
+                        "cursor": "pointer",
+                        "textTransform": "uppercase",
+                    },
+                    style_cell={
+                        "padding": "10px 14px",
+                        "textAlign": "center",
+                        "fontSize": "13px",
+                        "fontFamily": "Arial, sans-serif",
+                        "color": "#2c3e50",
+                        "whiteSpace": "normal",
+                        "border": "1px solid #dee2e6",
+                        "backgroundColor": "#ffffff",
+                    },
+                    style_data_conditional=style_data_conditional,
+                    style_table={
+                        "overflowX": "auto",
+                        "marginTop": "8px",
+                        "borderRadius": "8px",
+                        "border": f"1px solid {THEME['table_active_border']}",
+                        "boxShadow": "0 1px 3px rgba(0,100,1,0.10)",
+                    },
+                )
+            ),
+        ],
+        style={
+            "width": "100%",
+            "fontFamily": "Arial, sans-serif",
+            "backgroundColor": "#ffffff",
+            "padding": "8px",
+            "borderRadius": "8px",
+        },
+    )
+
+    return table, data
+
+
 def create_crosstab_table(
     query_fiter,
     data_path,
@@ -1678,7 +2021,8 @@ def create_crosstab_table(
     filter_col1=None, filter_value1=None,
     filter_col2=None, filter_value2=None,
     filter_col3=None, filter_value3=None,
-    rename={}, replace={}, custom_fields=None
+    rename={}, replace={}, custom_fields=None,
+    group_by=None,
 ):
     """
     Create a crosstab table with multilayer column headers using Dash DataTable.
@@ -1728,11 +2072,26 @@ def create_crosstab_table(
         if values_col:
             needed.append(values_col)
         select_cols = ", ".join(dict.fromkeys(needed))
-        joined_query = (
-            f"SELECT {select_cols}"
-            f" FROM '{data_path}'"
-            f" WHERE {where_clause}"
-        )
+        if group_by and aggfunc in ('nunique', 'count', 'min', 'max'):
+            # Safe to pre-group in SQL only for these aggfuncs -- they only
+            # care about distinct combinations, not row counts, so collapsing
+            # duplicate rows via GROUP BY (fewer rows sent back from DuckDB)
+            # doesn't change what pd.crosstab computes below. Not applied for
+            # sum/mean/concat, where collapsing duplicates first would
+            # silently change the totals.
+            group_cols_full = ", ".join(dict.fromkeys(needed + [group_by]))
+            joined_query = (
+                f"SELECT {group_cols_full}, COUNT(*) AS Value"
+                f" FROM '{data_path}'"
+                f" WHERE {where_clause}"
+                f" GROUP BY {group_cols_full}"
+            )
+        else:
+            joined_query = (
+                f"SELECT {select_cols}"
+                f" FROM '{data_path}'"
+                f" WHERE {where_clause}"
+            )
         data = DataStorage.query_duckdb(joined_query)
         data = apply_calculated_fields(data, custom_fields)
         data = _apply_replace(data.rename(columns=rename), replace)
@@ -1786,12 +2145,12 @@ def create_crosstab_table(
     for col in ct.columns:
         if isinstance(col, tuple):
             dash_columns.append({
-                "name": [str(c) for c in col],
+                "name": [str(c).upper() for c in col],
                 "id": "|".join([str(c) for c in col])
             })
         else:
             dash_columns.append({
-                "name": [str(col)],
+                "name": [str(col).upper()],
                 "id": str(col)
             })
 
@@ -1815,6 +2174,21 @@ def create_crosstab_table(
         if index_dash_columns else []
     )
     columns_filter_options = sorted({c["name"][0] for c in group_dash_columns if c["name"][0]})
+
+    # When District and/or Facility are part of the index, clicking a row's
+    # index cell can drill straight into the app's own District/Facility
+    # filters -- home.py's crosstab-drill-down callback reads this mapping
+    # (logical name -> actual flat column id) off the store to know which
+    # columns are clickable and what to look up in the clicked row.
+    # Compare against "id" (untouched, e.g. "District" or "District|" when
+    # padded for a multi-level columns axis), not "name" -- "name" is the
+    # cosmetic display label (upper-cased for the header) and isn't reliable
+    # to match against.
+    index_click_map = {
+        col["id"].split("|")[0]: col["id"]
+        for col in index_dash_columns
+        if col["id"].split("|")[0] in (DISTRICT_, FACILITY_)
+    }
 
     uid = uuid.uuid4().hex[:8]
     table_id = {"type": "crosstab-table", "index": uid}
@@ -1857,7 +2231,7 @@ def create_crosstab_table(
                 "border": "1px solid #d1d5db",
                 "borderRadius": "4px",
                 "background": "#ffffff",
-                "color": THEME["table_header"],
+                "color": "grey",
                 "cursor": "pointer",
                 "display": "flex",
                 "alignItems": "center",
@@ -1874,9 +2248,8 @@ def create_crosstab_table(
                         style={
                             "margin": "0",
                             "fontFamily": "Arial, sans-serif",
-                            "fontSize": "18px",
+                            "fontSize": "15px",
                             "fontWeight": "bold",
-                            "color": THEME["table_header"],
                         },
                     ),
                     html.Div(
@@ -1907,6 +2280,7 @@ def create_crosstab_table(
                     "records": data_records,
                     "n_index_levels": n_index_levels,
                     "title": title,
+                    "index_click_map": index_click_map,
                 },
             ),
             dcc.Download(id=download_id),
@@ -1928,7 +2302,7 @@ def create_crosstab_table(
                         "height": "15px",
                         "lineHeight": "15px",
                         "whiteSpace": "normal",
-                        "borderBottom": "2px solid #004a01",
+                        "borderBottom": "2px solid #ffffff",
                     },
 
                     style_cell={
@@ -1959,6 +2333,13 @@ def create_crosstab_table(
                             "backgroundColor": THEME["table_index_bg"],
                             "color": "#2c3e50",
                         },
+                    ] + [
+                        {
+                            "if": {"column_id": col_id},
+                            "cursor": "pointer",
+                            "textDecoration": "bold",
+                        }
+                        for col_id in index_click_map.values()
                     ],
 
                     style_table={
@@ -2380,7 +2761,7 @@ def create_horizontal_bar_chart(
 
     if not color:
         fig.update_traces(
-            marker_color=THEME["single"],
+            marker_color=THEME["chart_fill"],
             marker_line_color="#004a01",
             marker_line_width=1,
             opacity=0.85,
@@ -2699,18 +3080,29 @@ def create_line_list_basic_modal(
     unique_column: str,
     data_path: str,
     ids_list: List,
+    start_date: List,
+    end_date: List
 ) -> "pd.DataFrame":
     """Return a DataFrame of patient details for the given ID list."""
-    import pandas as pd
     if not ids_list:
         return pd.DataFrame()
 
+    # Handle date logic
+    if start_date and end_date:
+        start_date = f"{start_date[0]} 00:00:00"
+        end_date = f"{end_date[0]} 23:59:59"
+    else:
+        # If lists are empty, use today's date
+        today = datetime.now().strftime('%Y-%m-%d')
+        start_date = f"{today} 00:00:00"
+        end_date = f"{today} 23:59:59"
+
     ids_quoted = ", ".join(f"'{str(i)}'" for i in ids_list)
 
-    # with date strftime('%Y-%m-%d', {DATE_})               AS "Date of Visit",
     query = f"""
         SELECT DISTINCT
             {unique_column}                     AS "unique_column",
+            {PROGRAM_}                          AS "Program",
             {IDENTIFIER_}                       AS "Patient ID",
             {FIRST_NAME_}                       AS "First Name",
             {LAST_NAME_}                        AS "Last Name",
@@ -2720,12 +3112,13 @@ def create_line_list_basic_modal(
             {TA_}                              AS "Traditional Authority",
             {VILLAGE_}                          AS "Village"
         FROM '{data_path}'
-        WHERE {unique_column} IN ({ids_quoted})
+        WHERE {unique_column} IN ({ids_quoted}) AND {DATE_} BETWEEN '{start_date}'::TIMESTAMP and '{end_date}'::TIMESTAMP
         ORDER BY {DATE_}, {LAST_NAME_}, {FIRST_NAME_}
     """
+
     try:
         result = DataStorage.query_duckdb(query)
-        return result.drop_duplicates(subset='unique_column').drop(columns='unique_column').iloc[:1000]
+        return result.drop_duplicates(subset=['unique_column', PROGRAM_]).drop(columns='unique_column').iloc[:100]
     except Exception:
         return pd.DataFrame()
 

@@ -22,6 +22,7 @@ def _build_nav(pathname_prefix, query, last_updated, show_admin):
         html.Li(html.A("Dashboard", href=f"{pathname_prefix}home{query}", className="nav-link")),
         html.Li(html.A("HMIS DataSet Reports", href=f"{pathname_prefix}hmis_reports{query}", className="nav-link")),
         html.Li(html.A("Clinical Reports", href=f"{pathname_prefix}program_reports{query}", className="nav-link")),
+        html.Li(html.A("Data Quality", href=f"{pathname_prefix}data_quality{query}", className="nav-link")),
     ]
 
     if show_admin:
@@ -57,6 +58,11 @@ def register_navigation_callbacks(app, pathname_prefix):
         try:
             if not isinstance(url_params, dict):
                 url_params = {}
+            # ?...&selected_only=true hides the top nav entirely, so a shared
+            # link (paired with &dashboard_id=...) shows only that one
+            # dashboard with none of the surrounding navigation chrome.
+            if str(url_params.get("selected_only", ["false"])[0]).strip().lower() == "true":
+                return html.Div()
             location = (url_params.get("Location") or url_params.get("?Location") or [None])[0]
             uuid = url_params.get("uuid", [None])[0]
             user_level = url_params.get("user_level", [None])[0]
