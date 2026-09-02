@@ -361,16 +361,29 @@ def _run_chart(
             annotation_position="right",
         )
     if median_value is not None:
-        fig.add_hline(
-            y=median_value,
+        # A separate scatter trace (not just fig.add_hline's shape) so the
+        # median participates in hovermode="x unified" below -- shapes drawn
+        # via add_hline are static and don't respond to hover at all.
+        fig.add_trace(go.Scatter(
+            x=x_values, y=[median_value] * len(x_values), mode="lines",
             line=dict(color="#6366f1", width=1.4, dash="dot"),
-            annotation_text=f"Median {median_value:{value_format}}",
-            annotation_font=dict(color="#6366f1", size=10),
-            annotation_position="right",
+            showlegend=False,
+            hovertemplate=f"Median: {median_value:{value_format}}<extra></extra>",
+        ))
+        # x=1 + xshift is a *fixed pixel* offset from the plot's right edge,
+        # sitting in the margin rather than right at the plot boundary
+        # (xref="x domain") -- that boundary placement was getting clipped
+        # by the previous, much narrower right margin, rendering as "Med-"
+        # instead of the full "Median 17" label.
+        fig.add_annotation(
+            x=1, xshift=8, y=median_value, xref="paper", yref="y",
+            xanchor="left", yanchor="middle",
+            text=f"Median {median_value:{value_format}}", showarrow=False,
+            font=dict(color="#6366f1", size=10),
         )
     fig.update_layout(**_exec_chart_layout(
         height=240,
-        margin=dict(l=42, r=18, t=12, b=42),
+        margin=dict(l=42, r=92, t=12, b=42),
         xaxis=dict(
             showgrid=False,
             showline=False,
@@ -488,7 +501,7 @@ def _multi_run_chart(
 
     fig.update_layout(**_exec_chart_layout(
         height=240,
-        margin=dict(l=42, r=18, t=12, b=42),
+        margin=dict(l=42, r=92, t=12, b=42),
         xaxis=dict(
             showgrid=False,
             showline=False,
