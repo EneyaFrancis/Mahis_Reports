@@ -267,6 +267,7 @@ def _run_chart(
     target: float | None = None,
     grain: str = "monthly",
     measure: str = "median",
+    scope_label: str | None = None,
 ) -> go.Figure:
     fig = go.Figure()
     if series.empty:
@@ -373,6 +374,12 @@ def _run_chart(
         ),
     ))
     fig.update_layout(showlegend=False, transition={"duration": 260, "easing": "cubic-in-out"})
+    if scope_label:
+        fig.add_annotation(
+            text=scope_label, x=0, y=1, xref="paper", yref="paper",
+            xanchor="left", yanchor="bottom", yshift=4, showarrow=False,
+            font=dict(size=10, color="#94a3b8"),
+        )
     return fig
 
 
@@ -383,6 +390,7 @@ def _multi_run_chart(
     target: float | None = None,
     grain: str = "monthly",
     measure: str = "median",
+    scope_label: str | None = None,
 ) -> go.Figure:
     fig = go.Figure()
     if series_df.empty:
@@ -477,6 +485,14 @@ def _multi_run_chart(
         ),
         transition={"duration": 260, "easing": "cubic-in-out"},
     )
+    if scope_label:
+        # Top-right, above the legend (which sits top-left at y=1.02 above)
+        # so the two don't overlap.
+        fig.add_annotation(
+            text=scope_label, x=1, y=1.08, xref="paper", yref="paper",
+            xanchor="right", yanchor="bottom", showarrow=False,
+            font=dict(size=10, color="#94a3b8"),
+        )
     return fig
 
 
@@ -560,8 +576,15 @@ def _trend_chart_payload(
     multi: bool = False,
     measure: str = "median",
     include_daily: bool = True,
+    scope_label: str | None = None,
+    default_grain: str | None = None,
+    refetch: dict | None = None,
 ) -> dict:
-    default_grain = _EXEC_DEFAULT_GRAINS.get(chart_key, "monthly")
+    # default_grain overrides the _EXEC_DEFAULT_GRAINS lookup when the caller
+    # already knows what grain it fetched series_df at (e.g. Country
+    # Profile's per-window _fetch_grain) -- falls back to the dict's own
+    # per-chart default otherwise, same as before this param existed.
+    default_grain = default_grain or _EXEC_DEFAULT_GRAINS.get(chart_key, "monthly")
     # DHIS2's aggregate only ever has monthly-grain rows -- offering "Daily"
     # there would silently show monthly data under a misleading label instead
     # of a real day-level view, so only offer it in MAHIS mode (include_daily
@@ -575,9 +598,9 @@ def _trend_chart_payload(
         else bucket_time_series(series_df, default_grain)
     )
     figure = (
-        _multi_run_chart(bucketed, title, y_title, grain=default_grain, measure=measure)
+        _multi_run_chart(bucketed, title, y_title, grain=default_grain, measure=measure, scope_label=scope_label)
         if multi
-        else _run_chart(bucketed, title, accent, y_title, grain=default_grain, measure=measure)
+        else _run_chart(bucketed, title, accent, y_title, grain=default_grain, measure=measure, scope_label=scope_label)
     )
     return {
         "card": _trend_chart_card(
@@ -623,6 +646,17 @@ def _trend_chart_payload(
                         "accent": accent,
                         "y_title": y_title,
                         "multi": multi,
+                        # Read back by the grain-toggle callback
+                        # (_update_country_profile_chart_grain in
+                        # renderer.py) so the re-rendered figure on a grain
+                        # change still shows the same scope annotation.
+                        "scope_label": scope_label,
+                        # Read by the grain-toggle callback to redo this
+                        # chart's exact original fetch at the newly-selected
+                        # grain (e.g. a real per-day scan for "Daily")
+                        # instead of just re-bucketing whatever series_df
+                        # already holds client-side.
+                        "refetch": refetch,
                     },
                 ),
             ], style={"display": "flex", "alignItems": "center", "gap": "8px"}),
