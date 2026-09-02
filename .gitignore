@@ -24,9 +24,7 @@ data/uploads/
 data/default/parquet.backup-20260819-134817
 data/single_tables/
 data/dcc_dropdown_json/
-# data/mnid_aggregates/  -- tracked on purpose: another machine should be
-# able to pull main and get the same pre-built aggregate instead of running
-# the ~13min multi-grain build itself. See data/default/parquet below too.
+data/mnid_aggregates/ 
 data/TimeStamp.csv
 data/users_data.csv
 data/concepts_data.csv
@@ -81,11 +79,9 @@ scripts/
 docs/
 generate_demo_parquet.py
 scripts/generate_demo_mnid_data.py
-# data/mnid_aggregates/  -- see comment above, tracked on purpose
+data/mnid_aggregates/
 data/default/single_tables
-# data/default/parquet  -- tracked on purpose: the local dev/demo dataset
-# ships in the repo now so a fresh clone has real data + a matching
-# aggregate without needing its own DB pull or a 13min local rebuild.
+data/default/parquet  
 data/batches
 data/local
 data/mahistest
