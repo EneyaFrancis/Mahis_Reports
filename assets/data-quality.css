@@ -34,13 +34,13 @@
 }
 
 .dq-header-filters-col {
-    flex: 0 0 80%;
-    max-width: 80%;
+    flex: 0 0 100%;
+    max-width: 100%;
     margin-bottom: 0;
 }
 
 .dq-header-filters-col.config-controls-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 15px;
 }
 

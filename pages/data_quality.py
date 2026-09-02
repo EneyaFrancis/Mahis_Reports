@@ -160,6 +160,19 @@ def _rule_fields_display(rid, other_fields):
     return DUP_RULES[rid]["fields"]
 
 
+def _tab_label_and_style(base_label, count):
+    """Tab label/style pair showing an issue count directly on the tab
+    itself (e.g. "Duplicates (2 issues)") -- dcc.Tab's label can only be
+    plain text, so the whole label (not just the number) turns red when
+    there's something to look at."""
+    if count is None:
+        return base_label, _TAB_STYLE
+    if not count:
+        return base_label, _TAB_STYLE
+    label = f"{base_label} ({count} issue{'s' if count != 1 else ''})"
+    return label, {**_TAB_STYLE, "color": "#DC2626", "fontWeight": 700}
+
+
 def _kpi_card(label, value, sub=None):
     children = [
         html.Div(label, className="dq-kpi-label"),
@@ -239,14 +252,15 @@ layout = html.Div(
                                 ),
                             ],
                         ),
+                        html.Div(
+                            className="config-control-group",
+                            children=[
+                                html.Label(" ", className="config-label"),
+                                html.Button("Run DQ", id="dq-run-btn", n_clicks=0, className="dq-run-btn"),
+                            ],
+                        ),
                     ],
                 ),
-                # html.Div(
-                #     className="dq-header-action-col",
-                #     children=[
-                #         html.Button("Run DQ", id="dq-run-btn", n_clicks=0, className="dq-run-btn"),
-                #     ],
-                # ),
             ],
         ),
         html.Div(id="dq-alert"),
@@ -263,6 +277,7 @@ layout = html.Div(
                             children=html.Div(id="dq-overview-content", className="results-card"),
                         ),
                         dcc.Tab(
+                            id="dq-tab-duplicates",
                             label="Duplicates", value="duplicates",
                             style=_TAB_STYLE, selected_style=_TAB_SELECTED_STYLE,
                             children=html.Div(
@@ -327,6 +342,7 @@ layout = html.Div(
                             ),
                         ),
                         dcc.Tab(
+                            id="dq-tab-completeness",
                             label="Completeness", value="completeness",
                             style=_TAB_STYLE, selected_style=_TAB_SELECTED_STYLE,
                             children=html.Div(
@@ -561,13 +577,14 @@ def sync_dq_facility_options_from_scope(selected_districts, urlparams):
 @callback(
     Output("dq-overview-content", "children"),
     Input("url-params-store", "data"),
-    Input("dq-date-range", "start_date"),
-    Input("dq-date-range", "end_date"),
-    Input("dq-scope", "value"),
-    Input("dq-facility-filter", "value"),
-    Input("dq-program-filter", "value"),
+    Input("dq-run-btn", "n_clicks"),
+    State("dq-date-range", "start_date"),
+    State("dq-date-range", "end_date"),
+    State("dq-scope", "value"),
+    State("dq-facility-filter", "value"),
+    State("dq-program-filter", "value"),
 )
-def render_overview_tab(urlparams, start_date, end_date, districts, facilities, program):
+def render_overview_tab(urlparams, run_clicks, start_date, end_date, districts, facilities, program):
     urlparams = urlparams or {}
     data_route = urlparams.get("route", ["default"])[0]
     location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
@@ -576,6 +593,12 @@ def render_overview_tab(urlparams, start_date, end_date, districts, facilities, 
     user_row, scope = _resolve_user_scope(urlparams, user_data)
     if user_row is None or not location:
         return None
+
+    if not run_clicks:
+        return _empty_state(
+            "Click \"Run DQ\" to see results",
+            "Set your filters above, then click Run DQ to compute this tab.",
+        )
 
     if not program:
         return _empty_state(
@@ -815,20 +838,11 @@ def toggle_dup_other_fields(enabled_rules):
 
 @callback(
     Output("dq-dup-candidates-page", "data"),
-    Input("url-params-store", "data"),
-    Input("dq-date-range", "start_date"),
-    Input("dq-date-range", "end_date"),
-    Input("dq-scope", "value"),
-    Input("dq-facility-filter", "value"),
-    Input("dq-program-filter", "value"),
-    Input("dq-dup-rules", "value"),
-    Input("dq-dup-other-fields", "value"),
-    Input("dq-dup-min-confidence", "value"),
+    Input("dq-run-btn", "n_clicks"),
 )
-def reset_candidates_page(*_):
-    """Any change to what's being matched invalidates whatever page the user
-    was on -- e.g. a stale page 5 could land past the end of a now-shorter
-    candidate list."""
+def reset_candidates_page(_n_clicks):
+    """A fresh "Run DQ" invalidates whatever page the user was on -- e.g. a
+    stale page 5 could land past the end of a now-shorter candidate list."""
     return 1
 
 
@@ -854,18 +868,22 @@ def candidates_next_page(_n_clicks, page):
 
 @callback(
     Output("dq-duplicates-content", "children"),
+    Output("dq-tab-duplicates", "label"),
+    Output("dq-tab-duplicates", "style"),
     Input("url-params-store", "data"),
-    Input("dq-date-range", "start_date"),
-    Input("dq-date-range", "end_date"),
-    Input("dq-scope", "value"),
-    Input("dq-facility-filter", "value"),
-    Input("dq-program-filter", "value"),
-    Input("dq-dup-rules", "value"),
-    Input("dq-dup-other-fields", "value"),
-    Input("dq-dup-min-confidence", "value"),
+    Input("dq-run-btn", "n_clicks"),
     Input("dq-dup-candidates-page", "data"),
+    State("dq-date-range", "start_date"),
+    State("dq-date-range", "end_date"),
+    State("dq-scope", "value"),
+    State("dq-facility-filter", "value"),
+    State("dq-program-filter", "value"),
+    State("dq-dup-rules", "value"),
+    State("dq-dup-other-fields", "value"),
+    State("dq-dup-min-confidence", "value"),
 )
-def render_duplicates_tab(urlparams, start_date, end_date, districts, facilities, program, enabled_rules, other_fields, min_confidence, candidates_page):
+def render_duplicates_tab(urlparams, run_clicks, candidates_page, start_date, end_date, districts, facilities,
+                           program, enabled_rules, other_fields, min_confidence):
     urlparams = urlparams or {}
     data_route = urlparams.get("route", ["default"])[0]
     location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
@@ -873,12 +891,24 @@ def render_duplicates_tab(urlparams, start_date, end_date, districts, facilities
     user_data = _load_user_registry(data_route)
     user_row, scope = _resolve_user_scope(urlparams, user_data)
     if user_row is None or not location:
-        return None
+        return None, "Duplicates", _TAB_STYLE
+
+    if not run_clicks:
+        return (
+            _empty_state(
+                "Click \"Run DQ\" to see results",
+                "Set your filters above, then click Run DQ to compute this tab.",
+            ),
+            "Duplicates", _TAB_STYLE,
+        )
 
     if not program:
-        return _empty_state(
-            "Select a programme",
-            "Duplicate matching is scoped to one programme's patient roster at a time.",
+        return (
+            _empty_state(
+                "Select a programme",
+                "Duplicate matching is scoped to one programme's patient roster at a time.",
+            ),
+            "Duplicates", _TAB_STYLE,
         )
 
     data_path = f"data/{data_route}/parquet"
@@ -908,9 +938,12 @@ def render_duplicates_tab(urlparams, start_date, end_date, districts, facilities
         roster_df = pd.DataFrame()
 
     if roster_df.empty:
-        return _empty_state(
-            "No records match the current filters",
-            "Try widening the date range, clearing the facility filter, or choosing a different programme.",
+        return (
+            _empty_state(
+                "No records match the current filters",
+                "Try widening the date range, clearing the facility filter, or choosing a different programme.",
+            ),
+            "Duplicates", _TAB_STYLE,
         )
 
     enabled_rules = enabled_rules or []
@@ -1049,7 +1082,7 @@ def render_duplicates_tab(urlparams, start_date, end_date, districts, facilities
             className="dq-pagination-row",
         )
 
-    return html.Div(
+    content = html.Div(
         [
             summary_strip,
             html.Div(
@@ -1077,6 +1110,8 @@ def render_duplicates_tab(urlparams, start_date, end_date, districts, facilities
             identity_panel,
         ]
     )
+    label, style = _tab_label_and_style("Duplicates", len(candidate_groups))
+    return content, label, style
 
 
 @callback(
@@ -1139,16 +1174,19 @@ def save_dq_preferences(demographics, encounters, urlparams):
 
 @callback(
     Output("dq-completeness-content", "children"),
+    Output("dq-tab-completeness", "label"),
+    Output("dq-tab-completeness", "style"),
     Input("url-params-store", "data"),
-    Input("dq-date-range", "start_date"),
-    Input("dq-date-range", "end_date"),
-    Input("dq-scope", "value"),
-    Input("dq-facility-filter", "value"),
-    Input("dq-program-filter", "value"),
-    Input("dq-completeness-demographics", "value"),
-    Input("dq-completeness-encounters", "value"),
+    Input("dq-run-btn", "n_clicks"),
+    State("dq-date-range", "start_date"),
+    State("dq-date-range", "end_date"),
+    State("dq-scope", "value"),
+    State("dq-facility-filter", "value"),
+    State("dq-program-filter", "value"),
+    State("dq-completeness-demographics", "value"),
+    State("dq-completeness-encounters", "value"),
 )
-def render_completeness_tab(urlparams, start_date, end_date, districts, facilities, program,
+def render_completeness_tab(urlparams, run_clicks, start_date, end_date, districts, facilities, program,
                              mandatory_demographics, mandatory_encounters):
     urlparams = urlparams or {}
     data_route = urlparams.get("route", ["default"])[0]
@@ -1157,20 +1195,35 @@ def render_completeness_tab(urlparams, start_date, end_date, districts, faciliti
     user_data = _load_user_registry(data_route)
     user_row, scope = _resolve_user_scope(urlparams, user_data)
     if user_row is None or not location:
-        return None
+        return None, "Completeness", _TAB_STYLE
+
+    if not run_clicks:
+        return (
+            _empty_state(
+                "Click \"Run DQ\" to see results",
+                "Set your filters above, then click Run DQ to compute this tab.",
+            ),
+            "Completeness", _TAB_STYLE,
+        )
 
     if not program:
-        return _empty_state(
-            "Select a programme",
-            "Completeness rules are evaluated against one programme's patient roster at a time.",
+        return (
+            _empty_state(
+                "Select a programme",
+                "Completeness rules are evaluated against one programme's patient roster at a time.",
+            ),
+            "Completeness", _TAB_STYLE,
         )
 
     mandatory_demographics = mandatory_demographics or []
     mandatory_encounters = mandatory_encounters or []
     if not mandatory_demographics and not mandatory_encounters:
-        return _empty_state(
-            "No completeness rule is set",
-            "Pick at least one mandatory demographic field or encounter above.",
+        return (
+            _empty_state(
+                "No completeness rule is set",
+                "Pick at least one mandatory demographic field or encounter above.",
+            ),
+            "Completeness", _TAB_STYLE,
         )
 
     data_path = f"data/{data_route}/parquet"
@@ -1205,9 +1258,12 @@ def render_completeness_tab(urlparams, start_date, end_date, districts, faciliti
         df = pd.DataFrame()
 
     if df.empty:
-        return _empty_state(
-            "No records match the current filters",
-            "Try widening the date range, clearing the facility filter, or choosing a different programme.",
+        return (
+            _empty_state(
+                "No records match the current filters",
+                "Try widening the date range, clearing the facility filter, or choosing a different programme.",
+            ),
+            "Completeness", _TAB_STYLE,
         )
 
     demo_label_map = dict(DEMOGRAPHIC_FIELD_OPTIONS)
@@ -1273,7 +1329,7 @@ def render_completeness_tab(urlparams, start_date, end_date, districts, faciliti
     else:
         incomplete_table = html.Div("No incomplete patient records at this scope.", className="dq-empty-state")
 
-    return html.Div(
+    content = html.Div(
         [
             metrics_strip,
             html.Div(
@@ -1293,3 +1349,5 @@ def render_completeness_tab(urlparams, start_date, end_date, districts, faciliti
             ),
         ]
     )
+    label, style = _tab_label_and_style("Completeness", incomplete_count)
+    return content, label, style
