@@ -302,8 +302,20 @@ def _run_chart(
         else pd.to_datetime(plot_series["month"], errors="coerce").dt.strftime("%b %Y")
     )
     smooth_grain = grain if grain in {"weekly", "monthly", "quarterly", "yearly"} else "monthly"
-    smoothed, _ = _moving_average_values(plot_series["value"].tolist(), smooth_grain, method=measure)
-    measure_label = "Median" if measure == "median" else "Moving avg"
+    # "Median" mode plots the real, unsmoothed values as the line itself (so
+    # the actual trend is visible, not hidden behind a rolling median) and
+    # gets its own flat median-of-the-whole-period reference line instead --
+    # same idea as the target line. "Avg" mode keeps the original behavior:
+    # the smoothed rolling mean IS the line.
+    if measure == "median":
+        plotted = plot_series["value"].tolist()
+        _valid_for_median = [y for y in plotted if y is not None and pd.notna(y)]
+        median_value = float(pd.Series(_valid_for_median, dtype="float64").median()) if _valid_for_median else None
+    else:
+        plotted, _ = _moving_average_values(plot_series["value"].tolist(), smooth_grain, method=measure)
+        median_value = None
+    smoothed = plotted
+    measure_label = "Actual" if measure == "median" else "Moving avg"
     value_format = ".1f" if _is_percentage_axis(y_title) else ",.0f"
     has_counts = "numerator" in plot_series.columns and "denominator" in plot_series.columns
     if has_counts:
@@ -346,6 +358,14 @@ def _run_chart(
             line=dict(color="#f59e0b", width=1.4, dash="dash"),
             annotation_text="Target",
             annotation_font=dict(color="#f59e0b", size=10),
+            annotation_position="right",
+        )
+    if median_value is not None:
+        fig.add_hline(
+            y=median_value,
+            line=dict(color="#6366f1", width=1.4, dash="dot"),
+            annotation_text=f"Median {median_value:{value_format}}",
+            annotation_font=dict(color="#6366f1", size=10),
             annotation_position="right",
         )
     fig.update_layout(**_exec_chart_layout(
@@ -413,19 +433,30 @@ def _multi_run_chart(
         )
         return fig
 
-    measure_label = "Median" if measure == "median" else "Moving avg"
+    measure_label = "Actual" if measure == "median" else "Moving avg"
     value_format = ".1f" if _is_percentage_axis(y_title) else ",.0f"
+    median_lines = []  # (label, color, median_value) -- one per series
     for label in series_df["series"].dropna().unique():
         trace_df = series_df[series_df["series"] == label]
         color = trace_df["color"].iloc[0] if "color" in trace_df.columns and not trace_df.empty else PRIMARY_GREEN
-        smoothed, _ = _moving_average_values(trace_df["value"].tolist(), grain, method=measure)
+        # Same "Median" vs "Avg" split as _run_chart above: median mode shows
+        # the real values as the line and gets its own flat per-series
+        # median reference line; avg mode keeps the smoothed rolling mean.
+        if measure == "median":
+            plotted = trace_df["value"].tolist()
+            _valid_for_median = [y for y in plotted if y is not None and pd.notna(y)]
+            if _valid_for_median:
+                median_lines.append((label, color, float(pd.Series(_valid_for_median, dtype="float64").median())))
+        else:
+            plotted, _ = _moving_average_values(trace_df["value"].tolist(), grain, method=measure)
+        x_values = (
+            trace_df["bucket_label"]
+            if "bucket_label" in trace_df.columns
+            else pd.to_datetime(trace_df["month"], errors="coerce").dt.strftime("%b %Y")
+        )
         fig.add_trace(go.Scatter(
-            x=(
-                trace_df["bucket_label"]
-                if "bucket_label" in trace_df.columns
-                else pd.to_datetime(trace_df["month"], errors="coerce").dt.strftime("%b %Y")
-            ),
-            y=smoothed,
+            x=x_values,
+            y=plotted,
             name=label,
             mode="lines+markers",
             line=dict(color=color, width=3.0, shape="spline", smoothing=0.45),
@@ -438,6 +469,13 @@ def _multi_run_chart(
                 "<extra></extra>"
             ),
         ))
+        if measure == "median" and _valid_for_median:
+            fig.add_trace(go.Scatter(
+                x=x_values, y=[median_lines[-1][2]] * len(x_values), mode="lines",
+                line=dict(color=color, width=1.2, dash="dot"), opacity=0.6,
+                showlegend=False,
+                hovertemplate=f"{label} median: {median_lines[-1][2]:{value_format}}<extra></extra>",
+            ))
 
     if target is not None:
         fig.add_hline(
