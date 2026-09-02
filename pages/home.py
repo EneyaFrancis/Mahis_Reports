@@ -2201,7 +2201,6 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
             ]))
 
         dashboard_content = html.Div(rendered) if len(rendered) > 1 else (rendered[0] if rendered else html.Div("No dashboard selected."))
-        print(start_dt, end_dt)
         banner_children, clear_link_style = _build_active_filters_display(period_type, facilities, programs, districts)
         return (
             dashboard_content,
