@@ -1,0 +1,16 @@
+{
+  "generated_at": "2026-08-19T14:51:00.651994",
+  "elapsed_sec": 267.5,
+  "rows": 474984,
+  "indicators": 162,
+  "grains": [
+    "daily",
+    "weekly",
+    "monthly",
+    "quarterly",
+    "yearly"
+  ],
+  "data_source": "data/default/parquet",
+  "use_demo_data": true,
+  "last_run_status": "ok"
+}
