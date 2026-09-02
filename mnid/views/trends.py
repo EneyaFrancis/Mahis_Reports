@@ -436,6 +436,8 @@ def _trend_switcher(
     default_cat: str | None = None,
     scope_meta: dict | None = None,
     payload_key: str | None = None,
+    start_date=None,
+    end_date=None,
 ) -> html.Div:
     tracked     = [i for i in indicators if i.get('status') == 'tracked']
     cat_order   = _resolve_category_order(tracked, categories)
@@ -450,9 +452,20 @@ def _trend_switcher(
     default_ind_values = [o['value'] for o in default_ind_opts[:_DEFAULT_TREND_INDICATOR_LIMIT]]
 
     try:
-        _dates    = pd.to_datetime(df['Date'], errors='coerce').dropna() if 'Date' in df.columns else pd.Series([], dtype='datetime64[ns]')
-        _date_min = _dates.min().isoformat() if len(_dates) else None
-        _date_max = _dates.max().isoformat() if len(_dates) else None
+        # Prefer the actually-selected window over df's own min/max -- df
+        # (facility_df) arrives already scoped by the caller's own query, but
+        # that query's lookback can extend further back than the selected
+        # start_date, so relying on df alone silently widened Run Charts'
+        # idea of "the selected window" beyond what was actually picked.
+        # Falls back to df's own range only when start_date/end_date weren't
+        # passed in at all.
+        if start_date is not None and end_date is not None:
+            _date_min = pd.Timestamp(start_date).isoformat()
+            _date_max = pd.Timestamp(end_date).isoformat()
+        else:
+            _dates    = pd.to_datetime(df['Date'], errors='coerce').dropna() if 'Date' in df.columns else pd.Series([], dtype='datetime64[ns]')
+            _date_min = _dates.min().isoformat() if len(_dates) else None
+            _date_max = _dates.max().isoformat() if len(_dates) else None
     except Exception:
         _date_min = _date_max = None
 
