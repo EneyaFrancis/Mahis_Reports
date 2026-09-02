@@ -507,14 +507,6 @@ def _trend_switcher(
                             style={'minWidth': '200px', 'maxWidth': '300px', 'fontSize': '12px'},
                         ),
                         dcc.Dropdown(
-                            id='mnid-trend-location',
-                            options=loc_options,
-                            value='all',
-                            clearable=False, searchable=True,
-                            placeholder='All locations',
-                            style={'minWidth': '150px', 'maxWidth': '210px', 'fontSize': '12px'},
-                        ),
-                        dcc.Dropdown(
                             id='mnid-trend-grain',
                             options=(
                                 # DHIS2's aggregate only ever has monthly-grain rows --
@@ -564,14 +556,12 @@ def _trend_switcher(
     Output('mnid-run-charts-container', 'children'),
     Output('mnid-trend-active-cat', 'data'),
     Output({'type': 'trend-cat-btn', 'index': ALL}, 'className'),
-    Output('mnid-trend-location', 'options'),
     Output('mnid-trend-ind-filter', 'options'),
     Output('mnid-trend-ind-filter', 'value'),
     Output('mnid-trend-measure-toggle', 'className'),
     Output('mnid-trend-measure-toggle-text', 'children'),
     Output('mnid-trend-measure-store', 'data'),
     Input({'type': 'trend-cat-btn', 'index': ALL}, 'n_clicks'),
-    Input('mnid-trend-location', 'value'),
     Input('mnid-trend-ind-filter', 'value'),
     Input('mnid-trend-grain', 'value'),
     Input('mnid-trend-measure-toggle', 'n_clicks'),
@@ -581,7 +571,7 @@ def _trend_switcher(
     State('mnid-trend-measure-store', 'data'),
     prevent_initial_call=False,
 )
-def update_trend_chart(n_clicks_list, location, selected_inds, grain, measure_clicks,
+def update_trend_chart(n_clicks_list, selected_inds, grain, measure_clicks,
                        stored_trend, active_cat, cat_order, stored_measure):
     grain      = (grain or 'monthly').strip().lower()
     measure    = (stored_measure or 'median').strip().lower()
@@ -608,7 +598,6 @@ def update_trend_chart(n_clicks_list, location, selected_inds, grain, measure_cl
     trend_payload   = stored_trend or {}
     tracked         = trend_payload.get('tracked', [])
     scope_meta      = trend_payload.get('scope_meta') or {}
-    loc_options     = trend_payload.get('loc_options') or [{'label': 'All locations', 'value': 'all'}]
     ind_opts_by_cat = trend_payload.get('ind_opts_by_cat') or {}
     ind_options     = ind_opts_by_cat.get(cat, [])
 
@@ -629,7 +618,10 @@ def update_trend_chart(n_clicks_list, location, selected_inds, grain, measure_cl
     ind_value_out = default_ind_values if cat_changed else no_update
 
     cards   = _run_chart_cards(
-        df, tracked, cat, location or 'all',
+        # Location filter removed -- Run Charts always show the full scope
+        # (whatever the outer Country Profile/District/Facility selection
+        # already narrowed network_df to), not a further per-chart pick.
+        df, tracked, cat, 'all',
         default_ind_values if cat_changed else selected_inds,
         scope_meta, agg_df=_agg_now, fallback_df=_df_full, grain=grain, measure=measure,
     )
@@ -638,4 +630,4 @@ def update_trend_chart(n_clicks_list, location, selected_inds, grain, measure_cl
     # — returning an empty list avoids the "Expected 0, got N" callback error.
     all_classes = ['mnid-filter-btn active' if c == cat else 'mnid-filter-btn' for c in categories]
     classes = all_classes[:len(n_clicks_list)]
-    return cards, cat, classes, loc_options, ind_options, ind_value_out, measure_class, measure_text, measure
+    return cards, cat, classes, ind_options, ind_value_out, measure_class, measure_text, measure
