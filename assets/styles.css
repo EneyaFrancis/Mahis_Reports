@@ -1403,7 +1403,7 @@ body {
     }
 }
 
-/* ── MNID animations ─────────────────────────────────────── */
+/* MNID animations */
 
 /* Animatable custom property for donut fill */
 @property --mnid-p {

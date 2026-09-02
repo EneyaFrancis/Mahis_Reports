@@ -19,6 +19,7 @@ from mnid.core.cache import (
     _MNID_EXECUTIVE_DISK_CACHE, _MNID_UI_CACHE_TTL_SECONDS,
     _network_df_cache, _NETWORK_DF_CACHE_MAX,
     _worker_view_cache, _WORKER_VIEW_CACHE_MAX,
+    _EXECUTIVE_RENDER_VERSION,
 )
 from mnid.views.kpi_engine import (
     _build_mnid_indicator_content,
@@ -28,7 +29,7 @@ from mnid.views.kpi_engine import (
 from mnid.core.data_utils import prepare_mnid_dataframe as _prepare_mnid_dataframe
 from mnid.core.data_source import get_mnid_data_source
 from mnid.dashboards import load_dashboard_module
-from mnid.views.executive_views import render_country_profile, _profile_scope_name
+from mnid.views.executive_views import render_country_profile, _profile_scope_name, _refetch_series
 from mnid.views.operational_readiness import render_operational_readiness
 from mnid.components.run_charts import (
     bucket_multi_series, bucket_time_series,
@@ -52,24 +53,6 @@ def _render_mnh_placeholder(label: str) -> html.Div:
             html.Div(label, style={'fontSize': '12px', 'fontWeight': 800, 'textTransform': 'uppercase', 'letterSpacing': '0.08em'}),
             html.Div('This dashboard view is reserved for a future implementation.', style={'fontSize': '24px', 'fontWeight': 800, 'color': TEXT, 'marginTop': '8px'}),
             html.Div('The current release keeps the slot visible so routing and navigation are ready when MNH-Nest360 is implemented.', style={'fontSize': '13px', 'marginTop': '8px'}),
-        ],
-    )
-
-
-def _mnid_loading_placeholder() -> html.Div:
-    return html.Div(
-        className='mnid-loading-surface',
-        children=[
-            html.Div(className='mnid-loading-surface-hero'),
-            html.Div(
-                className='mnid-loading-surface-grid',
-                children=[
-                    html.Div(className='mnid-loading-surface-card'),
-                    html.Div(className='mnid-loading-surface-card'),
-                    html.Div(className='mnid-loading-surface-card'),
-                ],
-            ),
-            html.Div(className='mnid-loading-surface-wide'),
         ],
     )
 
@@ -347,7 +330,7 @@ def _render_beginnings_shell(initial_tab: str, hidden_mnid_tabs: set[str], newbo
             html.Div(
                 id='mnid-executive-content',
                 className='mnid-executive-content',
-                children=initial_children if initial_children is not None else [_mnid_loading_placeholder()],
+                children=initial_children if initial_children is not None else [html.Div()],
             ),
         ],
     )
@@ -362,7 +345,7 @@ def _render_mnh_dashboard_view(selected_view: str, state: dict, views: dict):
             initial_tab=state.get('beginnings_initial_tab') or 'country-profile',
             hidden_mnid_tabs=hidden_mnid_tabs,
             newborn_config=state.get('newborn_config'),
-            initial_children=[_mnid_loading_placeholder()],
+            initial_children=[html.Div()],
             scope_meta=state.get('scope_meta'),
         )
 
@@ -499,7 +482,20 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
         newborn_config = None
 
     executive_content = {}
-    _tok_data         = (_opd_key, str(start_date), str(end_date), config.get('report_name'), selected_programs)
+    # _tok_data seeds executive_token, which keys the OUTER per-session tab
+    # cache (views, at 'ec:{token}') read back in _render_mnid_executive_tab.
+    # That cache is checked before anything else in _build_executive_tab_view
+    # ("if selected in views: return views[selected]") -- bypassing the INNER
+    # per-tab cache's own render-version check entirely. Without
+    # _agg_version_stamp/_EXECUTIVE_RENDER_VERSION here, a token computed
+    # before a data republish or a code fix keeps resolving to the same
+    # stale cached tab content for this token's whole TTL, silently ignoring
+    # every subsequent fix -- this is what actually happened investigating
+    # the "0 available" Newborn coverage bug (2026-08-26).
+    _tok_data         = (
+        _opd_key, str(start_date), str(end_date), config.get('report_name'), selected_programs,
+        _agg_version_stamp(route), _EXECUTIVE_RENDER_VERSION,
+    )
     executive_token   = hashlib.md5(pickle.dumps(_tok_data, protocol=4)).hexdigest()
     _MNID_EXECUTIVE_DISK_CACHE.set(
         f'ec:{executive_token}', executive_content, expire=_MNID_UI_CACHE_TTL_SECONDS
@@ -551,7 +547,7 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
         executive_content['country-profile'] = cp_cached
         _initial_ec = [executive_content['country-profile']]
     else:
-        _initial_ec = [_mnid_loading_placeholder()]
+        _initial_ec = [html.Div()]
 
     executive_content['beginnings-shell'] = _render_beginnings_shell(
         initial_tab=_target_tab,
@@ -714,26 +710,45 @@ def _toggle_country_profile_measure(_n_clicks, stored_measure):
     prevent_initial_call=False,
 )
 def _update_country_profile_chart_grain(grain, measure, stored_rows, meta):
-    if not stored_rows:
-        raise PreventUpdate
-    series_df = pd.DataFrame(stored_rows)
-    if series_df.empty:
-        raise PreventUpdate
     meta = meta or {}
-    if 'month' in series_df.columns:
-        series_df['month'] = pd.to_datetime(series_df['month'], errors='coerce')
-    grain    = (grain or 'monthly').strip().lower()
-    measure  = (measure or 'median').strip().lower()
-    title    = meta.get('title') or 'Chart'
-    accent   = meta.get('accent') or '#15803D'
-    y_title  = meta.get('y_title') or 'Cases'
-    is_multi = bool(meta.get('multi'))
+    grain       = (grain or 'monthly').strip().lower()
+    measure     = (measure or 'median').strip().lower()
+    title       = meta.get('title') or 'Chart'
+    accent      = meta.get('accent') or '#15803D'
+    y_title     = meta.get('y_title') or 'Cases'
+    is_multi    = bool(meta.get('multi'))
+    scope_label = meta.get('scope_label')
+    recipe      = meta.get('refetch')
+
+    # A recipe means this chart can redo its own fetch at whatever grain was
+    # actually requested (see _refetch_series's module note in
+    # executive_views.py) -- but only reach for it when the request is
+    # genuinely "Daily": aggregating already-fetched data *up* to a coarser
+    # grain (Weekly/Monthly/Quarterly/Yearly) is a cheap, lossless, correct
+    # client-side reshape of stored_rows, exactly like before. Real per-day
+    # detail is the one thing that can never be recovered *down* from data
+    # that was only ever fetched at monthly resolution, so that's the only
+    # case worth paying for a fresh fetch -- refetching on every toggle
+    # click regardless of grain would turn Weekly/Quarterly/Yearly (cheap
+    # reshapes today) into full raw-row rescans too.
+    if recipe and grain == 'daily':
+        series_df = _refetch_series(recipe, grain)
+    elif stored_rows:
+        series_df = pd.DataFrame(stored_rows)
+        if 'month' in series_df.columns:
+            series_df['month'] = pd.to_datetime(series_df['month'], errors='coerce')
+    else:
+        raise PreventUpdate
+
+    if series_df is None or series_df.empty:
+        raise PreventUpdate
+
     if is_multi:
         bucketed = bucket_multi_series(series_df.copy(), grain)
-        figure   = _multi_run_chart(bucketed, title, y_title, grain=grain, measure=measure)
+        figure   = _multi_run_chart(bucketed, title, y_title, grain=grain, measure=measure, scope_label=scope_label)
     else:
         bucketed = bucket_time_series(series_df.copy(), grain)
-        figure   = _run_chart(bucketed, title, accent, y_title, grain=grain, measure=measure)
+        figure   = _run_chart(bucketed, title, accent, y_title, grain=grain, measure=measure, scope_label=scope_label)
     caption = describe_grain_window(bucketed, grain)
     return figure, caption
 

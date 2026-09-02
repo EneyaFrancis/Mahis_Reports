@@ -533,19 +533,35 @@ def _coverage_phase_fig(
     rows = []
     for ind in indicators:
         lbl = _wrap(ind['label'])
+        # Official numerator/denominator/visualization definition from the
+        # NEST-IT Indicators Guide, where this indicator has a confident
+        # match -- shown on hover so "what counts" is one hover away
+        # instead of only living in a config file. Not every indicator has
+        # one; guessed matches weren't added.
+        measure = ind.get('measure') or ''
         if ind.get('status') == 'awaiting_baseline':
             rows.append({'label': lbl, 'pct': None,
                          'target': ind['target'], 'cls': 'await',
-                         'sub': 'Awaiting baseline'})
+                         'sub': 'Awaiting baseline', 'measure': measure})
         else:
             if precomputed is not None and ind['id'] in precomputed:
                 num, den, pct = precomputed[ind['id']]
             else:
                 num, den, pct = _get_cov(ind)
+            if not _has_coverage_data((num, den, pct)):
+                # Tracked (configured) but nothing reported for this
+                # window/scope yet -- same placeholder treatment as
+                # awaiting_baseline rather than a misleading 0% bar, but
+                # distinguishable via the sub-label (it IS wired up, just
+                # empty right now, not "not yet built").
+                rows.append({'label': lbl, 'pct': None,
+                             'target': ind['target'], 'cls': 'await',
+                             'sub': 'No data', 'measure': measure})
+                continue
             cls = _css(pct, ind['target'])
             rows.append({'label': lbl, 'pct': pct,
                          'target': ind['target'], 'cls': cls,
-                         'sub': f'{num}/{den}'})
+                         'sub': f'{num}/{den}', 'measure': measure})
 
     if not rows:
         return go.Figure()
@@ -555,9 +571,28 @@ def _coverage_phase_fig(
     labels  = [r['label']  for r in rows]
     values  = [r['pct'] if r['pct'] is not None else 0 for r in rows]
     targets = [r['target'] for r in rows]
-    colors  = [{'ok': OK_C, 'warn': WARN_C, 'danger': DANGER_C}.get(r['cls'], MUTED)
+    # "await" (awaiting_baseline / no data) bars get a diagonal-stripe
+    # pattern in this category's own Run-Chart accent color, screened back
+    # with low opacity, instead of flat slate-gray on white -- gray-on-white
+    # read as a dull, disconnected default rather than an intentional
+    # "no data yet" state. Falls back to MUTED for a category with no
+    # defined palette (shouldn't normally happen -- ANC/Labour/Newborn/PNC
+    # all have one).
+    _category = next((i.get('category') for i in indicators if i.get('category')), None)
+    _accent = (CAT_PALETTES.get(_category) or [MUTED])[0]
+    colors  = [{'ok': OK_C, 'warn': WARN_C, 'danger': DANGER_C}.get(r['cls'], _accent)
                for r in rows]
-    text_vals = [f"{r['pct']:.0f}%" if r['pct'] is not None else 'No data' for r in rows]
+    patterns = ['/' if r['cls'] == 'await' else '' for r in rows]
+    opacities = [0.35 if r['cls'] == 'await' else 0.88 for r in rows]
+    # _wrap() already added <br> line breaks inside the label; textwrap
+    # again at a wider width for the hover box so long measure text doesn't
+    # render as one unbroken line.
+    measure_vals = [_wrap(r['measure'], width=48) if r['measure'] else '' for r in rows]
+    # The actual numerator/denominator behind the percentage, e.g. "78/95"
+    # -- for "Awaiting baseline"/"No data" rows this is already that text,
+    # not a fraction, which reads fine either way.
+    sub_vals = [r['sub'] for r in rows]
+    hover_customdata = list(zip(measure_vals, sub_vals, targets))
 
     wide = row_height > 38
     # Increase row height for wrapped (multi-line) labels
@@ -567,17 +602,33 @@ def _coverage_phase_fig(
 
     fig = go.Figure()
 
-    # Bars
+    # Bars. No permanent text label at the bar's end anymore -- the
+    # percentage, real numerator/denominator, target, and measure all show
+    # on hover instead (below), rather than a bare "%" sitting on the chart
+    # with nothing else next to it.
     fig.add_trace(go.Bar(
         x=values, y=labels,
         orientation='h',
-        marker=dict(color=colors, opacity=0.88,
-                    line=dict(color='rgba(0,0,0,0)')),
-        text=text_vals,
-        textposition='outside',
-        textfont=dict(size=11 if wide else 10, color=TEXT, family=FONT),
+        marker=dict(
+            color=colors, opacity=opacities,
+            pattern=dict(shape=patterns, fgcolor=MUTED, bgcolor='rgba(0,0,0,0)', size=6, solidity=0.3),
+            line=dict(color='rgba(0,0,0,0)'),
+        ),
         cliponaxis=False,
-        hovertemplate='<b>%{y}</b><br>Coverage: %{x:.1f}%<extra></extra>',
+        customdata=hover_customdata,
+        # customdata[0] = measure text (blank for indicators with no
+        # guide-matched measure -- renders as an empty trailing line, an
+        # acceptable tradeoff for one shared hovertemplate across all bars).
+        # customdata[1] = the actual numerator/denominator behind the
+        # percentage, e.g. "78/95", so the hover shows the real counts a
+        # coverage rate is easy to otherwise take on faith.
+        # customdata[2] = the target, so it doesn't require a separate,
+        # hard-to-hit hover on the thin target-line marker to see it.
+        hovertemplate=(
+            '<b>%{y}</b><br>Coverage: %{x:.1f}% (%{customdata[1]})'
+            '<br>Target: %{customdata[2]:.0f}%'
+            '<br>%{customdata[0]}<extra></extra>'
+        ),
         showlegend=False,
     ))
 
@@ -683,25 +734,32 @@ def _coverage_charts_section(
         awaiting = [i for i in inds if i.get('status') == 'awaiting_baseline']
         computed = [_compute(i) for i in tracked]
 
-        # Aggregation intentionally emits all-zero rows for configured DHIS2
-        # indicators with no observations.  Do not turn those into misleading
-        # 0% bars; remove the rows before sizing the Plotly chart so no blank
-        # vertical space is reserved for them.
+        # A tracked indicator that comes back all-zero (no observations
+        # anywhere in the selected window/scope, and genuinely no data
+        # source behind it yet) is hidden rather than shown as an empty
+        # row -- a brief experiment showing them as "No data" placeholders
+        # turned out to just be noise once most of them were confirmed to
+        # have no source at all (as opposed to awaiting_baseline, which
+        # means "not configured yet" and stays visible as a placeholder).
         available = [
             (ind, coverage)
             for ind, coverage in zip(tracked, computed)
             if _has_coverage_data(coverage)
         ]
+        no_data_tracked = [
+            ind for ind, coverage in zip(tracked, computed)
+            if not _has_coverage_data(coverage)
+        ]
         visible_inds = [ind for ind, _ in available] + awaiting
         if not visible_inds:
             continue
-        visible_phases.append((cat_key, cat_title, available, awaiting, visible_inds))
+        visible_phases.append((cat_key, cat_title, available, awaiting, no_data_tracked, visible_inds))
 
     single_card = len(visible_phases) == 1
     row_height = 52 if single_card else 38
     cards = []
 
-    for cat_key, cat_title, available, awaiting, visible_inds in visible_phases:
+    for cat_key, cat_title, available, awaiting, no_data_tracked, visible_inds in visible_phases:
         cov_by_id = {ind['id']: coverage for ind, coverage in available}
         avg_pct = (
             round(sum(coverage[2] for _, coverage in available) / len(available), 0)
@@ -709,6 +767,8 @@ def _coverage_charts_section(
         )
 
         pills = [html.Span(f'{len(available)} available', className='mnid-pill mnid-pill-green')]
+        if no_data_tracked:
+            pills.append(html.Span(f'{len(no_data_tracked)} no data', className='mnid-pill mnid-pill-amber'))
         if awaiting:
             pills.append(html.Span(f'{len(awaiting)} awaiting', className='mnid-pill mnid-pill-amber'))
         if avg_pct is not None:
@@ -1340,7 +1400,22 @@ def _comparative_analysis_section(indicators: list, facility_code: str,
     )
     dist_opts = [{'label': d, 'value': d} for d in all_dists]
     ind_opts = [{'label': ind['label'], 'value': ind['id']} for ind in tracked]
-    default_facs = ([facility_code] if facility_code in all_facs else all_facs[:2]) or []
+    # `facility_code` is NOT "the facility currently selected in the scope
+    # filter" -- it traces back to the logged-in user's own assigned home
+    # location (pages/home.py's user-registry lookup), a different concept
+    # that rarely matches what's actually being viewed. That made this
+    # section's default selection silently fall back to `all_facs[:2]`
+    # (two arbitrary facilities) instead of the one the user picked.
+    # scope_meta's own selected_facilities, resolved the same way the rest
+    # of this dashboard resolves it, is the real "currently viewed" answer.
+    from mnid.core.cache import _resolve_scope_filters
+    _, _scope_fac_codes, _ = _resolve_scope_filters(mch_full, scope_meta or {})
+    _scope_facs_in_universe = [f for f in _scope_fac_codes if f in all_facs]
+    default_facs = (
+        _scope_facs_in_universe
+        or ([facility_code] if facility_code in all_facs else all_facs[:2])
+        or []
+    )
     default_dists = ([current_dist] if current_dist in all_dists else all_dists[:2]) or []
     default_inds = [ind['id'] for ind in tracked[:2]]
     compare_date_min = pd.to_datetime(start_date, errors='coerce')

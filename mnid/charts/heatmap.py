@@ -372,8 +372,27 @@ def _compute_heatmap_store_from_agg(
     """
     current_district = _FACILITY_DISTRICT.get(facility_code, '')
 
-    ind_ids = {i['id'] for i in tracked}
-    by_grain = agg_df[agg_df['indicator_id'].isin(ind_ids)]
+    # Resolve each tracked indicator's *actual* aggregate id (id match, then
+    # label fallback -- same resolution query_coverage()/resolve_indicator_id()
+    # use everywhere else). A raw `{i['id'] for i in tracked}` filter here
+    # missed every indicator whose "tracked" catalog id (e.g. the MAHIS-side
+    # mnid_nb_prog_007 for KMC) differs from what's actually written in the
+    # DHIS2/Excel-merged aggregate (mnid_nb_core_kmc) -- those rows exist,
+    # just under a different id, and got silently excluded, showing as blank
+    # cells even though the coverage panel (which does resolve by label)
+    # shows real data for the same indicator+facility+period. Remap the
+    # matched rows' indicator_id back to each indicator's *tracked* id
+    # immediately after filtering so every line below this, which groups and
+    # looks rows up by that tracked id, keeps working unchanged.
+    from mnid.aggregation.store import resolve_indicator_id as _resolve_ind_id
+    id_map: dict[str, str] = {}
+    for i in tracked:
+        resolved = _resolve_ind_id(agg_df, i['id'], i.get('label'))
+        id_map[resolved] = i['id']
+    ind_ids = set(id_map.keys())
+    by_grain = agg_df[agg_df['indicator_id'].isin(ind_ids)].copy()
+    if not by_grain.empty:
+        by_grain['indicator_id'] = by_grain['indicator_id'].map(id_map).fillna(by_grain['indicator_id'])
     base = by_grain.iloc[0:0]  # empty but keeps columns, in case no candidate grain has data
     resolved_grain = grain
     _grain_candidates = [grain] + [g for g in _HEATMAP_GRAIN_FALLBACK if g != grain]

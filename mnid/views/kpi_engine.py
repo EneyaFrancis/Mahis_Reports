@@ -65,6 +65,36 @@ def _aggregate_grain_for_window(start_ts, end_ts) -> str:
     return 'monthly'
 
 
+def _kpi_window_matches_grain(start_ts, end_ts, grain: str) -> bool:
+    """
+    True only if [start_ts, end_ts] exactly spans whole period(s) of `grain`.
+
+    query_coverage/_build_agg_batch floor the window down to the containing
+    period's start and sum every aggregate row up to end_ts -- fine when the
+    selection spans whole periods, but when it doesn't (e.g. "Today", "Last 7
+    Days", or an in-progress "This Month") they silently return the *entire*
+    enclosing period's total instead of just the selected days. Locally this
+    was confirmed to return a whole month's total (69/82, 84.1%) for a
+    single-day selection inside that month -- the exact "Maternal shows much
+    higher figures than Country Profile for the same period" symptom, since
+    Country Profile computes MAHIS figures live off the exact date-filtered
+    rows instead of a pre-aggregated bucket. Callers should only trust the
+    aggregate when this returns True; otherwise fall back to a raw-row
+    computation (or 0 if none is available) rather than an inflated number.
+    """
+    if start_ts is None or end_ts is None:
+        return False
+    code = {'daily': 'D', 'weekly': 'W-SUN', 'monthly': 'M', 'quarterly': 'Q', 'yearly': 'A'}.get(grain, 'M')
+    try:
+        start_ts = pd.Timestamp(start_ts).normalize()
+        end_ts = pd.Timestamp(end_ts).normalize()
+        period_start = start_ts.to_period(code).start_time.normalize()
+        period_end = end_ts.to_period(code).end_time.normalize()
+    except Exception:
+        return False
+    return start_ts == period_start and end_ts == period_end
+
+
 def _build_agg_batch(agg_df: pd.DataFrame, start, end, grain: str,
                      fac_filter=None, dist_filter=None) -> dict:
     """
@@ -389,6 +419,11 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
     _kpi_grain   = 'monthly'
     _coverage_grain = _aggregate_grain_for_window(_s, _e)
     _kpi_fallbacks  = list(_agg_candidate_grains(_kpi_grain))
+    # See _kpi_window_matches_grain's docstring -- only trust the monthly
+    # aggregate for the current window when it exactly spans whole month(s);
+    # otherwise a narrower selection (Today, Last 7 Days, an in-progress
+    # This Month, ...) would silently sum the *entire* enclosing month.
+    _kpi_window_safe = _kpi_window_matches_grain(_s, _e, _kpi_grain)
 
     try:
         window    = max((_e - _s).days, 1) if _s and _e else 1
@@ -396,6 +431,7 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
         prev_start = prev_end - pd.Timedelta(days=window - 1)
     except Exception:
         prev_start = prev_end = None
+    _prev_kpi_window_safe = _kpi_window_matches_grain(prev_start, prev_end, _kpi_grain)
 
     _prev_df_filtered = pd.DataFrame()
     if prev_start is not None and prev_end is not None and 'Date' in network_df.columns and not network_df.empty:
@@ -437,11 +473,20 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
     def _compute_inds(inds):
         computed = []
         for ind in inds:
-            if _cur_batch:
-                num, den, pct = _batch_cov(_cur_batch, ind['id'], _kpi_fallbacks)
+            # _cur_batch is keyed by the aggregate's own indicator_id, which for
+            # Excel-sourced indicators (mapped in by mnid_publish.py's high-priority
+            # merge) can differ from the tracked catalog's id -- query_coverage/
+            # _agg_coverage below already resolve that via resolve_indicator_id's
+            # label fallback, but this pre-built batch dict (added purely for
+            # speed, see _build_agg_batch) did a strict id lookup with no
+            # fallback, so any such indicator silently landed on 0 of 0 here
+            # while the exact same indicator showed real data on Coverage charts.
+            _batch_id = _agg_resolve_id(_agg, ind['id'], ind.get('label')) if _agg is not None else ind['id']
+            if _cur_batch and _kpi_window_safe:
+                num, den, pct = _batch_cov(_cur_batch, _batch_id, _kpi_fallbacks)
                 if den == 0 and ind.get('numerator_filters') and ind.get('denominator_filters'):
                     num, den, pct = _cov(facility_df, ind['numerator_filters'], ind['denominator_filters'])
-            elif _agg is not None and _s is not None:
+            elif _agg is not None and _s is not None and _kpi_window_safe:
                 num, den, pct = _agg_coverage(
                     _agg, ind['id'], _s, _e,
                     facility_codes=_fac_filter,
@@ -458,15 +503,16 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
 
     def _add_delta(computed_list):
         for c in computed_list:
-            if _prev_batch and prev_start is not None:
-                _, prev_den, prev_pct = _batch_cov(_prev_batch, c['id'], _kpi_fallbacks)
+            if _prev_batch and prev_start is not None and _prev_kpi_window_safe:
+                _prev_batch_id = _agg_resolve_id(_agg, c['id'], c.get('label')) if _agg is not None else c['id']
+                _, prev_den, prev_pct = _batch_cov(_prev_batch, _prev_batch_id, _kpi_fallbacks)
                 if prev_den == 0 and c.get('numerator_filters') and c.get('denominator_filters'):
                     try:
                         _, _, prev_pct = _cov(_prev_df_filtered, c['numerator_filters'], c['denominator_filters'])
                     except Exception:
                         prev_pct = c['pct']
                 c['delta_pct'] = round(c['pct'] - prev_pct, 1)
-            elif _agg is not None and prev_start is not None:
+            elif _agg is not None and prev_start is not None and _prev_kpi_window_safe:
                 try:
                     _, _, prev_pct = _agg_coverage(
                         _agg, c['id'], prev_start, prev_end,
@@ -518,7 +564,10 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
 
     from mnid.views.trends import _trend_switcher
     _t2 = _time.monotonic()
-    trend_switcher = _trend_switcher(facility_df, display_inds, scope_meta=scope_meta, payload_key=payload_key)
+    trend_switcher = _trend_switcher(
+        facility_df, display_inds, scope_meta=scope_meta, payload_key=payload_key,
+        start_date=_s, end_date=_e,
+    )
     _LOGGER.info('MNID timing: trend_switcher %.2fs', _time.monotonic() - _t2)
 
     _t3 = _time.monotonic()
@@ -589,6 +638,10 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
                 ]
             elif default_cat == 'Newborn':
                 _activity_stats = [
+                    # Moved here from Country Profile's summary row -- was
+                    # "Neonatal Care Unit Admissions" there, same underlying
+                    # indicator, now shown on the tab it actually belongs to.
+                    _indicator_activity('Neonatal Admissions', override_label='Neonatal Care Unit Admissions'),
                     _indicator_activity('Outborn babies'),
                     _indicator_activity('Neonatal Complications at Birth'),
                     _indicator_activity('Birth asphyxia among newborn admissions'),

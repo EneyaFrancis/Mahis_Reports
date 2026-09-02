@@ -195,10 +195,16 @@ def load_aggregate(route: str = _DEFAULT_ROUTE, output_dir: str | None = None) -
 
 
 def get_aggregate(route: str = _DEFAULT_ROUTE, output_dir: str | None = None) -> pd.DataFrame | None:
-    """Return the in-memory aggregate for one route, loading it on first call."""
-    if route not in _LOADED_ROUTES:
-        return load_aggregate(route, output_dir)
-    return _AGG_DF_BY_ROUTE.get(route)
+    """Return the in-memory aggregate for one route, loading it on first call.
+
+    Always delegates to load_aggregate() -- even once a route is cached --
+    so its cheap meta.json stamp check (see _current_meta_stamp) runs on
+    every call and a fresh publish/merge is picked up without a server
+    restart. A prior shortcut here (returning the cached df directly once
+    the route was in _LOADED_ROUTES) skipped that check entirely, so a
+    republish never got noticed for the rest of the process's life.
+    """
+    return load_aggregate(route, output_dir)
 
 
 def invalidate_cache(route: str | None = None) -> None:
@@ -325,19 +331,9 @@ def query_coverage(
     by_id = agg_df[agg_df['indicator_id'] == resolved_indicator_id]
     sub = pd.DataFrame()
     for candidate_grain in _candidate_grains(grain):
-        grain_mask = by_id['grain'] == candidate_grain
-        if not grain_mask.any():
-            # Genuinely absent for this indicator (e.g. DHIS2's monthly-only
-            # aggregate) -- try the next coarser grain.
-            continue
-
-        # The grain exists in general for this indicator -- honor it even if
-        # this facility/date window has zero matching rows, rather than
-        # silently substituting a coarser grain's total (see query_time_series
-        # for the full rationale).
         period_floor = _floor_to_period(start_date, candidate_grain)
         mask = (
-            grain_mask
+            (by_id['grain'] == candidate_grain)
             & (by_id['period_start'] >= period_floor)
             & (by_id['period_start'] <= pd.Timestamp(end_date))
         )
@@ -346,7 +342,8 @@ def query_coverage(
         elif districts:
             mask &= by_id['district'].isin([str(d) for d in districts])
         sub = by_id[mask]
-        break
+        if not sub.empty:
+            break
     if sub.empty:
         return 0, 0, 0.0
 
@@ -378,21 +375,8 @@ def query_time_series(
     by_id = agg_df[agg_df['indicator_id'] == resolved_indicator_id]
     sub = pd.DataFrame()
     for candidate_grain in _candidate_grains(grain):
-        grain_mask = by_id['grain'] == candidate_grain
-        if not grain_mask.any():
-            # This grain was never aggregated for this indicator at all (e.g.
-            # DHIS2's aggregate only ever has monthly rows) -- genuinely
-            # unavailable, so fall through to the next coarser grain.
-            continue
+        mask = by_id['grain'] == candidate_grain
 
-        # The grain exists for this indicator in general -- honor it even if
-        # the current facility/date scope has zero matching rows. Falling
-        # through to a coarser grain here would silently substitute e.g. a
-        # whole month's summed total for a single empty day, which looks
-        # like the grain selector is being ignored. A genuinely quiet period
-        # should render as "no data for this window", not as mislabeled
-        # coarser-grain data.
-        mask = grain_mask.copy()
         if facility_codes:
             mask &= by_id['facility_code'].isin([str(f) for f in facility_codes])
         elif districts:
@@ -404,7 +388,8 @@ def query_time_series(
             mask &= by_id['period_start'] <= pd.Timestamp(end_date)
 
         sub = by_id[mask]
-        break
+        if not sub.empty:
+            break
     if sub.empty:
         return pd.DataFrame(columns=['period_start', 'numerator', 'denominator', 'pct'])
 

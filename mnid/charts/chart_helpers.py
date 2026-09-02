@@ -6,6 +6,7 @@ moving-average logic, and shared module-level palette/layout constants.
 """
 import pandas as pd
 import plotly.graph_objects as go
+import re as _re
 import statistics as _stats
 import logging
 from datetime import datetime
@@ -363,6 +364,29 @@ def _monthly_visits(df, encounter_val, unique_col='person_id'):
 
 # MNID chart builders
 
+def _export_filename(title: str, scope_label: str | None = None) -> str:
+    """Slugify a chart title (+ optional filter scope) into a PNG export
+    filename, e.g. "ANC Visits Over Time" + "All Facilities" ->
+    "anc_visits_over_time_all_facilities". Shared by every chart builder in
+    this file (_donut/_hbar/_line already bake their title into the figure's
+    own layout -- this just needs to match it for the downloaded filename)."""
+    text = " ".join(part for part in (title, scope_label) if part)
+    text = _re.sub(r'<[^>]+>', ' ', text)  # strip any HTML the title may carry
+    slug = _re.sub(r'[^\w\s-]', '', text).strip().lower()
+    slug = _re.sub(r'[\s_-]+', '_', slug)
+    return slug or 'chart'
+
+
+def _figure_title_text(fig) -> str:
+    """Plain-text title already baked into a figure by _donut/_hbar/_line,
+    stripped of HTML tags, or '' if the figure has none."""
+    try:
+        raw = fig.layout.title.text or ''
+    except Exception:
+        raw = ''
+    return _re.sub(r'<[^>]+>', '', raw).strip()
+
+
 def _empty_card(title):
     return html.Div(className='mnid-chart-card', children=[
         html.Div(title, className='mnid-card-title'),
@@ -371,10 +395,19 @@ def _empty_card(title):
     ])
 
 
-def _chart_card(title, fig):
+def _chart_card(title, fig, scope_label=None):
+    # Most callers pass title='' because _donut/_hbar/_line already baked a
+    # real title into fig's own layout (so PNG export captures it) -- fall
+    # back to reading that baked-in title here so the download still gets a
+    # meaningful filename instead of Plotly's generic default.
+    resolved_title = title or _figure_title_text(fig)
+    filename = _export_filename(resolved_title, scope_label)
     return html.Div(className='mnid-chart-card', children=[
-        dcc.Graph(figure=fig, config={'displayModeBar': True, 'modeBarButtonsToRemove': ['select2d', 'lasso2d', 'autoScale2d'], 'toImageButtonOptions': {'format': 'png', 'scale': 2}},
-                  style={'height': '220px'}),
+        dcc.Graph(figure=fig, config={
+            'displayModeBar': True,
+            'modeBarButtonsToRemove': ['select2d', 'lasso2d', 'autoScale2d'],
+            'toImageButtonOptions': {'format': 'png', 'scale': 2, 'filename': filename},
+        }, style={'height': '220px'}),
     ])
 
 

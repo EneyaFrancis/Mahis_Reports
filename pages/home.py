@@ -79,24 +79,6 @@ _DASHBOARD_TAB_CONFIG_DEFAULTS = {
 }
 
 
-def _dashboard_loading_placeholder():
-    return html.Div(
-        className="dashboard-loading-placeholder",
-        children=[
-            html.Div(className="dashboard-loading-hero"),
-            html.Div(
-                className="dashboard-loading-grid",
-                children=[
-                    html.Div(className="dashboard-loading-card"),
-                    html.Div(className="dashboard-loading-card"),
-                    html.Div(className="dashboard-loading-card"),
-                ],
-            ),
-            html.Div(className="dashboard-loading-wide"),
-        ],
-    )
-
-
 def _trim_cache(cache: dict, max_entries: int) -> None:
     while len(cache) > max_entries:
         try:
@@ -196,6 +178,18 @@ def _latest_available_date(route: str = 'default') -> pd.Timestamp | None:
 
 
 def _default_date_window(route: str = 'default'):
+    # DHIS2 reports monthly, not daily -- defaulting to "today" (or a
+    # rolling 30-day window ending near today) either shows an
+    # incomplete/empty current month or straddles two incomparable months.
+    # Default instead to the last 6 complete calendar months, ending at the
+    # latest reported month -- see MNIDDataSource.default_window(). MAHIS
+    # (below, unchanged) keeps its rolling-30-day-ending-today window since
+    # it aggregates daily and "today" is a meaningful anchor there.
+    if route == 'dhis2':
+        window = get_mnid_data_source(source='dhis2').default_window()
+        if window is not None:
+            return window
+
     route_data_path = Path(path) / 'data' / route / 'parquet'
     hmis_path = Path(path) / 'mnid' / 'data' / 'dhis2' / 'aggregates' / 'hmis_test.parquet'
     if route != 'dhis2' and not route_data_path.exists() and hmis_path.exists():
@@ -472,7 +466,16 @@ def get_enabled_dashboard_menu():
     config = load_dashboard_tab_config()
 
     if config["mode"] == "mnh_only":
-        allowed_reports = {"Maternal Health"}
+        # "mnh_only" means Maternal & Newborn Health only (see the MNH-*
+        # naming used throughout this feature -- MNH-Beginnings, MNH-MoH,
+        # MNH-Nest360) -- restricting to just the "Maternal Health" report
+        # name silently dropped the separate top-level "Newborn" report,
+        # which only DHIS2 route ever showed (there, Newborn is loaded as
+        # a companion tab bundled *inside* the "Maternal Health" render,
+        # bypassing this menu filter entirely -- MAHIS route treats them
+        # as two fully separate top-level reports, so it needs both names
+        # listed here explicitly).
+        allowed_reports = {"Maternal Health", "Newborn"}
     elif config["visible_reports"]:
         allowed_reports = set(config["visible_reports"])
     else:
@@ -1213,7 +1216,12 @@ layout = html.Div(
                     children=html.Div(
                         id='dashboard-container',
                         className="dashboard-content-modern",
-                        children=_dashboard_loading_placeholder(),
+                        # Was the skeleton placeholder -- redundant with this
+                        # dcc.Loading's own custom_spinner overlay above,
+                        # which already covers this exact container. Having
+                        # both meant the shimmering skeleton showed *under*
+                        # the spinner at the same time, on every load.
+                        children=html.Div(),
                     )
                 ),
             ]
@@ -2062,7 +2070,17 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
             start_date, end_date = get_relative_date_range(DEFAULT_RELATIVE_PERIOD, current_date=default_end)
         start_dt = pd.to_datetime(start_date or default_start).replace(hour=0, minute=0, second=0)
         end_dt = pd.to_datetime(end_date or default_end).replace(hour=23, minute=59, second=59)
-        default_start_date = start_dt - pd.Timedelta(days=DEFAULT_DASHBOARD_DAYS)
+        # network_query below is deliberately widened by DEFAULT_DASHBOARD_DAYS
+        # to give trend/comparison charts some historical context beyond the
+        # exact selected range -- but a single specific day (Today, Yesterday,
+        # or any custom one-day range) is a request to see *that day*, not a
+        # week ending on it. Padding it backward regardless silently turned
+        # "Today" into a 7-day window for any report that reads from
+        # network_df instead of the exactly-scoped filtered_query, which is
+        # not what selecting "Today" means. Only apply the padding when a
+        # real multi-day range was actually selected.
+        is_single_day_selection = start_dt.date() == end_dt.date()
+        default_start_date = start_dt if is_single_day_selection else start_dt - pd.Timedelta(days=DEFAULT_DASHBOARD_DAYS)
 
         location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
         DATA_PATH_ = f"data/{data_route}/parquet"
@@ -2094,8 +2112,8 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
         active_dists = (districts or user_districts) if effective_level == 'district' else (districts or [])
         delta_days = max((end_dt - start_dt).days, 1)
 
-        filtered_parts = _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, programs, is_network=False)
-        network_parts  = _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, programs, is_network=True)
+        filtered_parts = _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, programs=programs, is_network=False)
+        network_parts  = _scope_where_parts(effective_level, location, districts, user_districts, facilities, age, programs=programs, is_network=True)
         scope_suffix   = (" AND " + " AND ".join(filtered_parts)) if filtered_parts else ""
         network_suffix = (" AND " + " AND ".join(network_parts))  if network_parts  else ""
 
@@ -2230,11 +2248,13 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
 
 @callback(
     [Output('dashboard-date-range-picker', 'start_date'),
-     Output('dashboard-date-range-picker', 'end_date')],
+     Output('dashboard-date-range-picker', 'end_date'),
+     Output('dashboard-period-type-filter', 'value', allow_duplicate=True)],
     [Input('dashboard-period-type-filter', 'value'),
      Input('dashboard-interval-update-today', 'n_intervals'),
      Input('active-button-store', 'data')],
     [State('url-params-store', 'data')],
+    prevent_initial_call=True,
 )
 def sync_picker_with_logic(period_type, n, current_active, urlparams):
     ctx = callback_context
@@ -2253,6 +2273,18 @@ def sync_picker_with_logic(period_type, n, current_active, urlparams):
     default_start, default_end = _default_date_window(date_route)
     anchor = default_end
 
+    # "Today" is the dropdown's own untouched initial value -- meaningless
+    # for DHIS2's monthly grain (it collapsed the whole range to a single
+    # day, completely bypassing _default_date_window's 6-month default
+    # below). Auto-switch it to "Last 6 Months" -- both the picker's dates
+    # AND the dropdown's own displayed label -- the first time a DHIS2
+    # report becomes active while it's still sitting on that default. A
+    # period_type the user actually picked themselves (anything other than
+    # the untouched 'Today') is left alone, same as before.
+    if date_route == 'dhis2' and period_type in (None, '', 'Today'):
+        s, e = get_relative_date_range('Last 6 Months', current_date=anchor)
+        return (s or default_start), (e or default_end), 'Last 6 Months'
+
     if triggered_id == "dashboard-interval-update-today":
         raise PreventUpdate
     if triggered_id == "active-button-store":
@@ -2260,8 +2292,8 @@ def sync_picker_with_logic(period_type, n, current_active, urlparams):
     if period_type:
         s, e = get_relative_date_range(period_type, current_date=anchor)
         if s and e:
-            return s, e
-    return default_start, default_end
+            return s, e, period_type
+    return default_start, default_end, (period_type or DEFAULT_RELATIVE_PERIOD)
 
 @callback(
     [Output('dashboard-period-type-filter', 'value', allow_duplicate=True),
