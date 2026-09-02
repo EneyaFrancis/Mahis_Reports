@@ -237,15 +237,21 @@ def _indicator_run_fig(
 
     layout_annotations = []
     if target is not None:
+        # x=1 + a fixed pixel xshift (not x=1.005, a fraction of the plot's
+        # own width) -- a width-scaling fraction gave too little real room on
+        # a narrower chart, which is what was clipping "target 80%"/"median
+        # 65%" into cut-off text. xshift is a constant pixel offset
+        # regardless of plot width, matching the same fix already applied to
+        # Country Profile's charts in run_charts.py.
         layout_annotations.append({
-            'x': 1.005, 'y': target / 112, 'xref': 'paper', 'yref': 'paper',
+            'x': 1, 'xshift': 8, 'y': target / 112, 'xref': 'paper', 'yref': 'paper',
             'text': f'target {target:.0f}%', 'showarrow': False,
             'font': {'size': 10, 'color': '#64748B', 'family': 'Geist, system-ui, sans-serif'},
             'xanchor': 'left', 'yanchor': 'middle',
         })
     if median_value is not None:
         layout_annotations.append({
-            'x': 1.005, 'y': median_value / 112, 'xref': 'paper', 'yref': 'paper',
+            'x': 1, 'xshift': 8, 'y': median_value / 112, 'xref': 'paper', 'yref': 'paper',
             'text': f'median {median_value:.0f}%', 'showarrow': False,
             'font': {'size': 10, 'color': '#6366f1', 'family': 'Geist, system-ui, sans-serif'},
             'xanchor': 'left', 'yanchor': 'middle',
@@ -254,7 +260,11 @@ def _indicator_run_fig(
     return go.Figure(data=traces, layout={
         'paper_bgcolor': 'white', 'plot_bgcolor': 'white',
         'font': {'family': 'Geist, system-ui, sans-serif', 'color': '#64748b', 'size': 11},
-        'height': 220, 'margin': {'l': 42, 'r': 24, 't': 16, 'b': 44},
+        # r widened 24 -> 92: the target/median labels sit just outside the
+        # plot area (x=1.005, xref='paper') so they don't overlap the data --
+        # 24px wasn't enough room for text like "median 65%", which rendered
+        # clipped/cut off instead of the full label.
+        'height': 220, 'margin': {'l': 42, 'r': 92, 't': 16, 'b': 44},
         'showlegend': False, 'hovermode': 'x unified',
         'hoverlabel': {
             'bgcolor': '#0f172a', 'bordercolor': '#0f172a',
