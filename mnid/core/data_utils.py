@@ -929,19 +929,16 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
             | (concept.eq('Prematurity/Kangaroo') & combined_lower.isin(['kmc', 'kangaroo mother care']))
         ),
     )
-    # Real data records this under 'Admission outcome', not 'Status of baby' --
-    # confirmed on production data where every neonatal-death row used concept
-    # 'Admission outcome', so requiring 'Status of baby' alone left this flag
-    # empty for every single row (permanent 0/0 on the Neonatal Deaths KPI
-    # card) while Country Profile's broader _metric_snapshot (which already
-    # accepts both concept names) correctly found the real deaths. Accept
-    # both, matching Country Profile's neonatal_death_mask.
-    _newborn_status_concept = concept.isin(['Status of baby', 'Admission outcome'])
+    # Real Neonatal concept is "outcome" (Discharge category), not "Admission outcome".
+    _newborn_status_concept = concept_lower.isin(['status of baby', 'admission outcome', 'outcome'])
     _assign_flag('mnid_newborn_status_recorded', newborn_mask & _newborn_status_concept)
     _assign_flag(
         'mnid_newborn_neonatal_death',
         newborn_mask & _newborn_status_concept
-        & combined_lower.isin(['death', 'died', 'dead', 'deceased', 'neonatal death']),
+        & combined_lower.isin([
+            'death', 'died', 'dead', 'deceased', 'neonatal death',
+            'death < 24hrs', 'death > 24hrs', 'died during admission', 'brought in dead',
+        ]),
     )
     person_ctx['mnid_labour_complication'] = (
         _ctx_series('mnid_labour_maternal_sepsis').eq('Yes')

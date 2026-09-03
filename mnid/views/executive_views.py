@@ -313,9 +313,13 @@ def _metric_snapshot(df: pd.DataFrame) -> dict:
         _contains_mask(df, "concept_name", ["Status of the mother"])
         & _contains_mask(df, "obs_value_coded", ["Dead", "Died", "Maternal death"])
     )
+    # Real Neonatal concept is "outcome" (Discharge category), not "Admission outcome".
     neonatal_death_mask = (
-        _contains_mask(df, "concept_name", ["Admission outcome", "Status of baby"])
-        & _contains_mask(df, "obs_value_coded", ["Died", "Dead", "Death", "Neonatal death"])
+        _contains_mask(df, "concept_name", ["Admission outcome", "outcome", "Status of baby"])
+        & _contains_mask(df, "obs_value_coded", [
+            "Died", "Dead", "Death", "Neonatal death",
+            "Death < 24hrs", "Death > 24hrs", "Died during Admission", "Brought in dead",
+        ])
     )
 
     maternal_admissions = _unique_count(df, maternal_mask, encounter_col)
