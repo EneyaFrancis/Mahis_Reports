@@ -3228,14 +3228,8 @@
         "status": "tracked",
         "numerator_filters": {
           "unique": "person_id",
-          "variable1": "concept_name",
-          "value1": "Number of tetanus doses",
-          "variable2": "obs_value_coded",
-          "value2": [
-            "two doses",
-            "three doses",
-            "four doses"
-          ]
+          "variable1": "mnid_anc_tdv_2plus",
+          "value1": "Yes"
         },
         "denominator_filters": {
           "unique": "person_id",
@@ -3902,12 +3896,14 @@
         "numerator_filters": {
           "unique": "person_id",
           "variable1": "concept_name",
-          "value1": "Neonatal resuscitation provided",
+          "value1": "resuscitationMethods",
           "variable2": "obs_value_coded",
           "value2": [
-            "Yes",
-            "Stimulation only",
-            "Bag and mask"
+            "Stimulation",
+            "Suctioning",
+            "Oxygen",
+            "Bag Valve Mask Ventilation (BVM)",
+            "Cardio Pulmonary Resuscitation (CPR)"
           ],
           "variable3": "Age_Group",
           "value3": "Under 5"
@@ -3915,7 +3911,7 @@
         "denominator_filters": {
           "unique": "person_id",
           "variable1": "concept_name",
-          "value1": "Neonatal resuscitation provided",
+          "value1": "resuscitationMethods",
           "variable2": "Age_Group",
           "value2": "Under 5"
         }
@@ -3929,7 +3925,7 @@
         "numerator_filters": {
           "unique": "person_id",
           "variable1": "concept_name",
-          "value1": "thermal care",
+          "value1": "thermalCareDetails",
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
@@ -4535,7 +4531,7 @@
         "numerator_filters": {
           "unique": "person_id",
           "variable1": "concept_name",
-          "value1": "thermal care"
+          "value1": "thermalCareDetails"
         },
         "denominator_filters": {
           "unique": "person_id",
@@ -5351,14 +5347,8 @@
         "status": "tracked",
         "numerator_filters": {
           "unique": "person_id",
-          "variable1": "concept_name",
-          "value1": "Number of tetanus doses",
-          "variable2": "obs_value_coded",
-          "value2": [
-            "two doses",
-            "three doses",
-            "four doses"
-          ]
+          "variable1": "mnid_anc_tdv_2plus",
+          "value1": "Yes"
         },
         "denominator_filters": {
           "unique": "person_id",
@@ -6025,12 +6015,14 @@
         "numerator_filters": {
           "unique": "person_id",
           "variable1": "concept_name",
-          "value1": "Neonatal resuscitation provided",
+          "value1": "resuscitationMethods",
           "variable2": "obs_value_coded",
           "value2": [
-            "Yes",
-            "Stimulation only",
-            "Bag and mask"
+            "Stimulation",
+            "Suctioning",
+            "Oxygen",
+            "Bag Valve Mask Ventilation (BVM)",
+            "Cardio Pulmonary Resuscitation (CPR)"
           ],
           "variable3": "Age_Group",
           "value3": "Under 5"
@@ -6038,7 +6030,7 @@
         "denominator_filters": {
           "unique": "person_id",
           "variable1": "concept_name",
-          "value1": "Neonatal resuscitation provided",
+          "value1": "resuscitationMethods",
           "variable2": "Age_Group",
           "value2": "Under 5"
         }
@@ -6052,7 +6044,7 @@
         "numerator_filters": {
           "unique": "person_id",
           "variable1": "concept_name",
-          "value1": "thermal care",
+          "value1": "thermalCareDetails",
           "variable2": "Age_Group",
           "value2": "Under 5"
         },

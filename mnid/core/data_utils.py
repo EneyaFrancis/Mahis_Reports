@@ -746,10 +746,21 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
         'mnid_anc_first_trimester',
         anc_mask & concept_lower.str.contains('gestation in weeks', na=False) & (value_n <= 12),
     )
-    _assign_flag(
-        'mnid_anc_tdv_2plus',
-        anc_mask & concept_lower.str.contains('number of tetanus doses', na=False) & combined_lower.str.contains(r'two|three|four|2|3|4', na=False),
-    )
+    # Per mahis-indicator-mapping-issues.md: "Number of tetanus doses" is not
+    # an actual ANC concept in the real system at all -- the real concepts
+    # are "TDV" (Yes/No, one row per administration) and "TDV at gestation
+    # age" (timing only, not a dose count). The old mask above matched
+    # nothing in production. Fix: count DISTINCT TDV=Yes administration
+    # dates (so duplicate same-visit records don't inflate the count, per
+    # the doc's own caution) and require >= 2.
+    _tdv_yes_mask = anc_mask & concept.eq('TDV') & combined_lower.eq('yes')
+    if _tdv_yes_mask.any() and 'Date' in out.columns and 'person_id' in out.columns:
+        _tdv_dates = out.loc[_tdv_yes_mask.fillna(False), ['person_id', 'Date']].dropna()
+        _tdv_counts = _tdv_dates.groupby(_tdv_dates['person_id'].astype(str))['Date'].nunique()
+        _tdv_2plus_people = set(_tdv_counts[_tdv_counts >= 2].index)
+    else:
+        _tdv_2plus_people = set()
+    person_ctx['mnid_anc_tdv_2plus'] = person_ctx['person_id'].isin(_tdv_2plus_people).map({True: 'Yes', False: ''})
 
     # mohupdate: Labour MOH dashboard flags
     _assign_flag(
