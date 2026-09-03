@@ -3432,17 +3432,17 @@
         "status": "tracked",
         "numerator_filters": {
           "unique": "person_id",
-          "variable1": "Service_Area",
-          "value1": "Labour",
+          "variable1": "mnid_labour_csection",
+          "value1": "Yes",
           "variable2": "mnid_labour_antibiotic_prophylaxis",
           "value2": "Yes"
         },
         "denominator_filters": {
           "unique": "person_id",
-          "variable1": "Service_Area",
-          "value1": "Labour"
+          "variable1": "mnid_labour_csection",
+          "value1": "Yes"
         },
-        "note": "Covers azithromycin prophylaxis and surgical antibiotic prophylaxis (ampicillin, cefazolin, benzylpenicillin)."
+        "note": "Covers azithromycin prophylaxis and surgical antibiotic prophylaxis (ampicillin, cefazolin, benzylpenicillin). Denominator is C-section cases, not all Labour clients."
       },
       {
         "id": "mnid_lab_prog_006",
@@ -3607,10 +3607,10 @@
         },
         "denominator_filters": {
           "unique": "person_id",
-          "variable1": "Service_Area",
-          "value1": "Labour"
+          "variable1": "mnid_labour_live_birth",
+          "value1": "Yes"
         },
-        "note": "Uses birth weight documentation linked to the delivery episode or immediate newborn record for the same client."
+        "note": "Denominator is live births, not all Labour clients -- excludes babies never live-born."
       },
       {
         "id": "mnid_pnc_overview_001",
@@ -5551,17 +5551,17 @@
         "status": "tracked",
         "numerator_filters": {
           "unique": "person_id",
-          "variable1": "Service_Area",
-          "value1": "Labour",
+          "variable1": "mnid_labour_csection",
+          "value1": "Yes",
           "variable2": "mnid_labour_antibiotic_prophylaxis",
           "value2": "Yes"
         },
         "denominator_filters": {
           "unique": "person_id",
-          "variable1": "Service_Area",
-          "value1": "Labour"
+          "variable1": "mnid_labour_csection",
+          "value1": "Yes"
         },
-        "note": "Covers azithromycin prophylaxis and surgical antibiotic prophylaxis (ampicillin, cefazolin, benzylpenicillin)."
+        "note": "Covers azithromycin prophylaxis and surgical antibiotic prophylaxis (ampicillin, cefazolin, benzylpenicillin). Denominator is C-section cases, not all Labour clients."
       },
       {
         "id": "mnid_lab_prog_006",
@@ -5726,10 +5726,10 @@
         },
         "denominator_filters": {
           "unique": "person_id",
-          "variable1": "Service_Area",
-          "value1": "Labour"
+          "variable1": "mnid_labour_live_birth",
+          "value1": "Yes"
         },
-        "note": "Uses birth weight documentation linked to the delivery episode or immediate newborn record for the same client."
+        "note": "Denominator is live births, not all Labour clients -- excludes babies never live-born."
       },
       {
         "id": "mnid_pnc_overview_001",

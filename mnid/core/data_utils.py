@@ -949,6 +949,11 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
         _ctx_series('mnid_labour_visit_documented').eq('Yes')
         & _ctx_series('mnid_labour_stillbirth').ne('Yes')
     ).map({True: 'Yes', False: ''})
+    # Total births = live birth or stillbirth -- denominator for stillbirth/mortality rates.
+    person_ctx['mnid_labour_total_birth'] = (
+        _ctx_series('mnid_labour_live_birth').eq('Yes')
+        | _ctx_series('mnid_labour_stillbirth').eq('Yes')
+    ).map({True: 'Yes', False: ''})
     person_ctx['mnid_anc_not_reaching_labour'] = (
         _ctx_series('mnid_anc_visit_documented').eq('Yes')
         & _ctx_series('mnid_labour_visit_documented').ne('Yes')
