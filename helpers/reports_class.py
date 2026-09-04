@@ -51,7 +51,12 @@ class ReportTableBuilder:
         self.report_name = pd.read_excel(xls, sheet_name="REPORT_NAME", engine="openpyxl")
         self.report_name.columns = [str(c).strip() for c in self.report_name.columns]
         self.facilities = pd.read_csv(self.facilities_path)
-        self.location_name = self.facilities.set_index('location_id')['name'].to_dict().get(int(self.location), "")
+        # location_id isn't always numeric (some routes use alphanumeric facility
+        # codes, e.g. "SA091312") -- match as strings instead of assuming int().
+        facilities_by_code = self.facilities.set_index(
+            self.facilities['location_id'].astype(str)
+        )['name'].to_dict()
+        self.location_name = facilities_by_code.get(str(self.location), "")
         self._build_filters_map()
 
     def _build_filters_map(self) -> None:
@@ -274,7 +279,11 @@ class ReportTableBuilder:
         else:
             result, patient_ids = ("","")
 
-        if patient_ids:
+        # `is not None` (not truthiness) -- a legitimate zero-match query returns an
+        # empty list, which must still be cached as an empty set. Falling through to
+        # None here made calculated_intersection silently drop a zero-match filter
+        # from the intersection instead of correctly zeroing the result out.
+        if patient_ids is not None:
             self._patient_ids_cache[filter_name] = [str(p) for p in patient_ids]
 
         result_str = "" if result is None else str(result)
