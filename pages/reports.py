@@ -790,6 +790,12 @@ def get_data(reports_data, xlsx, pdf, comp_data):
         sections_raw = reports_data.get("sections", [])
         meta         = reports_data.get("meta", {})
 
+    # Filesystem-safe download name built from the report's own title, e.g.
+    # "ANC Monthly and Booking Cohort" -> "ANC_Monthly_and_Booking_Cohort.pdf"
+    # instead of a generic name every report shared before.
+    report_file_stem = _re.sub(r'[<>:"/\\|?*]', '', meta.get("title", "HMIS DATASET REPORT")).strip()
+    report_file_stem = _re.sub(r'\s+', '_', report_file_stem)[:80] or "MaHIS_facility_report"
+
     if trigger_id == 'report-btn-xlsx':
         # ── XLSX: one sheet per section ────────────────────────────────────────
         xlsx_buffer = io.BytesIO()
@@ -810,7 +816,7 @@ def get_data(reports_data, xlsx, pdf, comp_data):
                 df = pd.read_json(io.StringIO(item['data']), orient='split')
                 df.to_excel(writer, sheet_name=sheet_name, index=False)
         xlsx_buffer.seek(0)
-        return dcc.send_bytes(xlsx_buffer.getvalue(), filename='MaHIS_facility_report.xlsx')
+        return dcc.send_bytes(xlsx_buffer.getvalue(), filename=f'{report_file_stem}.xlsx')
 
     elif trigger_id == 'report-btn-pdf':
         if not comp_data:
@@ -868,7 +874,7 @@ def get_data(reports_data, xlsx, pdf, comp_data):
 
         if not pdf_bytes:
             return dash.no_update
-        return dcc.send_bytes(pdf_bytes, filename="MaHIS_facility_report.pdf")
+        return dcc.send_bytes(pdf_bytes, filename=f"{report_file_stem}.pdf")
 
     else:
         return dash.no_update
