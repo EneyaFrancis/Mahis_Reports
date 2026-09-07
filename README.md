@@ -204,6 +204,14 @@ A successful run looks like:
 - After deleting `data/mnid_aggregates/` to force a clean rebuild
 - When `meta.json` shows `"last_run_status": "error"` and you've fixed the underlying cause
 
+---
+
+### Excel Data Sources & DHIS2 Aggregate Integration
+
+For detailed instructions on working with Excel workbooks in `data/excel/` (`NEST_BF_facilitites.xlsx`, `PPH_Monthly_Service_Statistics_2026.xlsx`), prioritized overrides over DHIS2, and script execution order, refer to [`data/excel/README.md`](data/excel/README.md).
+
+---
+
 **What it replaces**
 
 Before this service, every period-change triggered:
