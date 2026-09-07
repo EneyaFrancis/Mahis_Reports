@@ -2238,7 +2238,7 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
      Input('dashboard-interval-update-today', 'n_intervals'),
      Input('active-button-store', 'data')],
     [State('url-params-store', 'data')],
-    prevent_initial_call=True,
+    prevent_initial_call='initial_duplicate',
 )
 def sync_picker_with_logic(period_type, n, current_active, urlparams):
     ctx = callback_context
