@@ -97,7 +97,8 @@
             "value7": "",
             "variable8": "Age",
             "value8": ""
-          }
+          },
+          "show_trend": "True"
         },
         {
           "id": "count_aade5941",
@@ -149,35 +150,17 @@
             "value7": "",
             "variable8": "Age",
             "value8": ""
-          }
+          },
+          "show_trend": "True"
         },
         {
           "id": "count_f9c74c60",
           "display": "True",
-          "name": "Avg Patient Registration Time (Mins)",
+          "name": "Facilities requiring attention",
           "level": "facility",
+          "flag": "danger",
           "filters": {
-            "measure": "time_diff_mins",
-            "unique": "person_id",
-            "variable1": "Program",
-            "value1": [],
-            "variable2": "Encounter",
-            "value2": [
-              "Registration",
-              "Patient registration"
-            ],
-            "variable3": "concept_name",
-            "value3": [],
-            "variable4": "obs_value_coded",
-            "value4": "",
-            "variable5": "ValueN",
-            "value5": "",
-            "variable6": "Value",
-            "value6": "",
-            "variable7": "Gender",
-            "value7": "",
-            "variable8": "Age",
-            "value8": ""
+            "measure": "facilities_requiring_attention"
           }
         },
         {
@@ -316,6 +299,35 @@
                       "Dispensing": "Visit End"
                     }
                   }
+                }
+              }
+            ]
+          },
+          {
+            "section_name": "Facility Performance Heatmap",
+            "display": "True",
+            "chart_items_per_row": 1,
+            "items": [
+              {
+                "id": "chart_facility_heatmap",
+                "display": "True",
+                "name": "Facility Performance Heatmap",
+                "type": "Heatmap",
+                "level": "facility",
+                "filters": {
+                  "measure": "chart",
+                  "unique": "facility-heatmap-section",
+                  "duration_default": "any",
+                  "title": "Facility Performance Heatmap (Declining Facilities)",
+                  "entity_label": "Facility",
+                  "entity_col": "Facility",
+                  "group_by_col": "Program",
+                  "unique_col": "person_id",
+                  "lookback_days": 14,
+                  "segment_days": 7,
+                  "drop_threshold": 0.25,
+                  "only_declining": "True",
+                  "page_size": 5
                 }
               }
             ]

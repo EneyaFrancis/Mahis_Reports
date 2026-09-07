@@ -1086,13 +1086,14 @@ def create_time_line_chart(query_fiter,data_path, date_col, y_col, title, x_titl
                 f" ORDER BY date_trunc"
             )
         joined_query = f"""
-                        SELECT 
+                        SELECT
                             date_trunc,
                             SUM(metric_value) AS metric_value
                         FROM (
                                 {sub_query}
                             )
                         GROUP BY date_trunc
+                        ORDER BY date_trunc
                     """
     else:
         joined_query = (
@@ -1544,6 +1545,205 @@ def create_new_returning_chart(
         )
 
     return fig
+
+
+_WINDOW_RE = re.compile(
+    r"(?P<col>\w+)\s*>=\s*'(?P<start>[^']+)'::TIMESTAMP\s+AND\s+(?P=col)\s*<=\s*'(?P<end>[^']+)'::TIMESTAMP"
+)
+
+
+def widen_query_window(query_filter, lookback_days):
+    """Rewrites a "<col> >= '<start>'::TIMESTAMP AND <col> <= '<end>'::TIMESTAMP"
+    window -- e.g. pages/home.py's network_query/filtered_query_data_range,
+    which looks like "Date >= '2026-08-31 00:00:00'::TIMESTAMP AND Date <=
+    '2026-09-07 23:59:59'::TIMESTAMP" plus scope conditions -- to instead
+    span exactly `lookback_days` trailing days ending at the SAME end date.
+    Any trailing conditions after the date bounds (facility/programme/etc
+    scope) are left untouched. Returns query_filter unchanged if that shape
+    isn't found, so callers can pass any WHERE-clause string safely.
+    """
+    match = _WINDOW_RE.search(query_filter)
+    if not match:
+        return query_filter
+    col = match.group("col")
+    end_str = match.group("end")
+    end_dt = pd.to_datetime(end_str)
+    new_start = end_dt.normalize() - pd.Timedelta(days=lookback_days - 1)
+    new_clause = f"{col} >= '{new_start}'::TIMESTAMP AND {col} <= '{end_str}'::TIMESTAMP"
+    return query_filter[:match.start()] + new_clause + query_filter[match.end():]
+
+
+def compute_entity_daily_counts(query_filter, data_path, entity_col=FACILITY_, group_by_col=PROGRAM_, unique_col=PERSON_ID_):
+    """One row per (entity, Date) with COUNT(DISTINCT unique_col) records,
+    grouped through group_by_col first then summed back down (same
+    group_by convention used elsewhere in this app, e.g. the "All
+    Attendance" KPI's own group_by="Program"): an entity touching more than
+    one group_by_col value on the same day is counted once per value, so
+    totals can exceed the true distinct-count. Generic over
+    entity_col/group_by_col/unique_col so the same function backs facility,
+    programme, or user-level heatmaps/attention checks alike -- the
+    returned entity column is always named "entity".
+    """
+    sub_sql = (
+        f"SELECT {entity_col} AS entity, CAST({DATE_} AS DATE) AS d, {group_by_col}, "
+        f"COUNT(DISTINCT {unique_col}) AS n "
+        f"FROM '{data_path}' WHERE {query_filter} "
+        f"GROUP BY {entity_col}, CAST({DATE_} AS DATE), {group_by_col}"
+    )
+    sql = (
+        f"SELECT entity, d, SUM(n) AS n FROM ({sub_sql}) "
+        f"GROUP BY entity, d ORDER BY entity, d"
+    )
+    try:
+        df = DataStorage.query_duckdb(sql)
+    except Exception:
+        df = pd.DataFrame(columns=["entity", "d", "n"])
+    return df
+
+
+def compute_segment_drop(query_filter, data_path, entity_col=FACILITY_, group_by_col=PROGRAM_,
+                          unique_col=PERSON_ID_, lookback_days=14, segment_days=7, drop_threshold=0.25):
+    """Entities whose average daily count over the most recent `segment_days`
+    (segment B, "last N days") fell by at least `drop_threshold` compared to
+    their average over the `segment_days` immediately before that (segment
+    A), across a trailing `lookback_days` window widened from query_filter's
+    own end date via widen_query_window. Generic over
+    entity_col/group_by_col/unique_col -- the same detector backs facility,
+    programme, or user-level attention checks/heatmaps alike. Returns
+    (count, pct_of_total, flagged_entities, daily_counts_df) -- daily_counts_df
+    is the raw per-entity-per-day data over the widened window, reusable by
+    a heatmap that needs the same window without re-querying.
+    """
+    widened_filter = widen_query_window(query_filter, lookback_days)
+    df = compute_entity_daily_counts(
+        widened_filter, data_path, entity_col=entity_col, group_by_col=group_by_col, unique_col=unique_col,
+    )
+    if df.empty:
+        return 0, 0.0, [], df
+
+    df = df.copy()
+    df["d"] = pd.to_datetime(df["d"])
+    total_entities = df["entity"].nunique()
+
+    max_date = df["d"].max()
+    segment_b_start = max_date - pd.Timedelta(days=segment_days - 1)
+    segment_a_end = segment_b_start - pd.Timedelta(days=1)
+    segment_a_start = segment_a_end - pd.Timedelta(days=segment_days - 1)
+
+    flagged = []
+    for entity, sub in df.groupby("entity"):
+        seg_a = sub[(sub["d"] >= segment_a_start) & (sub["d"] <= segment_a_end)]["n"]
+        seg_b = sub[(sub["d"] >= segment_b_start) & (sub["d"] <= max_date)]["n"]
+        if seg_a.empty or seg_b.empty:
+            continue
+        avg_a = seg_a.mean()
+        avg_b = seg_b.mean()
+        if avg_a > 0 and avg_b <= avg_a * (1 - drop_threshold):
+            flagged.append(entity)
+
+    count = len(flagged)
+    pct = (count / total_entities * 100) if total_entities else 0.0
+    return count, pct, flagged, df
+
+
+def compute_facilities_requiring_attention(query_filter, data_path, lookback_days=14, segment_days=7, drop_threshold=0.25):
+    """Facility-specific convenience wrapper around compute_segment_drop --
+    see that function for the detection rule. Returns (count, pct_of_total,
+    flagged_facility_names).
+    """
+    count, pct, flagged, _df = compute_segment_drop(
+        query_filter, data_path, entity_col=FACILITY_, group_by_col=PROGRAM_, unique_col=PERSON_ID_,
+        lookback_days=lookback_days, segment_days=segment_days, drop_threshold=drop_threshold,
+    )
+    return count, pct, flagged
+
+
+_HEATMAP_BAND_COLORS = ["#DC2626", "#F87171", "#FFC107", "#86EFAC", "#16A34A"]
+
+
+def create_entity_heatmap(query_filter, data_path, title="Performance Heatmap", entity_label="Facility",
+                          entity_col=FACILITY_, group_by_col=PROGRAM_, unique_col=PERSON_ID_,
+                          lookback_days=14, segment_days=7, drop_threshold=0.25,
+                          only_declining=True, page_size=5, dom_id=None):
+    """Entity (rows) x Date (columns) performance table -- red for low
+    activity (worst case), green for high activity (good case), banded into
+    5 colour steps across the table's own min/max. Paginated (page_size
+    rows per page) since this is a table, not a plot -- white borders
+    between cells via style_cell. When only_declining, rows are limited to
+    whatever compute_segment_drop flags as having dropped by drop_threshold
+    or more. Generic over entity_col/group_by_col/unique_col so the same
+    builder backs facility, programme, or user-level heatmaps alike.
+    Returns an html.Div wrapping a dash_table.DataTable; dom_id is set on
+    that outer Div (not the table itself) so it can be used as a scroll-to
+    target.
+    """
+    if only_declining:
+        _count, _pct, flagged, df = compute_segment_drop(
+            query_filter, data_path, entity_col=entity_col, group_by_col=group_by_col, unique_col=unique_col,
+            lookback_days=lookback_days, segment_days=segment_days, drop_threshold=drop_threshold,
+        )
+        if not flagged:
+            return html.Div(
+                [
+                    html.H4(title, style={"textAlign": "center"}),
+                    html.Div(f"No {entity_label}(s) currently show a drop of {drop_threshold * 100:.0f}% or more."),
+                ],
+                id=dom_id,
+            )
+        df = df[df["entity"].isin(flagged)]
+    else:
+        widened_filter = widen_query_window(query_filter, lookback_days)
+        df = compute_entity_daily_counts(
+            widened_filter, data_path, entity_col=entity_col, group_by_col=group_by_col, unique_col=unique_col,
+        )
+        if df.empty:
+            return html.Div(
+                [html.H4(title, style={"textAlign": "center"}), html.Div(f"No {entity_label.lower()} activity in scope.")],
+                id=dom_id,
+            )
+
+    pivot = df.pivot_table(index="entity", columns="d", values="n", fill_value=0).sort_index()
+    date_cols = [pd.Timestamp(c).strftime("%Y-%m-%d") for c in pivot.columns]
+    pivot.columns = date_cols
+    table_df = pivot.reset_index().rename(columns={"entity": entity_label})
+
+    vmin = float(pivot.values.min())
+    vmax = float(pivot.values.max())
+    span = (vmax - vmin) or 1.0
+    n_bands = len(_HEATMAP_BAND_COLORS)
+
+    style_data_conditional = []
+    for col in date_cols:
+        for i, color in enumerate(_HEATMAP_BAND_COLORS):
+            lo = vmin + span * i / n_bands
+            hi = vmin + span * (i + 1) / n_bands
+            condition = f"{{{col}}} >= {lo}" if i == n_bands - 1 else f"{{{col}}} >= {lo} && {{{col}}} < {hi}"
+            style_data_conditional.append({
+                "if": {"filter_query": condition, "column_id": col},
+                "backgroundColor": color,
+                "color": "#ffffff" if i < 2 else "#0F172A",
+            })
+
+    return html.Div(
+        [
+            html.H4(title, style={"textAlign": "center"}),
+            dash_table.DataTable(
+                columns=[{"name": entity_label, "id": entity_label}] + [{"name": c, "id": c} for c in date_cols],
+                data=table_df.to_dict("records"),
+                page_size=page_size,
+                page_action="native",
+                sort_action="native",
+                style_cell={
+                    "border": "1px solid white", "textAlign": "center",
+                    "fontSize": "12px", "padding": "6px",
+                },
+                style_header={"border": "1px solid white", "backgroundColor": "#f8f9fa", "fontWeight": "bold"},
+                style_data_conditional=style_data_conditional,
+            ),
+        ],
+        id=dom_id,
+    )
+
 
 def create_pie_chart(query_fiter,data_path, names_col, values_col, title,
                      unique_column=PERSON_ID_, filter_col1=None,
