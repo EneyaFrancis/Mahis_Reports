@@ -847,6 +847,7 @@ layout = html.Div(
         dcc.Store(id='active-button-store', data='General Summary'),
         dcc.Store(id='filter-drawer-open', data=False),
         dcc.Store(id='scroll-watcher', data=0),
+        dcc.Store(id='kpi-scroll-dummy'),
         dcc.Store(id='kpi-modal-page', data=1),
         dcc.Store(id='kpi-modal-data', data=None),
 
@@ -1573,6 +1574,28 @@ dash.clientside_callback(
     Output("scroll-watcher", "data"),
     Input("scroll-watcher", "data"),
     prevent_initial_call=False,
+)
+
+
+# "click to view" on the "Facilities requiring attention" KPI -- smooth-
+# scrolls to the facility performance heatmap (dcc.Graph id is set from that
+# chart's own filters.unique in validated_dashboard.json -- keep both in sync).
+dash.clientside_callback(
+    """
+    function(n_clicks_list) {
+        if (!n_clicks_list || !n_clicks_list.some(function(n) { return n; })) {
+            return window.dash_clientside.no_update;
+        }
+        var target = document.getElementById('facility-heatmap-section');
+        if (target) {
+            target.scrollIntoView({behavior: 'smooth', block: 'start'});
+        }
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output("kpi-scroll-dummy", "data"),
+    Input({"type": "kpi-scroll-link", "index": ALL}, "n_clicks"),
+    prevent_initial_call=True,
 )
 
 
