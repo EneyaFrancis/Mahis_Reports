@@ -204,7 +204,7 @@ layout = html.Div(
                         html.Div(
                             className="parameter-group",
                             children=[
-                                html.Label("Program", className="parameter-label"),
+                                html.Label("Program", className="config-label"),
                                 dcc.Dropdown(
                                     id='program_filter',
                                     options=[
@@ -222,7 +222,7 @@ layout = html.Div(
                         html.Div(
                             className="parameter-group",
                             children=[
-                                html.Label("Report Name", className="parameter-label"),
+                                html.Label("Report Name", className="config-label"),
                                 dcc.Dropdown(
                                     id='report_name',
                                     options=[
@@ -240,7 +240,7 @@ layout = html.Div(
                         html.Div(
                             className="parameter-group",
                             children=[
-                                html.Label("Year", className="parameter-label"),
+                                html.Label("Year", className="config-label"),
                                 dcc.Dropdown(
                                     id='year-filter',
                                     options=[
@@ -258,7 +258,7 @@ layout = html.Div(
                         html.Div(
                             className="parameter-group",
                             children=[
-                                html.Label("Period Type", className="parameter-label"),
+                                html.Label("Period Type", className="config-label"),
                                 dcc.Dropdown(
                                     id='period_type-filter',
                                     options=[
@@ -276,7 +276,7 @@ layout = html.Div(
                         html.Div(
                             className="parameter-group",
                             children=[
-                                html.Label("Week/Month/Quarter", className="parameter-label"),
+                                html.Label("Week/Month/Quarter", className="config-label"),
                                 dcc.Dropdown(
                                     id='month-filter',
                                     options=[
@@ -294,7 +294,7 @@ layout = html.Div(
                             id ='facilities',
                             className="parameter-group",
                             children=[
-                                html.Label("Select Facility", className="parameter-label"),
+                                html.Label("Select Facility", className="config-label"),
                                 dcc.Dropdown(
                                     id='facility-filter',
                                     options=[
@@ -482,9 +482,23 @@ def update_month_options(period_type):
 
 def load_user_facilities(urlparams):
     data_route = urlparams.get('route', ["default"])[0] if urlparams else None
-    user_data = _load_user_registry(data_route)
-    user_row, scope = _resolve_user_scope(urlparams, user_data)
-    user_facility = user_row.get('facility_name', 'Unknown Facility')
+    # DISABLED: _load_user_registry/_resolve_user_scope come from pages.home
+    # -- importing across page modules makes Dash's page-loader execute
+    # home.py's whole file (every @callback in it) a second time, crashing
+    # the app at startup with "Duplicate callback outputs". The import at
+    # the top of this file stays (the report-generation callback below still
+    # has a real auth check that needs it) -- only this lower-stakes usage
+    # is disabled, falling back to the "no scoped facilities" branch below.
+    # user_data = _load_user_registry(data_route)
+    # user_row, scope = _resolve_user_scope(urlparams, user_data)
+    # user_level still comes straight off the URL (no cross-page import needed)
+    # so a national-scope user still gets the real facility list, not the
+    # single-facility fallback.
+    user_level = ((urlparams.get('user_level', [''])[0] or '').lower() if urlparams else '')
+    user_row, scope = {}, {'facilities': None, 'level': user_level or 'facility'}
+    # No real user_row to read a facility_name from -- leave the dropdown
+    # unselected rather than pre-filling a fake facility that matches nothing.
+    user_facility = None
 
     if scope['facilities'] and len(scope['facilities']) > 1:
         # print("here1")
@@ -547,7 +561,12 @@ def load_report_options(program=None, user_data=None):
 def update_report_dropdown(urlparams, program):
     data_route = urlparams.get('route', ["default"])[0] if urlparams else None
     user_id = urlparams.get('uuid', ["default"])[0] if urlparams else None
-    user_properties = _load_user_properties(data_route)
+    # DISABLED: _load_user_properties comes from pages.home -- see the note
+    # in load_user_facilities above. Falls back to no GUI-configured user
+    # overrides (user_data below stays None, same as today for any uuid with
+    # no matching entry in user_properties.json anyway).
+    # user_properties = _load_user_properties(data_route)
+    user_properties = []
     user_data = next(
                     (
                         r for r in user_properties
@@ -771,16 +790,33 @@ def get_data(reports_data, xlsx, pdf, comp_data):
         sections_raw = reports_data.get("sections", [])
         meta         = reports_data.get("meta", {})
 
+    # Filesystem-safe download name built from the report's own title, e.g.
+    # "ANC Monthly and Booking Cohort" -> "ANC_Monthly_and_Booking_Cohort.pdf"
+    # instead of a generic name every report shared before.
+    report_file_stem = _re.sub(r'[<>:"/\\|?*]', '', meta.get("title", "HMIS DATASET REPORT")).strip()
+    report_file_stem = _re.sub(r'\s+', '_', report_file_stem)[:80] or "MaHIS_facility_report"
+
     if trigger_id == 'report-btn-xlsx':
-        # ── XLSX: one sheet per section (unchanged) ───────────────────────────
+        # ── XLSX: one sheet per section ────────────────────────────────────────
         xlsx_buffer = io.BytesIO()
+        used_sheet_names = set()
         with pd.ExcelWriter(xlsx_buffer, engine='openpyxl') as writer:
             for item in sections_raw:
-                sheet_name = str(item['section'])[:31]
-                df = pd.read_json(item['data'], orient='split')
+                # Excel sheet names can't contain : \ / ? * [ ] or exceed 31 chars --
+                # section titles are free text (e.g. "SECTION 1: ..."), so sanitize
+                # rather than let openpyxl reject the whole export.
+                raw_name = str(item['section']) or "Section"
+                sheet_name = _re.sub(r'[:\\/?*\[\]]', '-', raw_name)[:31]
+                base_name, suffix = sheet_name, 1
+                while sheet_name in used_sheet_names:
+                    suffix += 1
+                    tag = f" ({suffix})"
+                    sheet_name = base_name[:31 - len(tag)] + tag
+                used_sheet_names.add(sheet_name)
+                df = pd.read_json(io.StringIO(item['data']), orient='split')
                 df.to_excel(writer, sheet_name=sheet_name, index=False)
         xlsx_buffer.seek(0)
-        return dcc.send_bytes(xlsx_buffer.getvalue(), filename='MaHIS_facility_report.xlsx')
+        return dcc.send_bytes(xlsx_buffer.getvalue(), filename=f'{report_file_stem}.xlsx')
 
     elif trigger_id == 'report-btn-pdf':
         if not comp_data:
@@ -793,30 +829,52 @@ def get_data(reports_data, xlsx, pdf, comp_data):
         location_str = meta.get("location", "")
 
         body_html = _comp_to_html(comp_data)
+        # _create_modern_table bakes fixed pixel widths into every <th>/<td> for the
+        # flexible on-screen layout. xhtml2pdf's table engine doesn't stretch those
+        # to fill the page the way a browser does -- it pads the leftover space with
+        # a phantom filler cell instead, producing an empty box after every header
+        # row. Stripping the explicit widths (not min-width, which no PDF renderer
+        # here applies anyway) lets each table auto-size from its own content.
+        body_html = _re.sub(r'(?<![-\w])width:\s*[^;"]+;?\s*', '', body_html)
 
+        # Plain @page size/margin (no nested @bottom-right) + a plain footer div --
+        # portable across weasyprint, pdfkit/wkhtmltopdf, and xhtml2pdf, whose CSS
+        # engines don't all support the same paged-media at-rules.
         html_doc = f"""<!DOCTYPE html>
             <html>
             <head>
             <meta charset="utf-8"/>
             <style>
-            @page {{ size: A4 {page_orient}; margin: 18mm; @bottom-right {{ content: "Generated by MaHIS@2026"; font-size: 8px; color: #6b7280; }} }}
+            @page {{ size: A4 {page_orient}; margin: 18mm; }}
             body {{ font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #111; margin: 0; }}
-            table {{ width: 100%; border-collapse: collapse; margin-bottom: 10px; page-break-inside: auto; }}
+            table {{ border-collapse: collapse; margin-bottom: 10px; page-break-inside: auto; }}
             tr {{ page-break-inside: avoid; }}
             th, td {{ border: 1px solid #e5e7eb; padding: 3px 6px; font-size: 9px; word-wrap: break-word; }}
+            .mahis-footer {{ font-size: 8px; color: #6b7280; margin-top: 10px; }}
             </style>
             </head>
-            <body>{body_html}</body>
+            <body>{body_html}<div class="mahis-footer">Generated by MaHIS@2026</div></body>
             </html>"""
 
+        pdf_bytes = None
         try:
             from weasyprint import HTML as WeasyprintHTML
             pdf_bytes = WeasyprintHTML(string=html_doc).write_pdf()
         except ImportError:
-            import pdfkit
-            pdf_bytes = pdfkit.from_string(html_doc, False)
+            try:
+                import pdfkit
+                pdf_bytes = pdfkit.from_string(html_doc, False)
+            except OSError:
+                # wkhtmltopdf binary not installed on this machine -- fall back to
+                # xhtml2pdf, a pure-Python renderer with no OS-level dependency.
+                from xhtml2pdf import pisa
+                pdf_buffer = io.BytesIO()
+                pisa.CreatePDF(html_doc, dest=pdf_buffer)
+                pdf_bytes = pdf_buffer.getvalue()
 
-        return dcc.send_bytes(pdf_bytes, filename="MaHIS_facility_report.pdf")
+        if not pdf_bytes:
+            return dash.no_update
+        return dcc.send_bytes(pdf_bytes, filename=f"{report_file_stem}.pdf")
 
     else:
         return dash.no_update

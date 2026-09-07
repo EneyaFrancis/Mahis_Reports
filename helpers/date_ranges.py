@@ -21,7 +21,8 @@ RELATIVE_MONTHS = [
 RELATIVE_QUARTERS = ["Q1 Jan-Mar", "Q2 Apr-June", "Q3 Jul-Sep", "Q4 Oct-Dec"]
 RELATIVE_PERIOD_LIST = ['Today', 'Yesterday', 'Last 7 Days', 'Last 30 Days',
                         'This Week', 'Last Week', 'This Month', 'Last Month',
-                        'Last 3 Months', 'This Year', 'Last Year', 'Last 5 Years', 'Last 10 Years']
+                        'Last 3 Months', 'Last 6 Months', 'This Year', 'Last Year',
+                        'Last 5 Years', 'Last 10 Years']
 
 _QUARTER_MAP = {
     "Q1JAN-MAR": (1, 3),
@@ -150,6 +151,14 @@ def get_relative_date_range(option, current_date=None):
         last_day_three_months_ago = first_day_two_months_ago - timedelta(days=1)
         start_date = last_day_three_months_ago.replace(day=1)
         end_date = last_day_last_month
+        return start_date, end_date
+    elif option == 'Last 6 Months':
+        # `today` is the anchor passed in by the caller -- for DHIS2 this is
+        # the latest reported month's own end date, not the real calendar
+        # date, so "6 months" here means 6 complete months of DHIS2 data,
+        # not 6 months ending on a day DHIS2 has never heard of.
+        end_date = today
+        start_date = (pd.Timestamp(end_date).replace(day=1) - pd.DateOffset(months=5)).date()
         return start_date, end_date
     # option This Year
     elif option == 'This Year':

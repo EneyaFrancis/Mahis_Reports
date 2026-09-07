@@ -39,9 +39,16 @@ _TH = {
 
 # # MNID hero indicator donut row
 
+
 def _hero_donut_card(label, pct, target, color, mode='max', delta_pct=None,
                      numerator=None, denominator=None, summary=None):
-    """Large CSS conic-gradient donut card with period delta and num/den counts."""
+    """Large CSS conic-gradient donut card with period delta and num/den counts.
+
+    The ring's center is intentionally bare (no percentage, no count) --
+    the ring itself is the value; `summary` ("X of Y", not abbreviated)
+    renders below the label instead. Target is likewise no longer shown as
+    text (the color/traffic-light status already reflects on-target or not).
+    """
     p = max(0.0, min(float(pct), 100.0))
     r_v = int(color[1:3], 16)
     g_v = int(color[3:5], 16)
@@ -92,18 +99,13 @@ def _hero_donut_card(label, pct, target, color, mode='max', delta_pct=None,
                 'background': '#fff',
                 'display': 'flex', 'flexDirection': 'column',
                 'alignItems': 'center', 'justifyContent': 'center', 'gap': '1px',
-            }, children=[
-                html.Span(f'{_display_pct(p):.0f}%', style={
-                    'fontSize': '23px', 'fontWeight': '800',
-                    'color': color, 'lineHeight': '1',
-                }),
-                html.Span(f'Target {target}%', style={
-                    'fontSize': '7.5px', 'color': MUTED,
-                    'lineHeight': '1.2', 'marginTop': '2px',
-                }),
-            ]),
+            }),
         ]),
         html.Div(label, className='mnid-hero-label'),
+        # The "X of Y" count moved back down here, below the label, where
+        # it lived originally (as `summary`) back when the ring's center
+        # showed a percentage. Now that the center is bare, this is the
+        # only place the count appears.
         html.Div(summary, style={
             'fontSize': '10px', 'color': MUTED, 'lineHeight': '1.3',
             'marginTop': '4px', 'maxWidth': '180px', 'marginLeft': 'auto', 'marginRight': 'auto',

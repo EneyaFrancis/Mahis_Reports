@@ -424,9 +424,15 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     )
     _assign_flag(
         'mnid_labour_stillbirth',
+        # Real Labour concept is "Baby general condition at birth" (options:
+        # Fresh/Macerated stillbirth, one word) -- "Outcome of the delivery"
+        # is actually a PNC concept, kept here as a fallback.
         labour_mask
-        & concept.eq('Outcome of the delivery')
-        & combined_lower.isin(['fresh still birth', 'macerated still birth']),
+        & concept.isin(['Outcome of the delivery', 'Baby general condition at birth'])
+        & combined_lower.isin([
+            'fresh still birth', 'macerated still birth',
+            'fresh stillbirth', 'macerated stillbirth', 'stillbirth',
+        ]),
     )
     _assign_flag(
         'mnid_labour_estimated_blood_loss_recorded',
@@ -440,7 +446,12 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     )
     _assign_flag(
         'mnid_labour_visit_documented',
-        labour_mask & encounter_source_lower.eq('labour and delivery visit'),
+        # A recorded birth outcome is itself proof the visit happened, even
+        # under a differently-named encounter type.
+        labour_mask & (
+            encounter_source_lower.eq('labour and delivery visit')
+            | concept.isin(['Outcome of the delivery', 'Baby general condition at birth'])
+        ),
     )
     _assign_flag(
         'mnid_labour_maternal_sepsis',
@@ -726,10 +737,15 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
         'mnid_anc_first_trimester',
         anc_mask & concept_lower.str.contains('gestation in weeks', na=False) & (value_n <= 12),
     )
-    _assign_flag(
-        'mnid_anc_tdv_2plus',
-        anc_mask & concept_lower.str.contains('number of tetanus doses', na=False) & combined_lower.str.contains(r'two|three|four|2|3|4', na=False),
-    )
+    # TDV=Yes dose count, by distinct date (not "Number of tetanus doses" -- not a real ANC concept)
+    _tdv_yes_mask = anc_mask & concept.eq('TDV') & combined_lower.eq('yes')
+    if _tdv_yes_mask.any() and 'Date' in out.columns and 'person_id' in out.columns:
+        _tdv_dates = out.loc[_tdv_yes_mask.fillna(False), ['person_id', 'Date']].dropna()
+        _tdv_counts = _tdv_dates.groupby(_tdv_dates['person_id'].astype(str))['Date'].nunique()
+        _tdv_2plus_people = set(_tdv_counts[_tdv_counts >= 2].index)
+    else:
+        _tdv_2plus_people = set()
+    person_ctx['mnid_anc_tdv_2plus'] = person_ctx['person_id'].isin(_tdv_2plus_people).map({True: 'Yes', False: ''})
 
     # mohupdate: Labour MOH dashboard flags
     _assign_flag(
@@ -740,17 +756,21 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
         'mnid_labour_facility_birth',
         labour_mask & concept.eq('Place of delivery') & combined_lower.eq('this facility'),
     )
+    # Real Labour concept is "Baby general condition at birth", not "Outcome
+    # of the delivery" (that's actually a PNC concept) -- kept as a fallback.
+    _birth_condition_concept = concept.isin(['Outcome of the delivery', 'Baby general condition at birth'])
     _assign_flag(
         'mnid_labour_fresh_stillbirth',
-        labour_mask & concept.eq('Outcome of the delivery') & combined_lower.eq('fresh still birth'),
+        labour_mask & _birth_condition_concept & combined_lower.isin(['fresh still birth', 'fresh stillbirth']),
     )
     _assign_flag(
         'mnid_labour_macerated_stillbirth',
-        labour_mask & concept.eq('Outcome of the delivery') & combined_lower.eq('macerated still birth'),
+        labour_mask & _birth_condition_concept & combined_lower.isin(['macerated still birth', 'macerated stillbirth']),
     )
     _assign_flag(
         'mnid_labour_live_birth',
-        labour_mask & concept.eq('Outcome of the delivery') & combined_lower.eq('live birth'),
+        # "Neonatal Death" as a birth condition still means born alive.
+        labour_mask & _birth_condition_concept & combined_lower.isin(['live birth', 'live full term', 'live preterm', 'neonatal death']),
     )
     _assign_flag(
         'mnid_labour_normal_delivery',
@@ -909,10 +929,16 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
             | (concept.eq('Prematurity/Kangaroo') & combined_lower.isin(['kmc', 'kangaroo mother care']))
         ),
     )
-    _assign_flag('mnid_newborn_status_recorded', newborn_mask & concept.eq('Status of baby'))
+    # Real Neonatal concept is "outcome" (Discharge category), not "Admission outcome".
+    _newborn_status_concept = concept_lower.isin(['status of baby', 'admission outcome', 'outcome'])
+    _assign_flag('mnid_newborn_status_recorded', newborn_mask & _newborn_status_concept)
     _assign_flag(
         'mnid_newborn_neonatal_death',
-        newborn_mask & concept.eq('Status of baby') & combined_lower.isin(['death', 'died', 'dead', 'deceased']),
+        newborn_mask & _newborn_status_concept
+        & combined_lower.isin([
+            'death', 'died', 'dead', 'deceased', 'neonatal death',
+            'death < 24hrs', 'death > 24hrs', 'died during admission', 'brought in dead',
+        ]),
     )
     person_ctx['mnid_labour_complication'] = (
         _ctx_series('mnid_labour_maternal_sepsis').eq('Yes')
@@ -922,6 +948,11 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     person_ctx['mnid_labour_live_birth'] = (
         _ctx_series('mnid_labour_visit_documented').eq('Yes')
         & _ctx_series('mnid_labour_stillbirth').ne('Yes')
+    ).map({True: 'Yes', False: ''})
+    # Total births = live birth or stillbirth -- denominator for stillbirth/mortality rates.
+    person_ctx['mnid_labour_total_birth'] = (
+        _ctx_series('mnid_labour_live_birth').eq('Yes')
+        | _ctx_series('mnid_labour_stillbirth').eq('Yes')
     ).map({True: 'Yes', False: ''})
     person_ctx['mnid_anc_not_reaching_labour'] = (
         _ctx_series('mnid_anc_visit_documented').eq('Yes')

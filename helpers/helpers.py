@@ -10,6 +10,7 @@ from helpers.visualizations import (create_column_chart,
                           create_age_gender_histogram,
                           create_horizontal_bar_chart,
                           create_pivot_table,
+                          create_time_range_table,
                           create_crosstab_table,
                           create_line_list,
                           create_sankey_diagram,
@@ -33,7 +34,9 @@ from config import (actual_keys_in_data,
                     DRUG_NAME_,
                     VALUE_NAME_, VALUE_DATETIME_)
 
-def build_metrics_section(filtered, filtered_data_range, delta_days, data_path, counts_config, url_object=None):
+def build_metrics_section(filtered, filtered_data_range, delta_days, 
+                          data_path, counts_config, url_object=None, 
+                          start_date=None, end_date=None):
     """Build metric cards from counts configuration."""
 
     all_count_metrics: dict = {}
@@ -44,7 +47,11 @@ def build_metrics_section(filtered, filtered_data_range, delta_days, data_path, 
             continue
         count_id     = count_config.get("id")
         unique_col   = count_config.get("filters", {}).get("unique", "")
-        count_value, patient_ids = create_count_from_config(filtered, data_path, count_config["filters"])
+        count_value, patient_ids = create_count_from_config(
+            filtered, data_path, count_config["filters"],
+            group_by=count_config.get("group_by") or None,
+            custom_sql=count_config.get("custom_sql") or None,
+        )
         all_count_metrics[count_id] = count_value
         try:
             _patient_ids_map[count_id] = {
@@ -60,6 +67,9 @@ def build_metrics_section(filtered, filtered_data_range, delta_days, data_path, 
         drill_down      = count_config.get("drill_down", False)
         flag      = count_config.get("flag", "")
         measure   = count_config.get("filters", {}).get("measure", "count")
+
+        if count_config.get("display") == "False":
+            continue
 
         if measure == "calculated":
             try:
@@ -101,6 +111,14 @@ def build_metrics_section(filtered, filtered_data_range, delta_days, data_path, 
                     id={"type": "kpi-name", "index": count_id},
                     data=(count_config["name"], count_id),
                 ),
+                dcc.Store(
+                    id={"type": "kpi-start-date", "index": count_id},
+                    data=str(start_date)[:10],
+                ),
+                dcc.Store(
+                    id={"type": "kpi-end-date", "index": count_id},
+                    data=str(end_date)[:10],
+                ),
                 html.Div(
                     style={"display": "flex", "justifyContent": "space-between",
                            "alignItems": "flex-start", "gap": "6px"},
@@ -137,7 +155,7 @@ def parse_filter_value(filter_val):
                 return filter_val
         return filter_val
 
-def create_count_from_config(df, data_path, filters): 
+def create_count_from_config(df, data_path, filters, group_by=None, custom_sql=None):
     """Create count based on JSON filter configuration"""
 
     unique_col = filters.get("unique", "")
@@ -175,18 +193,21 @@ def create_count_from_config(df, data_path, filters):
         if var and val:
             active_filters.append((var, val))
     if not active_filters:
-        return create_count(df,data_path,aggregation, unique_col)
+        return create_count(df,data_path,aggregation, unique_col,
+                             group_by=group_by, custom_sql=custom_sql)
     # if active_filters[0][0] != filters.get("variable1"):
     #     return create_count(df, unique_col)  # failsafe
-    
+
     args = []
     for var, val in active_filters:
         args.extend([var, val])
     args.extend([filters.get("start_date"), filters.get("end_date")])
     if aggregation == "count_set":
-        return create_count_sets(df,data_path,aggregation, unique_col, *args)
+        return create_count_sets(df,data_path,aggregation, unique_col, *args,
+                                  group_by=group_by, custom_sql=custom_sql)
     else:
-        return create_count(df,data_path,aggregation, unique_col, *args)
+        return create_count(df,data_path,aggregation, unique_col, *args,
+                             group_by=group_by, custom_sql=custom_sql)
 
 def build_charts_section(filtered, data_opd, delta_days, data_path, sections_config):
     """Build chart sections from JSON configuration"""
@@ -194,6 +215,8 @@ def build_charts_section(filtered, data_opd, delta_days, data_path, sections_con
 
     
     for section_config in sections_config:
+        if section_config.get("display")=="False":
+            continue
         chart_items_per_row = section_config.get('chart_items_per_row') or 3 #default number of charts per section
         section = html.Div([
             html.H3(section_config["section_name"].upper(), style={'textAlign': 'left', 'color': 'grey'}),
@@ -214,7 +237,7 @@ def build_section_items(filtered, data_opd, delta_days,data_path, items_config, 
                         "gap": "15px", "marginBottom": "30px","overflowX": "auto"},
             children=[
                 build_single_chart(filtered, data_opd, delta_days,data_path, item_config)
-                for item_config in pair_items
+                for item_config in pair_items if item_config.get("display")!="False"
             ]
         )
         items.append(card_container)
@@ -238,6 +261,8 @@ def build_single_chart(filtered, data_opd, delta_days,data_path, item_config,use
         figure = create_histogram_from_config(filtered,data_path, filters)
     elif chart_type == "PivotTable":
         figure, data = create_pivot_table_from_config(filtered,data_path, filters)
+    elif chart_type == "TimeRange":
+        figure, data = create_time_range_from_config(filtered,data_path, filters)
     elif chart_type == "CrossTab":
         figure, data = create_crosstab_from_config(filtered,data_path, filters)
     elif chart_type == "LineList":
@@ -250,7 +275,11 @@ def build_single_chart(filtered, data_opd, delta_days,data_path, item_config,use
         # Default empty figure for unknown chart types
         figure = create_empty_figure()
     figure = apply_figure_theme(figure, chart_type, theme_name)
-    if chart_type in ["Line","Pie","Column","Bar","Histogram","NewReturningSplit"]:
+    # Column charts with filter_headers build their own self-contained
+    # html.Div (title + filter dropdowns + graph, mirroring CrossTab) instead
+    # of a plain figure -- hasattr check tells the two cases apart since only
+    # a real plotly figure has update_layout.
+    if chart_type in ["Line","Pie","Column","Bar","Histogram","NewReturningSplit"] and hasattr(figure, "update_layout"):
         return dcc.Graph(
             id=item_config["filters"]["unique"],
             figure=figure,
@@ -373,6 +402,7 @@ def create_line_chart_from_config(data_opd,data_path, delta_days, filters):
     filter_val3    = parse_filter_value(filters.get('filter_val3'))
     aggregation   = filters.get('measure') or 'count'
     custom_fields = filters.get('custom_fields') or None
+    group_by = filters.get('group_by') or None
 
     query1 = filters.get("query1") or ""
     query2 = filters.get("query2") or ""
@@ -386,7 +416,7 @@ def create_line_chart_from_config(data_opd,data_path, delta_days, filters):
                              title, x_title, y_title, unique_column, 
                              legend_title, color, filter_col1, 
                              filter_val1, filter_col2, filter_val2, 
-                             filter_col3, filter_val3,aggregation, custom_fields, *args)
+                             filter_col3, filter_val3,aggregation, custom_fields, group_by, *args)
 
 def create_pie_chart_from_config(filtered,data_path, filters):
     """
@@ -472,11 +502,13 @@ def create_column_chart_from_config(filtered,data_path, filters):
     filter_val3    = parse_filter_value(filters.get('filter_val3'))
     aggregation   = filters.get('measure') or 'count'
     custom_fields = filters.get('custom_fields') or None
+    filter_headers = filters.get('filter_headers') or None
 
-    return create_column_chart(filtered,data_path, x_col, y_col, title, x_title, y_title, 
-                               unique_column, legend_title, color, filter_col1, 
-                               filter_val1, filter_col2, filter_val2, filter_col3, 
-                               filter_val3, aggregation, custom_fields)
+    return create_column_chart(filtered,data_path, x_col, y_col, title, x_title, y_title,
+                               unique_column, legend_title, color, filter_col1,
+                               filter_val1, filter_col2, filter_val2, filter_col3,
+                               filter_val3, aggregation, custom_fields,
+                               filter_headers=filter_headers)
 
 def create_bar_chart_from_config(filtered,data_path, filters):
     """
@@ -581,6 +613,11 @@ def create_new_returning_from_config(filtered,data_path, filters):
         "unique_column": str           (default "person_id")
         "filter_col1/2/3", "filter_val1/2/3": optional extra filters
         "custom_fields": optional
+        "group_by": optional column -- refines the underlying query (grouped
+            into the SQL, then summed back down to plain New/Returning so the
+            chart itself is unchanged). NOTE: a patient recorded under more
+            than one group_by value in the same window is counted once per
+            value, so totals can exceed the true distinct-patient count.
     """
     title          = filters.get('title', 'New vs Returning Patients')
     chart_mode     = filters.get('chart_mode', 'pie')
@@ -593,6 +630,7 @@ def create_new_returning_from_config(filtered,data_path, filters):
     filter_col3    = filters.get('filter_col3') or None
     filter_val3    = parse_filter_value(filters.get('filter_val3'))
     custom_fields  = filters.get('custom_fields') or None
+    group_by       = filters.get('group_by') or None
 
     return create_new_returning_chart(
         filtered,data_path, title,
@@ -603,6 +641,7 @@ def create_new_returning_from_config(filtered,data_path, filters):
         filter_col2=filter_col2, filter_value2=filter_val2,
         filter_col3=filter_col3, filter_value3=filter_val3,
         custom_fields=custom_fields,
+        group_by=group_by,
     )
 
 
@@ -646,10 +685,57 @@ def create_pivot_table_from_config(filtered,data_path, filters):
 
     table, data = create_pivot_table(
         filtered,data_path, index_col, columns, values_co, title, unique_column, aggfunc,
-        filter_col1, filter_val1, filter_col2, filter_val2, filter_col3, 
+        filter_col1, filter_val1, filter_col2, filter_val2, filter_col3,
         filter_val3, aggregation, rename, replace, custom_fields
     )
     return table, data
+
+
+def create_time_range_from_config(filtered, data_path, filters):
+    """
+    Create a Start Time / End Time table from JSON configuration.
+    Config:
+                "measure": "time_range",
+                "unique": "any",
+                "duration_default": "any",
+                "index_col1": ["Facility", "User"],
+                "datetime_col": "Date",
+                "start_label": "Start Time",
+                "end_label": "End Time",
+                "title": "Time a User Starts and Ends Clinical Tasks",
+                "unique_column": "person_id",
+                "filter_col1": "",
+                "filter_val1": "",
+                "filter_col2": "",
+                "filter_val2": "",
+                "filter_col3": "",
+                "filter_val3": ""
+    """
+    index_col     = filters.get("index_col1")
+    datetime_col  = filters.get("datetime_col") or "Date"
+    start_label   = filters.get("start_label") or "Start Time"
+    end_label     = filters.get("end_label") or "End Time"
+    title         = filters.get("title")
+    unique_column = filters.get("unique_column") or "person_id"
+    filter_col1    = filters.get('filter_col1') or None
+    filter_val1    = parse_filter_value(filters.get('filter_val1'))
+    filter_col2    = filters.get('filter_col2') or None
+    filter_val2    = parse_filter_value(filters.get('filter_val2'))
+    filter_col3    = filters.get('filter_col3') or None
+    filter_val3    = parse_filter_value(filters.get('filter_val3'))
+    rename        = filters.get("rename") or {}
+    replace       = filters.get("replace") or {}
+    custom_fields = filters.get('custom_fields') or None
+
+    return create_time_range_table(
+        filtered, data_path, index_col, datetime_col, title,
+        start_label=start_label, end_label=end_label,
+        unique_column=unique_column,
+        filter_col1=filter_col1, filter_value1=filter_val1,
+        filter_col2=filter_col2, filter_value2=filter_val2,
+        filter_col3=filter_col3, filter_value3=filter_val3,
+        rename=rename, replace=replace, custom_fields=custom_fields,
+    )
 
 
 def create_crosstab_from_config(filtered,data_path, filters):
@@ -674,8 +760,16 @@ def create_crosstab_from_config(filtered,data_path, filters):
             "filter_col2": null,
             "filter_val2": null,
             "filter_col3": null,
-            "filter_val3": null
+            "filter_val3": null,
+
+            "group_by": null                          # optional, see below
         }
+
+    "group_by": only pushed into the SQL fetch (fewer rows sent back from
+    DuckDB) when aggfunc is nunique/count/min/max -- those are insensitive to
+    duplicate-row collapsing, so it doesn't change what the crosstab computes.
+    Ignored for sum/mean/concat, where collapsing duplicates first would
+    silently change the totals.
     """
     # Helper to parse index/columns if they arrive as comma-separated strings
     def _as_list_or_str(v):
@@ -703,6 +797,7 @@ def create_crosstab_from_config(filtered,data_path, filters):
     rename        = filters.get("rename") or {}
     replace       = filters.get("replace") or {}
     custom_fields = filters.get('custom_fields') or None
+    group_by      = filters.get('group_by') or None
 
     table, data =  create_crosstab_table(
         query_fiter=filtered,
@@ -717,7 +812,8 @@ def create_crosstab_from_config(filtered,data_path, filters):
         filter_col1=filter_col1, filter_value1=filter_val1,
         filter_col2=filter_col2, filter_value2=filter_val2,
         filter_col3=filter_col3, filter_value3=filter_val3,
-        rename=rename, replace=replace, custom_fields=custom_fields
+        rename=rename, replace=replace, custom_fields=custom_fields,
+        group_by=group_by,
     )
     return table, data
 

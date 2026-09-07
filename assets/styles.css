@@ -194,6 +194,20 @@
     background-color: #fff;
 }
 
+.results-card {
+    width: 100%;           /* Slightly smaller than column to avoid edge-to-edge stretch */
+    max-width: 100%;     /* Prevents over-stretching on wide screens */
+    /* min-width: 250px;     Optional: prevent too small on narrow screens */
+    max-height: 600px;
+    overflow-y: auto;
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    text-align: center;
+    box-shadow: 0 2px 3px rgba(0,0,0,0.1);
+    background-color: #fff;
+}
+
 /* .card-header {
     font-weight: bold;
     margin-bottom: 10px;
