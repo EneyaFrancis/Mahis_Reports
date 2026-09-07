@@ -1,12 +1,15 @@
 """
-Convert Excel facility data (e.g. data/excel/NEST_BF_facilitites.xlsx)
-into parquet dataset(s) formatted as if fetched/calculated from DHIS2,
-and merge them into data/mnid_aggregates/dhis2/indicator_aggregates.parquet.
+Convert Excel facility data (e.g. data/excel/NEST_BF_facilitites.xlsx and
+data/excel/PPH_Monthly_Service_Statistics_2026.xlsx) into parquet dataset(s)
+formatted as if fetched/calculated from DHIS2, and merge them into
+data/mnid_aggregates/dhis2/indicator_aggregates.parquet.
 
 Supports:
-1. Converting Excel records to DHIS2 aggregate format (hmis_test.parquet, current.parquet)
+1. Converting Excel records from multiple workbooks (NEST 7 facilities + PPH 34 facilities)
 2. Generating normalized atomic values for DHIS2 store
-3. Merging Excel indicators into MNID indicator_aggregates.parquet with high priority for the 7 facilities
+3. Merging Excel indicators into MNID indicator_aggregates.parquet with high priority
+   for the workbook facilities over DHIS2 records.
+4. Graceful handling if either or both Excel files are not present.
 """
 
 from __future__ import annotations
@@ -35,12 +38,14 @@ from mnid.dhis2.storage import atomic_json, atomic_parquet
 
 _LOG = logging.getLogger(__name__)
 
-DEFAULT_INPUT_FILE = PROJECT_ROOT / "data" / "excel" / "NEST_BF_facilitites.xlsx"
+DEFAULT_NEST_INPUT_FILE = PROJECT_ROOT / "data" / "excel" / "NEST_BF_facilitites.xlsx"
+DEFAULT_PPH_INPUT_FILE = PROJECT_ROOT / "data" / "excel" / "PPH_Monthly_Service_Statistics_2026.xlsx"
+DEFAULT_INPUT_FILE = DEFAULT_NEST_INPUT_FILE  # Backwards compatibility
 DEFAULT_MNID_AGGREGATE_FILE = PROJECT_ROOT / "data" / "mnid_aggregates" / "dhis2" / "indicator_aggregates.parquet"
 DEFAULT_MNID_META_FILE = PROJECT_ROOT / "data" / "mnid_aggregates" / "dhis2" / "meta.json"
 
-# Mapping from Excel metric/concept names to DHIS2 indicator ID and MNID metadata
-METRIC_TO_DHIS2 = {
+# Mapping from NEST Excel metric/concept names to DHIS2 indicator ID and MNID metadata
+NEST_METRIC_TO_DHIS2 = {
     "Admissions": {
         "dhis2_id": "neonatal_admissions",
         "indicator_name": "Neonatal Admissions",
@@ -81,19 +86,6 @@ METRIC_TO_DHIS2 = {
         "value_type": "count",
         "dx": "hA4cT9rD8yN",
     },
-    # --- The 6 entries below were corrected 2026-08-26. They previously
-    # pointed at semantically unrelated indicators (e.g. the raw "KMC" count
-    # was being written into "Low birthweight newborns", "Bilirubin
-    # Measurement" into "Vitamin K at birth") -- each excel column now maps
-    # to the indicator whose label actually matches its raw column name.
-    # indicator_name is the exact label already used by
-    # mnid/dhis2/config/indicators.json / the rest of the dashboard, so
-    # resolve_indicator_id()'s label-fallback lookup finds it regardless of
-    # mnid_id. mnid_id follows the existing mnid_nb_core_* convention used
-    # by every other DHIS2-route Newborn indicator in this table; these
-    # indicators have never been populated from a live DHIS2 pull (all
-    # flagged "review_required"/excluded in indicators.json), so there's no
-    # existing _core_ id to collide with.
     "KMC": {
         "dhis2_id": "kmc_support_recorded",
         "indicator_name": "KMC support recorded",
@@ -114,11 +106,6 @@ METRIC_TO_DHIS2 = {
         "value_type": "count",
         "dx": "d8J2xK8vM1s",
     },
-    # "Sympt CPAP" (symptomatic, as opposed to "Prophy"/prophylactic CPAP
-    # above) has no dedicated indicator in either catalog -- left mapped to
-    # its prior target (bag-mask ventilation for newborns not breathing at
-    # birth) as the closest existing proxy for symptomatic respiratory
-    # support. Flagged for the data team rather than guessed at further.
     "Sympt CPAP": {
         "dhis2_id": "newborns_not_breathing_at_birth_receiving_bag_mask_ventilation",
         "indicator_name": "Newborns not breathing at birth receiving bag-mask ventilation",
@@ -148,13 +135,6 @@ METRIC_TO_DHIS2 = {
         "target": 80,
         "value_type": "count",
         "dx": "m3B9n5vC7xQ",
-        # The dashboard config (data/visualizations/validated_dashboard.json)
-        # carries a near-duplicate entry for this same concept under
-        # different wording/id ("Babies with jaundice receiving
-        # phototherapy", mnid_nb_prog_014) -- without this alias it silently
-        # shows "no data" next to this one showing real data, even though
-        # they're the same clinical fact. Emitting a second row set under
-        # that id/label too so both resolve.
         "aliases": [
             {"mnid_id": "mnid_nb_prog_014", "indicator_name": "Babies with jaundice receiving phototherapy"},
         ],
@@ -169,17 +149,6 @@ METRIC_TO_DHIS2 = {
         "value_type": "count",
         "dx": "k1L7n3mP9vS",
     },
-    # "Hypo on Admin"/"Hypo during Stay" sit in the same baseline-column
-    # group as baseline_sepsis_rate/baseline_jaund_rate/baseline_RDS_rate
-    # (all unambiguous problem-rates -- babies WHO HAD sepsis/jaundice/RDS),
-    # so by the same naming convention these are hypothermia CASE counts
-    # (babies who WERE hypothermic), not the indicators.json "not
-    # hypothermic" success-framed indicators. Mapping the raw count directly
-    # into "babies not hypothermic" would show a hypothermia problem as a
-    # 100% success rate -- backwards. Given as its own honestly-named
-    # problem-count indicator instead (no denominator to invert against
-    # here, so a true "not hypothermic" rate isn't computable from this
-    # sheet alone).
     "Hypo on Admin": {
         "dhis2_id": "neonatal_hypothermia_on_admission",
         "indicator_name": "Neonatal hypothermia on admission",
@@ -202,8 +171,85 @@ METRIC_TO_DHIS2 = {
     },
 }
 
-# Facility name resolution to DHIS2 crosswalk
+METRIC_TO_DHIS2 = NEST_METRIC_TO_DHIS2  # Backwards compatibility
+
+# Mapping from PPH Excel metric/concept names to DHIS2 indicator ID and MNID metadata
+PPH_METRIC_TO_DHIS2 = {
+    "PPH Cases": {
+        "dhis2_id": "obstetric_complication_pph",
+        "indicator_name": "Obstetric complication: PPH",
+        "indicator_group": "Obstetric complications and signal functions",
+        "mnid_id": "mnid_lab_core_pph",
+        "category": "Labour",
+        "target": 0,
+        "value_type": "count",
+        "dx": "u3Z9vK2mM1a",
+    },
+    "# of women detected early (300ml-500ml)": {
+        "dhis2_id": "pph_early_detection",
+        "indicator_name": "Women detected early with PPH (300ml-500ml)",
+        "indicator_group": "Obstetric complications and signal functions",
+        "mnid_id": "mnid_lab_pph_early_detected",
+        "category": "Labour",
+        "target": 0,
+        "value_type": "count",
+        "dx": "w4L1k8mN2vP",
+    },
+    "# of women detected early with full bundle given": {
+        "dhis2_id": "pph_with_who_treatment_bundle",
+        "indicator_name": "PPH with WHO treatment bundle",
+        "indicator_group": "Obstetric complications and signal functions",
+        "mnid_id": "mnid_lab_prog_013",
+        "category": "Labour",
+        "target": 80,
+        "value_type": "count",
+        "dx": "b8R2n4vK9wQ",
+    },
+    "# of drapes used": {
+        "dhis2_id": "pph_calibrated_drapes_used",
+        "indicator_name": "PPH Calibrated Drapes Used",
+        "indicator_group": "Obstetric complications and signal functions",
+        "mnid_id": "mnid_lab_pph_drapes_used",
+        "category": "Labour",
+        "target": 0,
+        "value_type": "count",
+        "dx": "d7M3k9vB2nS",
+    },
+    "# of Drapes Used": {
+        "dhis2_id": "pph_calibrated_drapes_used",
+        "indicator_name": "PPH Calibrated Drapes Used",
+        "indicator_group": "Obstetric complications and signal functions",
+        "mnid_id": "mnid_lab_pph_drapes_used",
+        "category": "Labour",
+        "target": 0,
+        "value_type": "count",
+        "dx": "d7M3k9vB2nS",
+    },
+    "% of women detected early (300ml-500ml)": {
+        "dhis2_id": "pph_pct_early_detection",
+        "indicator_name": "% of women detected early (300ml-500ml)",
+        "indicator_group": "Obstetric complications and signal functions",
+        "mnid_id": "mnid_lab_pct_pph_early_detected",
+        "category": "Labour",
+        "target": 80,
+        "value_type": "percentage",
+        "dx": "e9N5vK3mL7z",
+    },
+    "% of women detected early with full bundle given": {
+        "dhis2_id": "pph_pct_early_detection_bundle",
+        "indicator_name": "% of women detected early with full bundle given",
+        "indicator_group": "Obstetric complications and signal functions",
+        "mnid_id": "mnid_lab_pct_pph_bundle_received",
+        "category": "Labour",
+        "target": 80,
+        "value_type": "percentage",
+        "dx": "f2P6n8vM4kL",
+    },
+}
+
+# Facility name resolution to DHIS2 crosswalk (combining NEST & PPH)
 FACILITY_NAME_MAP = {
+    # NEST facilities
     "Bwaila District Hospital": "Bwaila Hospital",
     "E mbangweni Hospital": "Embangweni Mission Hospital",
     "Embangweni Hospital": "Embangweni Mission Hospital",
@@ -212,14 +258,62 @@ FACILITY_NAME_MAP = {
     "Mzuzu Central Hospital": "Mzuzu Central Hospital",
     "Nkhoma Mission Hospital": "Nkhoma Mission Hospital",
     "Queen Elizabeth Central Hospital": "Queen Elizabeth Central Hospital",
+    # PPH facilities variations
+    "Limbe Health Centre": "Limbe Health Centre",
+    "Chabvala Health Centre": "Chabvala Health Centre",
+    "Lundu Health Centre": "Lundu Health Centre",
+    "Zingwangwa Health Centre": "Zingwangwa Urban Health Centre",
+    "Dziwe Health Centre": "Dziwe Health Centre (Blantyre)",
+    "Madziabango Health Centre": "Madziabango Health Centre",
+    "Ndirande Health Centre": "Ndirande Urban Health Centre",
+    "Chileka Health Centre": "Chileka Health Centre",
+    "Euthini Rural Hospital": "Euthini Rural Hospital",
+    "Mzambazi Hospital": "Mzambazi Community Hospital",
+    "Embangweni Mission Hospital": "Embangweni Mission Hospital",
+    "Katete Community Hospital": "Katete Community Hospital",
+    "Mbalachanda Health Centre": "Mbalachanda Health Centre",
+    "Luwerezi Health Centre": "Luwerezi Health Centre",
+    "Bulala Health Centre": "Bulala Health Centre",
+    "Jenda Health Centre": "Jenda Health Centre",
+    "Edingeni Health Centre": "Edingeni Rural Hospital",
+    "Mpherembe Health Centre": "Mpherembe Health Centre",
+    "Mzuzu Urban Health Centre": "Mzuzu Urban Health Centre",
+    "Eunkweni Health Centre": "Enukweni Health Centre",
+    "Ekwendeni Mission Hospital": "Ekwendeni Mission Hospital",
+    "Mbwatalika Health Centre": "Mbwatalika Health Centre",
+    "Ukwe Health Centre": "Ukwe Health Centre",
+    "Diamphwe Health Centre": "Diamphwe Health Centre",
+    "Kawale Health Centre": "Kawale Urban Health Centre",
+    "St. Gabriel Mission Hospital": "St. Gabriel Mission Hospital",
+    "Kabudula Rural Hospital": "Kabudula Rural Hospital",
+    "Daeyang Luke Hospital": "Daeyang Luke Hospital",
+    "Chiwamba Health Centre": "Chiwamba Health Centre",
+    "Chitedze Health Centre": "Chitedze Health Centre",
 }
 
-SEVEN_FACILITIES_CANONICAL = set(FACILITY_NAME_MAP.values())
+SEVEN_FACILITIES_CANONICAL = {
+    "Bwaila Hospital",
+    "Embangweni Mission Hospital",
+    "Kamuzu Central Hospital",
+    "Mzimba District Hospital",
+    "Mzuzu Central Hospital",
+    "Nkhoma Mission Hospital",
+    "Queen Elizabeth Central Hospital",
+}
 
 
 def parse_excel_metrics(filepath: Path | str) -> pd.DataFrame:
     """Parse wide date-block structure of NEST BF facilities Excel."""
-    df_raw = pd.read_excel(filepath, sheet_name="NEST360_BF Facilities", header=None)
+    input_path = Path(filepath).resolve()
+    if not input_path.exists():
+        _LOG.info("NEST Excel file not found: %s", input_path)
+        return pd.DataFrame()
+
+    try:
+        df_raw = pd.read_excel(input_path, sheet_name="NEST360_BF Facilities", header=None)
+    except Exception as exc:
+        _LOG.warning("Could not read sheet 'NEST360_BF Facilities' from %s: %s", input_path, exc)
+        return pd.DataFrame()
 
     dates_row = df_raw.iloc[0].ffill()
     metrics_row = df_raw.iloc[1]
@@ -250,6 +344,60 @@ def parse_excel_metrics(filepath: Path | str) -> pd.DataFrame:
                             "date": pd.to_datetime(date_val),
                             "concept_name": metric_str,
                             "value": numeric_val,
+                            "source_sheet": "NEST360_BF Facilities",
+                        })
+
+    return pd.DataFrame(records)
+
+
+def parse_pph_excel_metrics(filepath: Path | str) -> pd.DataFrame:
+    """Parse wide date-block structure of PPH Monthly Service Statistics Excel ('MAHIS Data' sheet)."""
+    input_path = Path(filepath).resolve()
+    if not input_path.exists():
+        _LOG.info("PPH Excel file not found: %s", input_path)
+        return pd.DataFrame()
+
+    try:
+        df_raw = pd.read_excel(input_path, sheet_name="MAHIS Data", header=None)
+    except Exception as exc:
+        _LOG.warning("Could not read sheet 'MAHIS Data' from %s: %s", input_path, exc)
+        return pd.DataFrame()
+
+    dates_row = df_raw.iloc[0].ffill()
+    metrics_row = df_raw.iloc[1]
+    facilities = df_raw.iloc[2:, 1].dropna().values
+    districts = df_raw.iloc[2:, 0].values
+
+    records = []
+    for col_idx in range(2, len(df_raw.columns)):
+        date_val = dates_row[col_idx]
+        metric = metrics_row[col_idx]
+
+        if isinstance(date_val, (datetime, pd.Timestamp)) and pd.notna(metric):
+            metric_str = str(metric).strip()
+            for row_offset, facility in enumerate(facilities):
+                row_idx = row_offset + 2
+                facility_str = str(facility).strip()
+                district_str = str(districts[row_offset]).strip() if pd.notna(districts[row_offset]) else ""
+
+                if "Average" in facility_str or "Total" in facility_str:
+                    continue
+
+                val = df_raw.iloc[row_idx, col_idx]
+                if pd.notna(val):
+                    try:
+                        numeric_val = float(val)
+                    except (ValueError, TypeError):
+                        numeric_val = None
+
+                    if numeric_val is not None:
+                        records.append({
+                            "facility_raw": facility_str,
+                            "district_raw": district_str,
+                            "date": pd.to_datetime(date_val),
+                            "concept_name": metric_str,
+                            "value": numeric_val,
+                            "source_sheet": "MAHIS Data",
                         })
 
     return pd.DataFrame(records)
@@ -271,92 +419,167 @@ def build_dhis2_facility_lookup() -> dict[str, dict[str, Any]]:
     return lookup
 
 
-def get_excel_mnid_records(input_file: Path | str = DEFAULT_INPUT_FILE) -> list[dict[str, Any]]:
-    """Convert Excel file directly into MNID indicator aggregate row dictionaries."""
-    input_path = Path(input_file).resolve()
-    if not input_path.exists():
-        raise FileNotFoundError(f"Input file not found: {input_path}")
-
-    clean_df = parse_excel_metrics(input_path)
+def get_excel_mnid_records(
+    nest_input_file: Path | str = DEFAULT_NEST_INPUT_FILE,
+    pph_input_file: Path | str = DEFAULT_PPH_INPUT_FILE,
+) -> list[dict[str, Any]]:
+    """
+    Convert both NEST and PPH Excel files directly into MNID indicator aggregate row dictionaries.
+    Gracefully processes whatever files exist; does not fail if either is missing.
+    """
     facility_lookup = build_dhis2_facility_lookup()
-
     mnid_records: list[dict[str, Any]] = []
-    for _, row in clean_df.iterrows():
-        raw_name = row["facility_raw"]
-        canonical_name = FACILITY_NAME_MAP.get(raw_name, raw_name)
-        fac_info = facility_lookup.get(canonical_name, {
-            "org_unit_id": f"OU_{raw_name.replace(' ', '_')[:8]}",
-            "facility_code": "",
-            "district": "",
-            "org_unit_name": canonical_name,
-        })
 
-        metric = row["concept_name"]
-        dhis2_meta = METRIC_TO_DHIS2.get(metric, {
-            "dhis2_id": metric.lower().replace(" ", "_"),
-            "indicator_name": metric,
-            "indicator_group": "Neonatal care",
-            "mnid_id": f"mnid_excel_{metric.lower().replace(' ', '_')}",
-            "category": "Newborn",
-            "target": 0,
-            "value_type": "count",
-            "dx": "dx_" + metric.lower().replace(" ", "_")[:8],
-        })
-
-        dt: pd.Timestamp = row["date"]
-        period_start = pd.Timestamp(dt.year, dt.month, 1)
-        val = float(row["value"])
-
-        mnid_row = {
-            "indicator_id": dhis2_meta["mnid_id"],
-            "indicator_label": dhis2_meta["indicator_name"],
-            "category": dhis2_meta["category"],
-            "target": int(dhis2_meta["target"]),
-            "facility_code": fac_info["facility_code"],
-            "district": fac_info["district"],
-            "grain": "monthly",
-            "period_start": period_start,
-            "numerator": val,
-            "denominator": val,
-            "pct": 100.0 if val else 0.0,
-        }
-        mnid_records.append(mnid_row)
-
-        # Emit the same row again under any alias id/label -- see the
-        # "aliases" comment on METRIC_TO_DHIS2 entries that have one -- so a
-        # near-duplicate indicator elsewhere in the dashboard config (same
-        # clinical fact, different wording/id) resolves to the same data
-        # instead of showing "no data" next to the one that does.
-        for alias in dhis2_meta.get("aliases", []):
-            mnid_records.append({
-                **mnid_row,
-                "indicator_id": alias["mnid_id"],
-                "indicator_label": alias["indicator_name"],
+    # 1. Process NEST Excel file
+    nest_path = Path(nest_input_file).resolve()
+    if nest_path.exists():
+        nest_df = parse_excel_metrics(nest_path)
+        for _, row in nest_df.iterrows():
+            raw_name = row["facility_raw"]
+            canonical_name = FACILITY_NAME_MAP.get(raw_name, raw_name)
+            fac_info = facility_lookup.get(canonical_name, {
+                "org_unit_id": f"OU_{raw_name.replace(' ', '_')[:8]}",
+                "facility_code": "",
+                "district": "",
+                "org_unit_name": canonical_name,
             })
+
+            metric = row["concept_name"]
+            dhis2_meta = NEST_METRIC_TO_DHIS2.get(metric, {
+                "dhis2_id": metric.lower().replace(" ", "_"),
+                "indicator_name": metric,
+                "indicator_group": "Neonatal care",
+                "mnid_id": f"mnid_excel_{metric.lower().replace(' ', '_')}",
+                "category": "Newborn",
+                "target": 0,
+                "value_type": "count",
+                "dx": "dx_" + metric.lower().replace(" ", "_")[:8],
+            })
+
+            dt: pd.Timestamp = row["date"]
+            period_start = pd.Timestamp(dt.year, dt.month, 1)
+            val = float(row["value"])
+
+            mnid_row = {
+                "indicator_id": dhis2_meta["mnid_id"],
+                "indicator_label": dhis2_meta["indicator_name"],
+                "category": dhis2_meta["category"],
+                "target": int(dhis2_meta["target"]),
+                "facility_code": fac_info["facility_code"],
+                "district": fac_info["district"],
+                "grain": "monthly",
+                "period_start": period_start,
+                "numerator": val,
+                "denominator": val,
+                "pct": 100.0 if val else 0.0,
+            }
+            mnid_records.append(mnid_row)
+
+            for alias in dhis2_meta.get("aliases", []):
+                mnid_records.append({
+                    **mnid_row,
+                    "indicator_id": alias["mnid_id"],
+                    "indicator_label": alias["indicator_name"],
+                })
+
+    # 2. Process PPH Excel file ("MAHIS Data" sheet)
+    pph_path = Path(pph_input_file).resolve()
+    if pph_path.exists():
+        pph_df = parse_pph_excel_metrics(pph_path)
+        for _, row in pph_df.iterrows():
+            raw_name = row["facility_raw"]
+            canonical_name = FACILITY_NAME_MAP.get(raw_name, raw_name)
+            fac_info = facility_lookup.get(canonical_name, {
+                "org_unit_id": f"OU_{raw_name.replace(' ', '_')[:8]}",
+                "facility_code": "",
+                "district": row.get("district_raw") or "",
+                "org_unit_name": canonical_name,
+            })
+
+            metric = row["concept_name"]
+            dhis2_meta = PPH_METRIC_TO_DHIS2.get(metric, {
+                "dhis2_id": metric.lower().replace(" ", "_"),
+                "indicator_name": metric,
+                "indicator_group": "Obstetric complications and signal functions",
+                "mnid_id": f"mnid_excel_{metric.lower().replace(' ', '_')}",
+                "category": "Labour",
+                "target": 0,
+                "value_type": "count",
+                "dx": "dx_" + metric.lower().replace(" ", "_")[:8],
+            })
+
+            dt: pd.Timestamp = row["date"]
+            period_start = pd.Timestamp(dt.year, dt.month, 1)
+            val = float(row["value"])
+
+            if dhis2_meta.get("value_type") == "percentage":
+                # Percentage indicator (e.g. % women detected early)
+                pct_val = val * 100.0 if val <= 1.0 and val > 0 else val
+                mnid_row = {
+                    "indicator_id": dhis2_meta["mnid_id"],
+                    "indicator_label": dhis2_meta["indicator_name"],
+                    "category": dhis2_meta["category"],
+                    "target": int(dhis2_meta["target"]),
+                    "facility_code": fac_info["facility_code"],
+                    "district": fac_info["district"],
+                    "grain": "monthly",
+                    "period_start": period_start,
+                    "numerator": val,
+                    "denominator": 100.0 if pct_val else 0.0,
+                    "pct": round(pct_val, 1),
+                }
+            else:
+                mnid_row = {
+                    "indicator_id": dhis2_meta["mnid_id"],
+                    "indicator_label": dhis2_meta["indicator_name"],
+                    "category": dhis2_meta["category"],
+                    "target": int(dhis2_meta["target"]),
+                    "facility_code": fac_info["facility_code"],
+                    "district": fac_info["district"],
+                    "grain": "monthly",
+                    "period_start": period_start,
+                    "numerator": val,
+                    "denominator": val,
+                    "pct": 100.0 if val else 0.0,
+                }
+            mnid_records.append(mnid_row)
+
+            for alias in dhis2_meta.get("aliases", []):
+                mnid_records.append({
+                    **mnid_row,
+                    "indicator_id": alias["mnid_id"],
+                    "indicator_label": alias["indicator_name"],
+                })
 
     return mnid_records
 
 
 def merge_excel_into_indicator_aggregates(
-    excel_input_file: Path | str = DEFAULT_INPUT_FILE,
+    nest_input_file: Path | str | None = DEFAULT_NEST_INPUT_FILE,
+    pph_input_file: Path | str | None = DEFAULT_PPH_INPUT_FILE,
+    excel_input_file: Path | str | None = None,  # Backwards compatibility
     target_parquet_path: Path | str = DEFAULT_MNID_AGGREGATE_FILE,
     target_meta_path: Path | str = DEFAULT_MNID_META_FILE,
     dhis2_records: list[dict[str, Any]] | pd.DataFrame | None = None,
 ) -> dict[str, Any]:
     """
-    Merge Excel indicator records into indicator_aggregates.parquet.
+    Merge Excel indicator records from all available Excel workbooks into indicator_aggregates.parquet.
     
     Priority Rules:
-    - For the 7 facilities present in the Excel data source:
-      - Any indicator present in the Excel sheet for that facility & period overrides/replaces DHIS2 data.
-      - Indicators NOT in the Excel sheet for those 7 facilities remain sourced from DHIS2.
+    - For facilities present in either Excel data source (e.g. 7 NEST facilities, 34 PPH facilities):
+      - Any indicator present in the Excel sheets for that facility & period overrides/replaces DHIS2 data.
+      - Indicators NOT in the Excel sheet for those facilities remain sourced from DHIS2.
     - For all other facilities:
       - All data remains sourced from DHIS2.
+    - Does not fail if any of the Excel files is missing.
     """
     target_path = Path(target_parquet_path).resolve()
     meta_path = Path(target_meta_path).resolve()
 
-    excel_records = get_excel_mnid_records(excel_input_file)
+    nest_file = Path(excel_input_file or nest_input_file or DEFAULT_NEST_INPUT_FILE).resolve()
+    pph_file = Path(pph_input_file or DEFAULT_PPH_INPUT_FILE).resolve()
+
+    excel_records = get_excel_mnid_records(nest_input_file=nest_file, pph_input_file=pph_file)
     df_excel = pd.DataFrame(excel_records)
     if not df_excel.empty:
         df_excel["period_start"] = pd.to_datetime(df_excel["period_start"])
@@ -375,14 +598,12 @@ def merge_excel_into_indicator_aggregates(
     if not df_dhis2.empty:
         df_dhis2["period_start"] = pd.to_datetime(df_dhis2["period_start"])
 
+    overridden_count = 0
     if df_dhis2.empty:
         df_merged = df_excel
     elif df_excel.empty:
         df_merged = df_dhis2
     else:
-        # Identify the 7 facilities' facility codes
-        excel_facility_codes = set(df_excel["facility_code"].dropna().unique())
-
         # High priority merge:
         # Create a unique key (facility_code, indicator_id, period_start, grain)
         # Drop matching DHIS2 records where Excel has data, then append Excel records
@@ -406,21 +627,26 @@ def merge_excel_into_indicator_aggregates(
 
         df_merged = pd.concat([df_dhis2_retained, df_excel], ignore_index=True)
 
-    # Ensure correct schema types
-    df_merged["target"] = df_merged["target"].astype("int64")
-    df_merged["numerator"] = df_merged["numerator"].astype("float64")
-    df_merged["denominator"] = df_merged["denominator"].astype("float64")
-    df_merged["pct"] = df_merged["pct"].astype("float64")
-    df_merged["indicator_id"] = df_merged["indicator_id"].astype(str)
-    df_merged["indicator_label"] = df_merged["indicator_label"].astype(str)
-    df_merged["category"] = df_merged["category"].astype(str)
-    df_merged["facility_code"] = df_merged["facility_code"].astype(str)
-    df_merged["district"] = df_merged["district"].astype(str)
-    df_merged["grain"] = df_merged["grain"].astype(str)
-    df_merged["period_start"] = pd.to_datetime(df_merged["period_start"])
+    if not df_merged.empty:
+        # Ensure correct schema types
+        df_merged["target"] = df_merged["target"].astype("int64")
+        df_merged["numerator"] = df_merged["numerator"].astype("float64")
+        df_merged["denominator"] = df_merged["denominator"].astype("float64")
+        df_merged["pct"] = df_merged["pct"].astype("float64")
+        df_merged["indicator_id"] = df_merged["indicator_id"].astype(str)
+        df_merged["indicator_label"] = df_merged["indicator_label"].astype(str)
+        df_merged["category"] = df_merged["category"].astype(str)
+        df_merged["facility_code"] = df_merged["facility_code"].astype(str)
+        df_merged["district"] = df_merged["district"].astype(str)
+        df_merged["grain"] = df_merged["grain"].astype(str)
+        df_merged["period_start"] = pd.to_datetime(df_merged["period_start"])
 
-    # Sort deterministically
-    df_merged = df_merged.sort_values(by=["period_start", "indicator_id", "facility_code"]).reset_index(drop=True)
+        # Deduplicate and sort deterministically
+        df_merged = df_merged.drop_duplicates(
+            subset=["facility_code", "indicator_id", "period_start", "grain"],
+            keep="last",
+        )
+        df_merged = df_merged.sort_values(by=["period_start", "indicator_id", "facility_code"]).reset_index(drop=True)
 
     target_path.parent.mkdir(parents=True, exist_ok=True)
     records_to_write = df_merged.to_dict(orient="records")
@@ -428,24 +654,30 @@ def merge_excel_into_indicator_aggregates(
 
     # Update meta.json
     now_iso = datetime.now(timezone.utc).isoformat()
-    unique_indicators = set(df_merged["indicator_id"].unique())
-    periods_sorted = sorted(df_merged["period_start"].dt.strftime("%Y%m").unique())
+    unique_indicators = set(df_merged["indicator_id"].unique()) if not df_merged.empty else set()
+    periods_sorted = sorted(df_merged["period_start"].dt.strftime("%Y%m").unique()) if not df_merged.empty else []
     start_period = periods_sorted[0] if periods_sorted else ""
     end_period = periods_sorted[-1] if periods_sorted else ""
+
+    present_sources = []
+    if nest_file.exists():
+        present_sources.append(str(nest_file))
+    if pph_file.exists():
+        present_sources.append(str(pph_file))
 
     meta = {
         "generated_at": now_iso,
         "rows": len(df_merged),
         "indicators": len(unique_indicators),
         "grains": ["monthly"],
-        "data_source": "dhis2_excel_merged",
+        "data_source": "dhis2_excel_merged" if len(df_excel) > 0 else "dhis2",
         "use_demo_data": False,
         "last_run_status": "ok",
         "period_start": start_period,
         "period_end": end_period,
-        "excel_source": str(excel_input_file),
+        "excel_sources": present_sources,
         "excel_records_merged": len(df_excel),
-        "overridden_dhis2_records": overridden_count if "overridden_count" in locals() else 0,
+        "overridden_dhis2_records": overridden_count,
     }
     atomic_json(meta_path, meta)
 
@@ -454,30 +686,31 @@ def merge_excel_into_indicator_aggregates(
         "total_rows": len(df_merged),
         "excel_records": len(df_excel),
         "unique_indicators": len(unique_indicators),
-        "facilities": df_merged["facility_code"].nunique(),
+        "facilities": df_merged["facility_code"].nunique() if not df_merged.empty else 0,
         "output": str(target_path),
         "meta": str(meta_path),
     }
 
 
 def convert_excel_to_dhis2_parquet(
-    input_file: Path | str = DEFAULT_INPUT_FILE,
+    nest_input_file: Path | str | None = DEFAULT_NEST_INPUT_FILE,
+    pph_input_file: Path | str | None = DEFAULT_PPH_INPUT_FILE,
+    input_file: Path | str | None = None,  # Backwards compatibility
     output_aggregate_dir: Path | str | None = None,
     output_mnid_aggregate_dir: Path | str | None = None,
     sync_run_id: str | None = None,
     merge_into_mnid: bool = True,
 ) -> dict[str, Any]:
     """
-    Convert the Excel file into DHIS2 parquet representations and atomically save them,
+    Convert Excel file(s) into DHIS2 parquet representations and atomically save them,
     with option to merge directly into MNID indicator_aggregates.parquet.
     """
-    input_path = Path(input_file).resolve()
-    if not input_path.exists():
-        raise FileNotFoundError(f"Input file not found: {input_path}")
-
     settings = DHIS2Settings.from_env(require_credentials=False)
     run_id = sync_run_id or datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     now_iso = datetime.now(timezone.utc).isoformat()
+
+    nest_path = Path(input_file or nest_input_file or DEFAULT_NEST_INPUT_FILE).resolve()
+    pph_path = Path(pph_input_file or DEFAULT_PPH_INPUT_FILE).resolve()
 
     aggregate_dir = Path(output_aggregate_dir).resolve() if output_aggregate_dir else settings.aggregate_data_dir
     mnid_aggregate_dir = (
@@ -486,108 +719,184 @@ def convert_excel_to_dhis2_parquet(
         else PROJECT_ROOT / "data" / "mnid_aggregates" / "dhis2"
     )
 
-    clean_df = parse_excel_metrics(input_path)
     facility_lookup = build_dhis2_facility_lookup()
 
     hmis_records: list[dict[str, Any]] = []
     atomic_records: list[dict[str, Any]] = []
 
-    for _, row in clean_df.iterrows():
-        raw_name = row["facility_raw"]
-        canonical_name = FACILITY_NAME_MAP.get(raw_name, raw_name)
-        fac_info = facility_lookup.get(canonical_name, {
-            "org_unit_id": f"OU_{raw_name.replace(' ', '_')[:8]}",
-            "facility_code": "",
-            "district": "",
-            "org_unit_name": canonical_name,
-        })
+    # 1. Process NEST Excel if present
+    if nest_path.exists():
+        nest_df = parse_excel_metrics(nest_path)
+        for _, row in nest_df.iterrows():
+            raw_name = row["facility_raw"]
+            canonical_name = FACILITY_NAME_MAP.get(raw_name, raw_name)
+            fac_info = facility_lookup.get(canonical_name, {
+                "org_unit_id": f"OU_{raw_name.replace(' ', '_')[:8]}",
+                "facility_code": "",
+                "district": "",
+                "org_unit_name": canonical_name,
+            })
 
-        metric = row["concept_name"]
-        dhis2_meta = METRIC_TO_DHIS2.get(metric, {
-            "dhis2_id": metric.lower().replace(" ", "_"),
-            "indicator_name": metric,
-            "indicator_group": "Neonatal care",
-            "mnid_id": f"mnid_excel_{metric.lower().replace(' ', '_')}",
-            "category": "Newborn",
-            "target": 0,
-            "value_type": "count",
-            "dx": "dx_" + metric.lower().replace(" ", "_")[:8],
-        })
+            metric = row["concept_name"]
+            dhis2_meta = NEST_METRIC_TO_DHIS2.get(metric, {
+                "dhis2_id": metric.lower().replace(" ", "_"),
+                "indicator_name": metric,
+                "indicator_group": "Neonatal care",
+                "mnid_id": f"mnid_excel_{metric.lower().replace(' ', '_')}",
+                "category": "Newborn",
+                "target": 0,
+                "value_type": "count",
+                "dx": "dx_" + metric.lower().replace(" ", "_")[:8],
+            })
 
-        dt: pd.Timestamp = row["date"]
-        period_str = dt.strftime("%Y%m")
-        period_start = pd.Timestamp(dt.year, dt.month, 1)
-        val = float(row["value"])
+            dt: pd.Timestamp = row["date"]
+            period_str = dt.strftime("%Y%m")
+            period_start = pd.Timestamp(dt.year, dt.month, 1)
+            val = float(row["value"])
 
-        # Record for DHIS2 aggregate store (hmis_test / current)
-        hmis_row = {
-            "indicator_id": dhis2_meta["dhis2_id"],
-            "indicator_name": dhis2_meta["indicator_name"],
-            "indicator_group": dhis2_meta["indicator_group"],
-            "period": period_str,
-            "period_start": period_start.isoformat(),
-            "org_unit_id": fac_info["org_unit_id"],
-            "org_unit_name": fac_info["org_unit_name"],
-            "district": fac_info["district"],
-            "facility_code": fac_info["facility_code"],
-            "value": val,
-            "numerator": val,
-            "denominator": val,
-            "value_type": dhis2_meta["value_type"],
-            "is_explicit_zero": val == 0,
-            "mapping_version": "2026-08-04",
-            "sync_run_id": run_id,
-        }
-        hmis_records.append(hmis_row)
+            hmis_row = {
+                "indicator_id": dhis2_meta["dhis2_id"],
+                "indicator_name": dhis2_meta["indicator_name"],
+                "indicator_group": dhis2_meta["indicator_group"],
+                "period": period_str,
+                "period_start": period_start.isoformat(),
+                "org_unit_id": fac_info["org_unit_id"],
+                "org_unit_name": fac_info["org_unit_name"],
+                "district": fac_info["district"],
+                "facility_code": fac_info["facility_code"],
+                "value": val,
+                "numerator": val,
+                "denominator": val,
+                "value_type": dhis2_meta["value_type"],
+                "is_explicit_zero": val == 0,
+                "mapping_version": "2026-08-04",
+                "sync_run_id": run_id,
+            }
+            hmis_records.append(hmis_row)
 
-        # Record for atomic normalized DHIS2 values
-        dx_val = dhis2_meta["dx"]
-        parts = dx_val.split(".", 1)
-        atomic_row = {
-            "source": "Malawi HMIS DHIS2",
-            "dx": dx_val,
-            "data_element_id": parts[0],
-            "category_option_combo_id": parts[1] if len(parts) == 2 else None,
-            "period": period_str,
-            "period_start": period_start.date().isoformat(),
-            "period_end": period_end_date(period_str).isoformat(),
-            "org_unit_id": fac_info["org_unit_id"],
-            "org_unit_name": fac_info["org_unit_name"],
-            "district_name": fac_info["district"],
-            "facility_code": fac_info["facility_code"],
-            "value": str(val),
-            "raw_value": str(val),
-            "retrieved_at": now_iso,
-            "sync_run_id": run_id,
-            "mapping_version": "2026-08-04",
-            "validation_status": "valid",
-        }
-        atomic_records.append(atomic_row)
+            dx_val = dhis2_meta["dx"]
+            parts = dx_val.split(".", 1)
+            atomic_row = {
+                "source": "Malawi HMIS DHIS2",
+                "dx": dx_val,
+                "data_element_id": parts[0],
+                "category_option_combo_id": parts[1] if len(parts) == 2 else None,
+                "period": period_str,
+                "period_start": period_start.date().isoformat(),
+                "period_end": period_end_date(period_str).isoformat(),
+                "org_unit_id": fac_info["org_unit_id"],
+                "org_unit_name": fac_info["org_unit_name"],
+                "district_name": fac_info["district"],
+                "facility_code": fac_info["facility_code"],
+                "value": str(val),
+                "raw_value": str(val),
+                "retrieved_at": now_iso,
+                "sync_run_id": run_id,
+                "mapping_version": "2026-08-04",
+                "validation_status": "valid",
+            }
+            atomic_records.append(atomic_row)
+
+    # 2. Process PPH Excel if present
+    if pph_path.exists():
+        pph_df = parse_pph_excel_metrics(pph_path)
+        for _, row in pph_df.iterrows():
+            raw_name = row["facility_raw"]
+            canonical_name = FACILITY_NAME_MAP.get(raw_name, raw_name)
+            fac_info = facility_lookup.get(canonical_name, {
+                "org_unit_id": f"OU_{raw_name.replace(' ', '_')[:8]}",
+                "facility_code": "",
+                "district": row.get("district_raw") or "",
+                "org_unit_name": canonical_name,
+            })
+
+            metric = row["concept_name"]
+            dhis2_meta = PPH_METRIC_TO_DHIS2.get(metric, {
+                "dhis2_id": metric.lower().replace(" ", "_"),
+                "indicator_name": metric,
+                "indicator_group": "Obstetric complications and signal functions",
+                "mnid_id": f"mnid_excel_{metric.lower().replace(' ', '_')}",
+                "category": "Labour",
+                "target": 0,
+                "value_type": "count",
+                "dx": "dx_" + metric.lower().replace(" ", "_")[:8],
+            })
+
+            dt: pd.Timestamp = row["date"]
+            period_str = dt.strftime("%Y%m")
+            period_start = pd.Timestamp(dt.year, dt.month, 1)
+            val = float(row["value"])
+
+            hmis_row = {
+                "indicator_id": dhis2_meta["dhis2_id"],
+                "indicator_name": dhis2_meta["indicator_name"],
+                "indicator_group": dhis2_meta["indicator_group"],
+                "period": period_str,
+                "period_start": period_start.isoformat(),
+                "org_unit_id": fac_info["org_unit_id"],
+                "org_unit_name": fac_info["org_unit_name"],
+                "district": fac_info["district"],
+                "facility_code": fac_info["facility_code"],
+                "value": val,
+                "numerator": val,
+                "denominator": 100.0 if dhis2_meta.get("value_type") == "percentage" else val,
+                "value_type": dhis2_meta["value_type"],
+                "is_explicit_zero": val == 0,
+                "mapping_version": "2026-08-04",
+                "sync_run_id": run_id,
+            }
+            hmis_records.append(hmis_row)
+
+            dx_val = dhis2_meta["dx"]
+            parts = dx_val.split(".", 1)
+            atomic_row = {
+                "source": "Malawi HMIS DHIS2",
+                "dx": dx_val,
+                "data_element_id": parts[0],
+                "category_option_combo_id": parts[1] if len(parts) == 2 else None,
+                "period": period_str,
+                "period_start": period_start.date().isoformat(),
+                "period_end": period_end_date(period_str).isoformat(),
+                "org_unit_id": fac_info["org_unit_id"],
+                "org_unit_name": fac_info["org_unit_name"],
+                "district_name": fac_info["district"],
+                "facility_code": fac_info["facility_code"],
+                "value": str(val),
+                "raw_value": str(val),
+                "retrieved_at": now_iso,
+                "sync_run_id": run_id,
+                "mapping_version": "2026-08-04",
+                "validation_status": "valid",
+            }
+            atomic_records.append(atomic_row)
 
     # Atomic Parquet outputs for DHIS2 aggregates
     aggregate_dir.mkdir(parents=True, exist_ok=True)
     hmis_parquet_path = aggregate_dir / "hmis_test.parquet"
     current_parquet_path = aggregate_dir / "current.parquet"
-    atomic_parquet(hmis_parquet_path, hmis_records)
-    atomic_parquet(current_parquet_path, hmis_records)
+    if hmis_records:
+        atomic_parquet(hmis_parquet_path, hmis_records)
+        atomic_parquet(current_parquet_path, hmis_records)
 
     current_meta_path = aggregate_dir / "current_metadata.json"
     periods_sorted = sorted({r["period"] for r in hmis_records})
     start_period = periods_sorted[0] if periods_sorted else ""
     end_period = periods_sorted[-1] if periods_sorted else ""
-    atomic_json(current_meta_path, {
-        "source": "Malawi HMIS DHIS2",
-        "sync_run_id": run_id,
-        "mapping_version": "2026-08-04",
-        "last_synced_at": now_iso,
-        "start_period": start_period,
-        "end_period": end_period,
-        "validation_status": "valid",
-    })
+    if hmis_records:
+        atomic_json(current_meta_path, {
+            "source": "Malawi HMIS DHIS2",
+            "sync_run_id": run_id,
+            "mapping_version": "2026-08-04",
+            "last_synced_at": now_iso,
+            "start_period": start_period,
+            "end_period": end_period,
+            "validation_status": "valid",
+        })
 
     normalized_dir = settings.normalized_data_dir / run_id
     normalized_dir.mkdir(parents=True, exist_ok=True)
-    atomic_parquet(normalized_dir / "atomic_values.parquet", atomic_records)
+    if atomic_records:
+        atomic_parquet(normalized_dir / "atomic_values.parquet", atomic_records)
 
     # Merge or write directly to MNID aggregate
     mnid_parquet_path = mnid_aggregate_dir / "indicator_aggregates.parquet"
@@ -595,31 +904,32 @@ def convert_excel_to_dhis2_parquet(
 
     if merge_into_mnid and mnid_parquet_path.exists():
         merge_res = merge_excel_into_indicator_aggregates(
-            excel_input_file=input_path,
+            nest_input_file=nest_path,
+            pph_input_file=pph_path,
             target_parquet_path=mnid_parquet_path,
             target_meta_path=mnid_meta_path,
         )
     else:
-        mnid_records = get_excel_mnid_records(input_path)
-        atomic_parquet(mnid_parquet_path, mnid_records)
-        atomic_json(mnid_meta_path, {
-            "generated_at": now_iso,
-            "rows": len(mnid_records),
-            "indicators": len({r["indicator_id"] for r in mnid_records}),
-            "grains": ["monthly"],
-            "data_source": "excel",
-            "use_demo_data": False,
-            "last_run_status": "ok",
-            "sync_run_id": run_id,
-            "period_start": start_period,
-            "period_end": end_period,
-        })
+        mnid_records = get_excel_mnid_records(nest_input_file=nest_path, pph_input_file=pph_path)
+        if mnid_records:
+            atomic_parquet(mnid_parquet_path, mnid_records)
+            atomic_json(mnid_meta_path, {
+                "generated_at": now_iso,
+                "rows": len(mnid_records),
+                "indicators": len({r["indicator_id"] for r in mnid_records}),
+                "grains": ["monthly"],
+                "data_source": "excel",
+                "use_demo_data": False,
+                "last_run_status": "ok",
+                "sync_run_id": run_id,
+                "period_start": start_period,
+                "period_end": end_period,
+            })
         merge_res = {"rows": len(mnid_records)}
 
     summary = {
         "status": "success",
         "sync_run_id": run_id,
-        "records_parsed": len(clean_df),
         "hmis_records": len(hmis_records),
         "merge_result": merge_res,
         "facilities": len({r["org_unit_name"] for r in hmis_records}),
@@ -639,10 +949,22 @@ def build_parser() -> argparse.ArgumentParser:
         description="Convert Excel facility data into DHIS2-formatted Parquet datasets and merge into MNID aggregates"
     )
     parser.add_argument(
+        "--nest-file",
+        type=Path,
+        default=DEFAULT_NEST_INPUT_FILE,
+        help="Path to the NEST source Excel workbook",
+    )
+    parser.add_argument(
+        "--pph-file",
+        type=Path,
+        default=DEFAULT_PPH_INPUT_FILE,
+        help="Path to the PPH source Excel workbook",
+    )
+    parser.add_argument(
         "--input-file",
         type=Path,
-        default=DEFAULT_INPUT_FILE,
-        help="Path to the source Excel workbook",
+        default=None,
+        help="Custom path to single Excel workbook (backwards compatibility)",
     )
     parser.add_argument(
         "--output-aggregate-dir",
@@ -678,6 +1000,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     try:
         res = convert_excel_to_dhis2_parquet(
+            nest_input_file=args.nest_file,
+            pph_input_file=args.pph_file,
             input_file=args.input_file,
             output_aggregate_dir=args.output_aggregate_dir,
             output_mnid_aggregate_dir=args.output_mnid_aggregate_dir,
