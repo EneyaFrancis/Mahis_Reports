@@ -682,11 +682,13 @@ def create_pivot_table_from_config(filtered_query,data_path, filters):
     rename        = filters.get("rename") or {}
     replace       = filters.get("replace") or {}
     custom_fields = filters.get('custom_fields') or None
+    pagesize = filters.get('pagesize') or None
+    row_totals = filters.get('row_totals') or False
 
     table, data = create_pivot_table(
         filtered_query,data_path, index_col, columns, values_co, title, unique_column, aggfunc,
         filter_col1, filter_val1, filter_col2, filter_val2, filter_col3,
-        filter_val3, aggregation, rename, replace, custom_fields
+        filter_val3, aggregation, rename, replace, custom_fields, pagesize,row_totals
     )
     return table, data
 

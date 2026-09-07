@@ -1710,16 +1710,23 @@ def create_pie_chart(query_fiter,data_path, names_col, values_col, title,
 
     return fig
  
-def create_pivot_table(query_fiter,data_path, index_col, columns_col, values_col, title, unique_column='PERSON_ID_', aggfunc='sum',
-                     filter_col1=None, filter_value1=None,
-                     filter_col2=None, filter_value2=None,
-                     filter_col3=None, filter_value3=None,
-                     aggregation='count',
-                     rename={}, replace={}, custom_fields=None,
-                     page_size=5, current_page=0):
+def create_pivot_table(query_fiter, data_path, index_col, columns_col, values_col, title, 
+                       unique_column='PERSON_ID_', aggfunc='sum',
+                       filter_col1=None, filter_value1=None,
+                       filter_col2=None, filter_value2=None,
+                       filter_col3=None, filter_value3=None,
+                       aggregation='count',
+                       rename={}, replace={}, custom_fields=None,
+                       page_size=5,row_totals=False, current_page=0,
+                       ): 
     """
     Create a pivot table with native pagination and sortable column headers.
     Returns a Dash html.Div containing a dash_table.DataTable.
+    
+    Parameters:
+    -----------
+    row_totals : bool, default=False
+        If True, adds a 'Row Total' column to the pivot table showing sum of numeric values across columns
     """
     isSet = False
     filter_pairs = [
@@ -1734,7 +1741,7 @@ def create_pivot_table(query_fiter,data_path, index_col, columns_col, values_col
             if isinstance(col, list):
                 col = col[0]
             val = _normalize_filter_value(val)
-            conditions.append(build_filter_query(col, val,data_path, unique_column, isSet, None, None))
+            conditions.append(build_filter_query(col, val, data_path, unique_column, isSet, None, None))
 
     where_clause = query_fiter + ((" AND " + " AND ".join(conditions)) if conditions else "")
 
@@ -1777,6 +1784,18 @@ def create_pivot_table(query_fiter,data_path, index_col, columns_col, values_col
     ).reset_index()
 
     pivot = _apply_replace(pivot.rename(columns=rename), replace)
+    
+    if row_totals:
+        index_cols_list = index_col if isinstance(index_col, list) else [index_col]
+        
+        numeric_cols = [c for c in pivot.columns if c not in index_cols_list and 
+                       pd.api.types.is_numeric_dtype(pivot[c])]
+        
+        if numeric_cols:
+            pivot['Row Total'] = pivot[numeric_cols].sum(axis=1)
+            # other_cols = [c for c in pivot.columns if c not in index_cols_list + ['Row Total']]
+            # pivot = pivot[index_cols_list + ['Row Total'] + other_cols]
+    
     pivot.columns = [str(c) for c in pivot.columns]
 
     num_index_cols = len(index_cols)
@@ -1797,6 +1816,17 @@ def create_pivot_table(query_fiter,data_path, index_col, columns_col, values_col
             "color": "#2c3e50",
             "textAlign": "left",
         })
+    
+    # --- NEW: Style for Row Total column ---
+    if row_totals:
+        style_data_conditional.append({
+            "if": {"column_id": "Row Total"},
+            "fontWeight": "bold",
+            "backgroundColor": "#f8f9fa",
+            "borderLeft": "2px solid #004a01",
+            "color": "#004a01",
+        })
+    # --- END NEW ---
 
     table = html.Div(
         [
@@ -1809,7 +1839,7 @@ def create_pivot_table(query_fiter,data_path, index_col, columns_col, values_col
                     "fontFamily": "Arial, sans-serif",
                     "fontSize": "18px",
                     "fontWeight": "bold",
-                    "color": THEME["table_header"],
+                    "color": THEME["table_header_text"],
                 },
             ),
             html.Div(
@@ -1865,7 +1895,6 @@ def create_pivot_table(query_fiter,data_path, index_col, columns_col, values_col
     )
 
     return table, pivot
-
 
 def create_time_range_table(
     query_fiter, data_path, index_col, datetime_col, title,
@@ -3030,7 +3059,7 @@ def create_line_list(
 
     final_df = final_df.fillna("") if not final_df.empty else final_df
     table = html.Div([
-        html.H3(title, style={"textAlign": "center", "color": THEME["table_header"],
+        html.H3(title, style={"textAlign": "center", "color": THEME["table_header_text"],
                                "fontFamily": "Arial, sans-serif"}),
         (html.P(message, style={"textAlign": "center", "color": "red"})
          if message else None),
