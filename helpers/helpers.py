@@ -1,7 +1,9 @@
 import dash
 from dash import html, dcc
 import pandas as pd
+import plotly.graph_objects as go
 from itertools import chain
+from data_storage import DataStorage
 from helpers.visualizations import (create_column_chart,
                           create_count,
                           create_count_sets,
@@ -14,7 +16,10 @@ from helpers.visualizations import (create_column_chart,
                           create_crosstab_table,
                           create_line_list,
                           create_sankey_diagram,
-                          create_new_returning_chart)
+                          create_new_returning_chart,
+                          build_filter_query,
+                          compute_facilities_requiring_attention,
+                          create_entity_heatmap)
 from datetime import datetime
 from config import (actual_keys_in_data, 
                     FIRST_NAME_, LAST_NAME_,
@@ -34,21 +39,32 @@ from config import (actual_keys_in_data,
                     DRUG_NAME_,
                     VALUE_NAME_, VALUE_DATETIME_)
 
-def build_metrics_section(filtered, filtered_data_range, delta_days, 
+def build_metrics_section(filtered_query, filtered_query_data_range, delta_days, 
                           data_path, counts_config, url_object=None, 
                           start_date=None, end_date=None):
     """Build metric cards from counts configuration."""
 
     all_count_metrics: dict = {}
     _patient_ids_map: dict = {}
+    _attention_pct_map: dict = {}
     for count_config in counts_config:
         measure = count_config.get("filters", {}).get("measure", "count")
         if measure == "calculated":
             continue
         count_id     = count_config.get("id")
         unique_col   = count_config.get("filters", {}).get("unique", "")
+
+        if measure == "facilities_requiring_attention":
+            count_value, pct_value, _flagged = compute_facilities_requiring_attention(
+                filtered_query_data_range, data_path,
+            )
+            all_count_metrics[count_id] = count_value
+            _attention_pct_map[count_id] = pct_value
+            _patient_ids_map[count_id] = {"ids": [], "unique_col": ""}
+            continue
+
         count_value, patient_ids = create_count_from_config(
-            filtered, data_path, count_config["filters"],
+            filtered_query, data_path, count_config["filters"],
             group_by=count_config.get("group_by") or None,
             custom_sql=count_config.get("custom_sql") or None,
         )
@@ -100,6 +116,54 @@ def build_metrics_section(filtered, filtered_data_range, delta_days,
                 className="kpi-val",
             )
 
+        trend_children = []
+        show_trend = str(count_config.get("show_trend", "False")).strip().lower() == "true"
+        if show_trend and measure != "calculated":
+            trend_fig, pct_change, is_up = create_metric_trend_sparkline(
+                filtered_query_data_range, data_path, count_config["filters"],
+            )
+            if trend_fig is not None:
+                trend_children = [
+                    html.Div(
+                        dcc.Graph(
+                            figure=trend_fig,
+                            config={"displayModeBar": False},
+                            style={"height": "32px", "width": "70px"},
+                        ),
+                        className="kpi-trend-spark",
+                    ),
+                    html.Div(
+                        f"{'+' if pct_change >= 0 else ''}{pct_change:.1f}%",
+                        className="kpi-trend-pct",
+                        style={"color": "#16A34A" if is_up else "#DC2626"},
+                    ),
+                ]
+
+        if measure == "facilities_requiring_attention":
+            attention_pct = _attention_pct_map.get(count_id, 0.0)
+            trend_children = [
+                html.Div(
+                    f"{attention_pct:.1f}%",
+                    className="kpi-trend-pct",
+                    style={"color": "#DC2626"},
+                ),
+            ]
+
+        below_children = []
+        if measure == "facilities_requiring_attention":
+            below_children = [
+                html.Div(
+                    "click to view",
+                    id={"type": "kpi-scroll-link", "index": count_id},
+                    n_clicks=0,
+                    className="kpi-click-to-view",
+                    style={
+                        "color": "#2563EB", "textDecoration": "underline", "cursor": "pointer",
+                        "fontSize": "11px", "marginTop": "4px",
+                    },
+                ),
+            ]
+
         metric = html.Div(
             className=f"mnid-kpi {flag}",
             children=[
@@ -121,7 +185,7 @@ def build_metrics_section(filtered, filtered_data_range, delta_days,
                 ),
                 html.Div(
                     style={"display": "flex", "justifyContent": "space-between",
-                           "alignItems": "flex-start", "gap": "6px"},
+                           "alignItems": "center", "gap": "6px"},
                     children=[
                         html.Div([
                             html.Div(count_config["name"], className="kpi-lbl"),
@@ -131,9 +195,10 @@ def build_metrics_section(filtered, filtered_data_range, delta_days,
                             #     className="kpi-sub",
                             # ),
                         ]),
+                        *trend_children,
                     ],
                 ),
-                html.Div(),
+                html.Div(below_children),
             ],
         )
         metrics.append(metric)
@@ -209,7 +274,81 @@ def create_count_from_config(df, data_path, filters, group_by=None, custom_sql=N
         return create_count(df,data_path,aggregation, unique_col, *args,
                              group_by=group_by, custom_sql=custom_sql)
 
-def build_charts_section(filtered, data_opd, delta_days, data_path, sections_config):
+
+def create_metric_trend_sparkline(query_filter, data_path, filters, days=7, height=32):
+    """Minimal 7-day sparkline for a KPI card -- no axes/gridlines/legend,
+    same measure/unique_column/active-filters the card's own count uses,
+    just grouped by day. Green when the last day is >= the first day in the
+    window (trending up), red otherwise. Returns (figure, pct_change,
+    is_up), all None when there are fewer than 2 distinct days of data.
+    """
+    unique_col = filters.get("unique", "") or PERSON_ID_
+    aggregation = filters.get("measure", "count")
+
+    variables = [filters.get(f"variable{i}", "") for i in range(1, 11)]
+    values = [parse_filter_value(filters.get(f"value{i}", "")) for i in range(1, 11)]
+
+    conditions = []
+    for var, val in zip(variables, values):
+        if var and val:
+            condition = build_filter_query(var, val, data_path, unique_col, False, None, None)
+            if condition:
+                conditions.append(condition)
+
+    where_clause = query_filter + ((" AND " + " AND ".join(conditions)) if conditions else "")
+
+    if aggregation == 'sum':
+        agg_expr = f"SUM({unique_col})"
+    elif aggregation == 'mean':
+        agg_expr = f"AVG({unique_col})"
+    elif aggregation == 'min':
+        agg_expr = f"MIN({unique_col})"
+    elif aggregation == 'max':
+        agg_expr = f"MAX({unique_col})"
+    else:
+        # Covers both 'count' and 'nunique' -- a distinct count is a fine
+        # proxy for either when all that matters is the trend's direction.
+        agg_expr = f"COUNT(DISTINCT {unique_col})"
+
+    sql = (
+        f"SELECT CAST({DATE_} AS DATE) AS d, {agg_expr} AS v "
+        f"FROM '{data_path}' WHERE {where_clause} "
+        f"AND {DATE_} >= (SELECT MAX({DATE_}) FROM '{data_path}' WHERE {where_clause}) - INTERVAL '{int(days)}' DAY "
+        f"GROUP BY d ORDER BY d"
+    )
+
+    try:
+        df = DataStorage.query_duckdb(sql)
+    except Exception:
+        return None, None, None
+
+    if df is None or len(df) < 2:
+        return None, None, None
+
+    first_val = float(df["v"].iloc[0])
+    last_val = float(df["v"].iloc[-1])
+    is_up = last_val >= first_val
+    pct_change = ((last_val - first_val) / first_val * 100) if first_val else (100.0 if last_val > 0 else 0.0)
+
+    line_color = "#16A34A" if is_up else "#DC2626"
+    fig = go.Figure(go.Scatter(
+        x=df["d"], y=df["v"],
+        mode="lines",
+        line=dict(color=line_color, width=2, shape="spline", smoothing=1.0),
+        hoverinfo="skip",
+    ))
+    fig.update_layout(
+        height=height,
+        margin=dict(l=2, r=2, t=2, b=2),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        showlegend=False,
+        xaxis=dict(visible=False, showgrid=False, zeroline=False),
+        yaxis=dict(visible=False, showgrid=False, zeroline=False),
+    )
+    return fig, pct_change, is_up
+
+def build_charts_section(filtered_query, network_query, delta_days, data_path, sections_config):
     """Build chart sections from JSON configuration"""
     sections = []
 
@@ -220,13 +359,13 @@ def build_charts_section(filtered, data_opd, delta_days, data_path, sections_con
         chart_items_per_row = section_config.get('chart_items_per_row') or 3 #default number of charts per section
         section = html.Div([
             html.H3(section_config["section_name"].upper(), style={'textAlign': 'left', 'color': 'grey'}),
-            build_section_items(filtered, data_opd, delta_days,data_path, section_config["items"], chart_items_per_row)
+            build_section_items(filtered_query, network_query, delta_days,data_path, section_config["items"], chart_items_per_row)
         ])
         sections.append(section)
     
     return html.Div(sections)
 
-def build_section_items(filtered, data_opd, delta_days,data_path, items_config, chart_items_per_row):
+def build_section_items(filtered_query, network_query, delta_days,data_path, items_config, chart_items_per_row):
     """Build individual chart items within a section"""
     items = []
     # Group items into pairs for card-container-2
@@ -236,7 +375,7 @@ def build_section_items(filtered, data_opd, delta_days,data_path, items_config, 
             style={"display": "grid","gridTemplateColumns": f"repeat({chart_items_per_row}, 1fr)",
                         "gap": "15px", "marginBottom": "30px","overflowX": "auto"},
             children=[
-                build_single_chart(filtered, data_opd, delta_days,data_path, item_config)
+                build_single_chart(filtered_query, network_query, delta_days,data_path, item_config)
                 for item_config in pair_items if item_config.get("display")!="False"
             ]
         )
@@ -244,33 +383,35 @@ def build_section_items(filtered, data_opd, delta_days,data_path, items_config, 
     
     return html.Div(items)
 
-def build_single_chart(filtered, data_opd, delta_days,data_path, item_config,user_role=None, style = "card-2", theme_name=None):
+def build_single_chart(filtered_query, network_query, delta_days,data_path, item_config,user_role=None, style = "card-2", theme_name=None):
     """Build a single chart based on configuration"""
     chart_type = item_config["type"]
     filters = item_config["filters"]
 
     if chart_type == "Line":
-        figure = create_line_chart_from_config(data_opd,data_path, delta_days, filters)
+        figure = create_line_chart_from_config(network_query,data_path, delta_days, filters)
     elif chart_type == "Pie":
-        figure = create_pie_chart_from_config(filtered,data_path, filters)
+        figure = create_pie_chart_from_config(filtered_query,data_path, filters)
     elif chart_type == "Column":
-        figure = create_column_chart_from_config(filtered,data_path, filters)
+        figure = create_column_chart_from_config(filtered_query,data_path, filters)
     elif chart_type == "Bar":
-        figure = create_bar_chart_from_config(filtered,data_path, filters)
+        figure = create_bar_chart_from_config(filtered_query,data_path, filters)
     elif chart_type == "Histogram":
-        figure = create_histogram_from_config(filtered,data_path, filters)
+        figure = create_histogram_from_config(filtered_query,data_path, filters)
     elif chart_type == "PivotTable":
-        figure, data = create_pivot_table_from_config(filtered,data_path, filters)
+        figure, data = create_pivot_table_from_config(filtered_query,data_path, filters)
     elif chart_type == "TimeRange":
-        figure, data = create_time_range_from_config(filtered,data_path, filters)
+        figure, data = create_time_range_from_config(filtered_query,data_path, filters)
     elif chart_type == "CrossTab":
-        figure, data = create_crosstab_from_config(filtered,data_path, filters)
+        figure, data = create_crosstab_from_config(filtered_query,data_path, filters)
     elif chart_type == "LineList":
-        figure, data = create_linelist_from_config(filtered,data_path, item_config, user_role)
+        figure, data = create_linelist_from_config(filtered_query,data_path, item_config, user_role)
     elif chart_type == "Sankey":
-        figure = create_sankey_from_config(filtered,data_path, filters)
+        figure = create_sankey_from_config(filtered_query,data_path, filters)
     elif chart_type == "NewReturningSplit":
-        figure = create_new_returning_from_config(filtered,data_path, filters)
+        figure = create_new_returning_from_config(network_query,data_path, filters)
+    elif chart_type == "Heatmap":
+        figure = create_heatmap_from_config(network_query, data_path, filters)
     else:
         # Default empty figure for unknown chart types
         figure = create_empty_figure()
@@ -361,7 +502,7 @@ def apply_figure_theme(figure, chart_type, theme_name=None):
     return figure
 
 
-def create_line_chart_from_config(data_opd,data_path, delta_days, filters):
+def create_line_chart_from_config(network_query,data_path, delta_days, filters):
     """
     Create line chart from JSON configuration
     Configs
@@ -412,13 +553,13 @@ def create_line_chart_from_config(data_opd,data_path, delta_days, filters):
     expression = filters.get("expression") or ""
 
     args = [query1,query2,query3,query4,query5,expression]
-    return create_time_line_chart(data_opd,data_path, date_col, y_col, 
+    return create_time_line_chart(network_query,data_path, date_col, y_col, 
                              title, x_title, y_title, unique_column, 
                              legend_title, color, filter_col1, 
                              filter_val1, filter_col2, filter_val2, 
                              filter_col3, filter_val3,aggregation, custom_fields, group_by, *args)
 
-def create_pie_chart_from_config(filtered,data_path, filters):
+def create_pie_chart_from_config(filtered_query,data_path, filters):
     """
     Create pie chart from JSON configuration
     Configs:
@@ -458,12 +599,12 @@ def create_pie_chart_from_config(filtered,data_path, filters):
     rename = filters.get('rename') or {}
     replace = filters.get('replace') or {}
     
-    return create_pie_chart(filtered,data_path, names_col, values_col, title, 
+    return create_pie_chart(filtered_query,data_path, names_col, values_col, title, 
                             unique_column, filter_col1, filter_val1, 
                             filter_col2, filter_val2, filter_col3, 
                             filter_val3, colormap, aggregation, custom_fields, rename, replace)
 
-def create_column_chart_from_config(filtered,data_path, filters):
+def create_column_chart_from_config(filtered_query,data_path, filters):
     """
     Create column chart from JSON configuration
     Config:
@@ -504,13 +645,13 @@ def create_column_chart_from_config(filtered,data_path, filters):
     custom_fields = filters.get('custom_fields') or None
     filter_headers = filters.get('filter_headers') or None
 
-    return create_column_chart(filtered,data_path, x_col, y_col, title, x_title, y_title,
+    return create_column_chart(filtered_query,data_path, x_col, y_col, title, x_title, y_title,
                                unique_column, legend_title, color, filter_col1,
                                filter_val1, filter_col2, filter_val2, filter_col3,
                                filter_val3, aggregation, custom_fields,
                                filter_headers=filter_headers)
 
-def create_bar_chart_from_config(filtered,data_path, filters):
+def create_bar_chart_from_config(filtered_query,data_path, filters):
     """
     Create column chart from JSON configuration
     Config: 
@@ -547,7 +688,7 @@ def create_bar_chart_from_config(filtered,data_path, filters):
     color = filters.get('color') or None
 
     return create_horizontal_bar_chart(
-        query_fiter=filtered,data_path=data_path, 
+        query_fiter=filtered_query,data_path=data_path, 
         label_col=label_col, value_col=value_col, title=title, 
         x_title=x_title, y_title=y_title, top_n=10,
         filter_col1=filter_col1, filter_value1=filter_val1,
@@ -557,7 +698,7 @@ def create_bar_chart_from_config(filtered,data_path, filters):
         height=400, responsive=True, show_values=True, color=color
     )
 
-def create_histogram_from_config(filtered,data_path, filters):
+def create_histogram_from_config(filtered_query,data_path, filters):
     """
     Create column chart from JSON configuration
     Config: 
@@ -592,15 +733,15 @@ def create_histogram_from_config(filtered,data_path, filters):
     aggregation   = filters.get('measure') or 'count'
     custom_fields = filters.get('custom_fields') or None
 
-    # print(f"my bin size {filtered}")
+    # print(f"my bin size {filtered_query}")
 
     return create_age_gender_histogram(
-        filtered,data_path, age_col, gender_col, title, x_title, y_title, bin_size,
+        filtered_query,data_path, age_col, gender_col, title, x_title, y_title, bin_size,
         filter_col1, filter_val1, filter_col2, filter_val2, filter_col3,
         filter_val3, aggregation, custom_fields
     )
 
-def create_new_returning_from_config(filtered,data_path, filters):
+def create_new_returning_from_config(filtered_query,data_path, filters):
     """
     Build a New-vs-Returning chart from config.
     Uses a CTE to check whether each person_id has any record
@@ -633,7 +774,7 @@ def create_new_returning_from_config(filtered,data_path, filters):
     group_by       = filters.get('group_by') or None
 
     return create_new_returning_chart(
-        filtered,data_path, title,
+        filtered_query,data_path, title,
         chart_mode=chart_mode,
         date_col=date_col,
         unique_column=unique_column,
@@ -645,7 +786,50 @@ def create_new_returning_from_config(filtered,data_path, filters):
     )
 
 
-def create_pivot_table_from_config(filtered,data_path, filters):
+def create_heatmap_from_config(filtered_query, data_path, filters):
+    """
+    Entity x Date performance table from JSON configuration -- shows only
+    rows compute_segment_drop flags as declining, unless only_declining is
+    turned off. Returns a plain html.Div (it's a paginated
+    dash_table.DataTable, not a plotly figure), so build_single_chart's
+    dcc.Graph wrapping doesn't apply here.
+    Config:
+        "title":            display title (default "Performance Heatmap")
+        "unique":            dom id set on the returned Div -- keep this
+            stable, it's the scroll target for a "click to view" link
+        "entity_label":      row-column display label (default "Facility")
+        "entity_col":        column grouped into rows (default "Facility")
+        "group_by_col":      column pushed into the count query, same
+            group_by convention as elsewhere in this app (default "Program")
+        "unique_col":        column counted distinct (default "person_id")
+        "lookback_days":     trailing window width (default 14)
+        "segment_days":      length of each comparison segment (default 7)
+        "drop_threshold":    fraction drop that flags an entity (default 0.25)
+        "only_declining":    "True"/"False" -- limit rows to flagged
+            entities (default "True")
+        "page_size":         rows per page (default 5)
+    """
+    title = filters.get('title') or 'Performance Heatmap'
+    dom_id = filters.get('unique') or None
+    entity_label = filters.get('entity_label') or 'Facility'
+    entity_col = filters.get('entity_col') or FACILITY_
+    group_by_col = filters.get('group_by_col') or PROGRAM_
+    unique_col = filters.get('unique_col') or PERSON_ID_
+    lookback_days = int(filters.get('lookback_days') or 14)
+    segment_days = int(filters.get('segment_days') or 7)
+    drop_threshold = float(filters.get('drop_threshold') or 0.25)
+    only_declining = str(filters.get('only_declining', 'True')).strip().lower() == 'true'
+    page_size = int(filters.get('page_size') or 5)
+
+    return create_entity_heatmap(
+        filtered_query, data_path, title=title, entity_label=entity_label,
+        entity_col=entity_col, group_by_col=group_by_col, unique_col=unique_col,
+        lookback_days=lookback_days, segment_days=segment_days, drop_threshold=drop_threshold,
+        only_declining=only_declining, page_size=page_size, dom_id=dom_id,
+    )
+
+
+def create_pivot_table_from_config(filtered_query,data_path, filters):
     """
     Create pivot table from JSON configuration
     Config:     "measure": "chart",
@@ -682,16 +866,18 @@ def create_pivot_table_from_config(filtered,data_path, filters):
     rename        = filters.get("rename") or {}
     replace       = filters.get("replace") or {}
     custom_fields = filters.get('custom_fields') or None
+    pagesize = filters.get('pagesize') or None
+    row_totals = filters.get('row_totals') or False
 
     table, data = create_pivot_table(
-        filtered,data_path, index_col, columns, values_co, title, unique_column, aggfunc,
+        filtered_query,data_path, index_col, columns, values_co, title, unique_column, aggfunc,
         filter_col1, filter_val1, filter_col2, filter_val2, filter_col3,
-        filter_val3, aggregation, rename, replace, custom_fields
+        filter_val3, aggregation, rename, replace, custom_fields, pagesize,row_totals
     )
     return table, data
 
 
-def create_time_range_from_config(filtered, data_path, filters):
+def create_time_range_from_config(filtered_query, data_path, filters):
     """
     Create a Start Time / End Time table from JSON configuration.
     Config:
@@ -728,7 +914,7 @@ def create_time_range_from_config(filtered, data_path, filters):
     custom_fields = filters.get('custom_fields') or None
 
     return create_time_range_table(
-        filtered, data_path, index_col, datetime_col, title,
+        filtered_query, data_path, index_col, datetime_col, title,
         start_label=start_label, end_label=end_label,
         unique_column=unique_column,
         filter_col1=filter_col1, filter_value1=filter_val1,
@@ -738,7 +924,7 @@ def create_time_range_from_config(filtered, data_path, filters):
     )
 
 
-def create_crosstab_from_config(filtered,data_path, filters):
+def create_crosstab_from_config(filtered_query,data_path, filters):
     """
     Create crosstab table from JSON configuration.
 
@@ -800,7 +986,7 @@ def create_crosstab_from_config(filtered,data_path, filters):
     group_by      = filters.get('group_by') or None
 
     table, data =  create_crosstab_table(
-        query_fiter=filtered,
+        query_fiter=filtered_query,
         data_path = data_path,
         index_col=index_col,
         columns_col=columns_col,
@@ -840,13 +1026,17 @@ def create_linelist_from_config(query_fiter,data_path, filters,user_role=None, a
     if message:
         message = message + str(authorized_user)
 
-    # Resolve whether this user should have name columns masked
+    # Resolve whether this user should have name columns masked.
+    # "Any" means unrestricted -- every item stays visible/unmasked. A list
+    # of roles restricts name visibility to just those roles; anyone else
+    # gets the masked columns. A bare role string (legacy data, pre-dating
+    # the "Any"/list schema) still compares directly against that one role.
     mask_names = False
-    if authorized_user:
-        if isinstance(authorized_user, list):
+    if isinstance(authorized_user, list):
+        if authorized_user:
             mask_names = user_role not in authorized_user
-        elif isinstance(authorized_user, str):
-            mask_names = user_role != authorized_user
+    elif isinstance(authorized_user, str) and authorized_user.strip().lower() != "any":
+        mask_names = user_role != authorized_user
 
     group_kwargs = {}
     for i in range(1, 30 + 1):
@@ -881,7 +1071,7 @@ def create_linelist_from_config(query_fiter,data_path, filters,user_role=None, a
     )
     return table, data
 
-def create_sankey_from_config(filtered,data_path, filters):
+def create_sankey_from_config(filtered_query,data_path, filters):
     """
     Create sankey diagram from JSON configuration
     Config:
@@ -913,7 +1103,7 @@ def create_sankey_from_config(filtered,data_path, filters):
     aggregation   = filters.get('measure') or 'count'
 
     return create_sankey_diagram(
-        filtered,data_path, source_col, target_col, value_col, title,
+        filtered_query,data_path, source_col, target_col, value_col, title,
         filter_col1, filter_val1, filter_col2, filter_val2, filter_col3, filter_val3, aggregation
     )
     

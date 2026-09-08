@@ -844,6 +844,7 @@ layout = html.Div(
         dcc.Store(id='active-button-store', data='General Summary'),
         dcc.Store(id='filter-drawer-open', data=False),
         dcc.Store(id='scroll-watcher', data=0),
+        dcc.Store(id='kpi-scroll-dummy'),
         dcc.Store(id='kpi-modal-page', data=1),
         dcc.Store(id='kpi-modal-data', data=None),
 
@@ -1573,6 +1574,28 @@ dash.clientside_callback(
 )
 
 
+# "click to view" on the "Facilities requiring attention" KPI -- smooth-
+# scrolls to the facility performance heatmap (dcc.Graph id is set from that
+# chart's own filters.unique in validated_dashboard.json -- keep both in sync).
+dash.clientside_callback(
+    """
+    function(n_clicks_list) {
+        if (!n_clicks_list || !n_clicks_list.some(function(n) { return n; })) {
+            return window.dash_clientside.no_update;
+        }
+        var target = document.getElementById('facility-heatmap-section');
+        if (target) {
+            target.scrollIntoView({behavior: 'smooth', block: 'start'});
+        }
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output("kpi-scroll-dummy", "data"),
+    Input({"type": "kpi-scroll-link", "index": ALL}, "n_clicks"),
+    prevent_initial_call=True,
+)
+
+
 @callback(
     Output('scrolling-menu', 'children'),
     Output('dashboard-menu-section', 'style'),
@@ -2058,26 +2081,11 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
         if date_route == 'dhis2':
             start_date, end_date = _resolve_dhis2_date_window(start_date, end_date)
         if is_clearing_filters:
-            # Recompute from DEFAULT_RELATIVE_PERIOD directly (not the
-            # unrelated 30-day _default_date_window fallback) so "clear
-            # filters" reloads exactly the window Relative Period would
-            # resolve to, anchored the same way sync_picker_with_logic
-            # anchors it (to the latest available data, not the literal
-            # calendar date).
             start_date, end_date = get_relative_date_range(DEFAULT_RELATIVE_PERIOD, current_date=default_end)
         start_dt = pd.to_datetime(start_date or default_start).replace(hour=0, minute=0, second=0)
         end_dt = pd.to_datetime(end_date or default_end).replace(hour=23, minute=59, second=59)
-        # network_query below is deliberately widened by DEFAULT_DASHBOARD_DAYS
-        # to give trend/comparison charts some historical context beyond the
-        # exact selected range -- but a single specific day (Today, Yesterday,
-        # or any custom one-day range) is a request to see *that day*, not a
-        # week ending on it. Padding it backward regardless silently turned
-        # "Today" into a 7-day window for any report that reads from
-        # network_df instead of the exactly-scoped filtered_query, which is
-        # not what selecting "Today" means. Only apply the padding when a
-        # real multi-day range was actually selected.
         is_single_day_selection = start_dt.date() == end_dt.date()
-        default_start_date = start_dt if is_single_day_selection else start_dt - pd.Timedelta(days=DEFAULT_DASHBOARD_DAYS)
+        default_start_date = start_dt if not is_single_day_selection else start_dt - pd.Timedelta(days=DEFAULT_DASHBOARD_DAYS)
 
         location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
         DATA_PATH_ = f"data/{data_route}/parquet"
@@ -2250,7 +2258,7 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
      Input('dashboard-interval-update-today', 'n_intervals'),
      Input('active-button-store', 'data')],
     [State('url-params-store', 'data')],
-    prevent_initial_call=True,
+    prevent_initial_call='initial_duplicate',
 )
 def sync_picker_with_logic(period_type, n, current_active, urlparams):
     ctx = callback_context
@@ -2281,7 +2289,16 @@ def sync_picker_with_logic(period_type, n, current_active, urlparams):
         s, e = get_relative_date_range('Last 6 Months', current_date=anchor)
         return (s or default_start), (e or default_end), 'Last 6 Months'
 
-    if triggered_id == "dashboard-interval-update-today":
+    # dashboard-interval-update-today ticks specifically so relative periods
+    # ("Today", "Yesterday", "This Week", ...) stay correct as the real
+    # calendar date moves on -- falling through to the same recompute below
+    # (not PreventUpdate) is what actually re-anchors them; a long-lived
+    # server process or a browser tab left open across midnight would
+    # otherwise keep "Today" pinned to whatever date it first resolved to.
+    # A cleared period_type means the user is on a custom date range, though
+    # -- the interval must leave that alone rather than snapping it back to
+    # the default window every 10 minutes.
+    if triggered_id == "dashboard-interval-update-today" and not period_type:
         raise PreventUpdate
     if triggered_id == "active-button-store":
         raise PreventUpdate
