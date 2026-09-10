@@ -17,6 +17,7 @@ from mnid.core.cache import (
     _load_dashboard_tab_config,
     _get_network_df_from_state,
     _MNID_EXECUTIVE_DISK_CACHE, _MNID_DATA_DISK_CACHE, _MNID_UI_CACHE_TTL_SECONDS,
+    _optimize_df_for_disk_cache,
     _network_df_cache, _NETWORK_DF_CACHE_MAX,
     _worker_view_cache, _WORKER_VIEW_CACHE_MAX,
     _EXECUTIVE_RENDER_VERSION,
@@ -28,7 +29,6 @@ from mnid.views.kpi_engine import (
 )
 from mnid.core.data_utils import prepare_mnid_dataframe as _prepare_mnid_dataframe
 from mnid.core.data_source import get_mnid_data_source
-from mnid.dashboards import load_dashboard_module
 from mnid.views.executive_views import render_country_profile, _profile_scope_name, _refetch_series
 from mnid.views.operational_readiness import render_operational_readiness
 from mnid.components.run_charts import (
@@ -52,7 +52,7 @@ def _render_mnh_placeholder(label: str) -> html.Div:
         children=[
             html.Div(label, style={'fontSize': '12px', 'fontWeight': 800, 'textTransform': 'uppercase', 'letterSpacing': '0.08em'}),
             html.Div('This dashboard view is reserved for a future implementation.', style={'fontSize': '24px', 'fontWeight': 800, 'color': TEXT, 'marginTop': '8px'}),
-            html.Div('The current release keeps the slot visible so routing and navigation are ready when MNH-Nest360 is implemented.', style={'fontSize': '13px', 'marginTop': '8px'}),
+            html.Div('The current release keeps the slot visible so routing and navigation are ready if this switcher tab set is ever enabled again.', style={'fontSize': '13px', 'marginTop': '8px'}),
         ],
     )
 
@@ -148,7 +148,7 @@ def _prewarm_country_profile() -> bool:
 
             _LOGGER.info('MNID country-profile pre-warm: rendering...')
             country_label = 'Maternal & Newborn' if config.get('report_name') == 'Maternal Health' else 'Maternal'
-            cp_view = render_country_profile(facility_df, scope_meta=scope_meta, indicator_label=country_label, start_date=start_date, end_date=end_date)
+            cp_view = render_country_profile(facility_df, scope_meta=scope_meta, indicator_label=country_label, start_date=start_date, end_date=end_date, opd_key=opd_key)
             _MNID_DATA_DISK_CACHE.set(_cp_disk_key, cp_view, expire=_MNID_UI_CACHE_TTL_SECONDS)
             _worker_view_cache[_cp_disk_key] = cp_view
             _trim_cache(_worker_view_cache, _WORKER_VIEW_CACHE_MAX)
@@ -273,7 +273,11 @@ def _build_executive_tab_view(
                 if cp_cached is None:
                     cp_cached = _MNID_DATA_DISK_CACHE.get(_cp_disk_key)
                 if cp_cached is None:
-                    cp_cached = render_country_profile(facility_df, scope_meta=scope_meta, indicator_label=country_label, start_date=start_date, end_date=end_date)
+                    cp_cached = render_country_profile(
+                        facility_df, scope_meta=scope_meta, indicator_label=country_label,
+                        start_date=start_date, end_date=end_date, opd_key=state.get('opd_key'),
+                        ndf_rebuild_sql=state.get('ndf_rebuild_sql'), ndf_rebuild_path=state.get('ndf_rebuild_path'),
+                    )
                     _MNID_DATA_DISK_CACHE.set(_cp_disk_key, cp_cached, expire=_MNID_UI_CACHE_TTL_SECONDS)
                 _worker_view_cache[_cp_disk_key] = cp_cached
                 _trim_cache(_worker_view_cache, _WORKER_VIEW_CACHE_MAX)
@@ -408,65 +412,13 @@ def _render_mnh_dashboard_view(selected_view: str, state: dict, views: dict):
             scope_meta=state.get('scope_meta'),
         )
 
-    if selected_view == 'mnh-moh':
-        if selected_view in views:
-            return views[selected_view]
-        network_df = _get_network_df_from_state(state)
-        facility_df = _get_facility_df_from_state(state, network_df=network_df)
-        if network_df is None or facility_df is None:
-            return html.Div('Unable to load the MNH MoH dashboard data.', style={'padding': '24px', 'color': '#DC2626'})
-        try:
-            module = load_dashboard_module('MNH-MoH')
-            rendered = module.render_mnh_moh_dashboard(
-                facility_df=facility_df,
-                network_df=network_df,
-                maternal_config=state.get('config') or {},
-                newborn_config=state.get('newborn_config'),
-                start_date=state.get('start_date'),
-                end_date=state.get('end_date'),
-                scope_meta=state.get('scope_meta'),
-            )
-            views[selected_view] = rendered
-            return rendered
-        except Exception as exc:
-            _LOGGER.exception('Failed to render MNH MoH dashboard: %s', exc)
-            return html.Div(
-                f'MNH-MoH failed to load: {exc}',
-                style={'padding': '24px', 'color': '#DC2626', 'fontSize': '13px'},
-            )
-
-    # Generic path: load the module declared in mnh_tab_specs for this tab id
+    # mnh-moh and the generic mnh_tab_specs-driven dashboard loader (MNH-MoH,
+    # MNH-Nest360's own compact layouts) were removed -- both duplicated
+    # render_country_profile/render_operational_readiness and were only
+    # reachable via the MNH switcher tabs, which stay disabled
+    # (dashboard_tabs_config.json's mnh_tabs is empty). Any tab id besides
+    # mnh-beginnings falls through to the placeholder below.
     tab_specs = state.get('mnh_tab_specs') or []
-    spec = next((t for t in tab_specs if t.get('id') == selected_view), None)
-    if spec and spec.get('module') and not spec.get('placeholder'):
-        folder_name = spec['module'].split('/')[-1]  # e.g. "mnid/dashboards/MNH-Nest360" → "MNH-Nest360"
-        if selected_view in views:
-            return views[selected_view]
-        network_df  = _get_network_df_from_state(state)
-        facility_df = _get_facility_df_from_state(state, network_df=network_df)
-        try:
-            module      = load_dashboard_module(folder_name)
-            render_fn   = getattr(module, (module.__all__ or [None])[0], None)
-            if render_fn is None:
-                raise AttributeError(f'No render function declared in __all__ for {folder_name}')
-            rendered = render_fn(
-                facility_df=facility_df,
-                network_df=network_df,
-                maternal_config=state.get('config') or {},
-                newborn_config=state.get('newborn_config'),
-                start_date=state.get('start_date'),
-                end_date=state.get('end_date'),
-                scope_meta=state.get('scope_meta'),
-            )
-            views[selected_view] = rendered
-            return rendered
-        except Exception as exc:
-            _LOGGER.exception('Failed to render %s dashboard: %s', folder_name, exc)
-            return html.Div(
-                f'{folder_name} failed to load: {exc}',
-                style={'padding': '24px', 'color': '#DC2626', 'fontSize': '13px'},
-            )
-
     label_map = {item.get('id'): item.get('label') for item in tab_specs}
     return _render_mnh_placeholder(label_map.get(selected_view, selected_view))
 
@@ -600,7 +552,7 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
         # one first request but means every other worker can see it
         # immediately after.
         try:
-            _MNID_DATA_DISK_CACHE.set(_ndf_key, network_df, expire=_MNID_UI_CACHE_TTL_SECONDS)
+            _MNID_DATA_DISK_CACHE.set(_ndf_key, _optimize_df_for_disk_cache(network_df), expire=_MNID_UI_CACHE_TTL_SECONDS)
             _MNID_DATA_DISK_CACHE.set('ndf:latest_key',     _ndf_key, expire=_MNID_UI_CACHE_TTL_SECONDS)
             _MNID_DATA_DISK_CACHE.set('ndf:latest_opd_key', _opd_key, expire=_MNID_UI_CACHE_TTL_SECONDS)
         except Exception:
@@ -613,7 +565,11 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
         ))
         cp_cached = _MNID_DATA_DISK_CACHE.get(_cp_disk_key)
         if cp_cached is None:
-            cp_cached = render_country_profile(facility_df, scope_meta=scope_meta, indicator_label=country_label, start_date=start_date, end_date=end_date)
+            cp_cached = render_country_profile(
+                facility_df, scope_meta=scope_meta, indicator_label=country_label,
+                start_date=start_date, end_date=end_date, opd_key=_opd_key,
+                ndf_rebuild_sql=_data_opd_sql, ndf_rebuild_path=data_path,
+            )
             _MNID_DATA_DISK_CACHE.set(_cp_disk_key, cp_cached, expire=_MNID_UI_CACHE_TTL_SECONDS)
         executive_content['country-profile'] = cp_cached
         _initial_ec = [executive_content['country-profile']]

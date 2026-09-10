@@ -299,11 +299,13 @@ def _load_mnid_report_config(report_name: str) -> dict | None:
     )
 
 
-def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
-                                  facility_code, start_date, end_date,
-                                  scope_meta: dict | None = None,
-                                  include_content: bool = True) -> dict:
-    # Normalise period bounds once — used for date filtering and aggregate queries.
+def _scope_network_df(network_df: pd.DataFrame, start_date, end_date, scope_meta: dict | None = None) -> pd.DataFrame:
+    """Filter network_df down to the selected date window and facility/district
+    scope. Shared by _build_mnid_indicator_content below and Country Profile's
+    raw-row chart refetch (executive_views.py's _refetch_series) -- a chart no
+    longer needs its own separate cached copy of the same rows just to redo
+    this same filtering later (see _remember_ui_payload's docstring for what
+    that used to cost)."""
     try:
         _s = pd.to_datetime(start_date).normalize() if start_date else None
         _e = (
@@ -331,6 +333,14 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
         facility_df = facility_df[facility_df['Facility'].isin(selected_facilities)]
     elif selected_districts and 'District' in facility_df.columns:
         facility_df = facility_df[facility_df['District'].isin(selected_districts)]
+    return facility_df
+
+
+def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
+                                  facility_code, start_date, end_date,
+                                  scope_meta: dict | None = None,
+                                  include_content: bool = True) -> dict:
+    facility_df = _scope_network_df(network_df, start_date, end_date, scope_meta)
 
     selected_program = (scope_meta or {}).get('mnid_categories')
     selected_program = selected_program[0] if selected_program else 'All'

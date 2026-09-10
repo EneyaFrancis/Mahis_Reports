@@ -24,8 +24,8 @@ from mnid.aggregation.store import (
     query_coverage as _agg_coverage,
     query_time_series as _agg_time_series,
 )
-from mnid.core.cache import _resolve_scope_filters
-from mnid.core.data_utils import _remember_ui_payload, _restore_ui_dataframe
+from mnid.core.cache import _resolve_scope_filters, _get_network_df_from_state
+from mnid.views.kpi_engine import _scope_network_df
 
 PRIMARY_GREEN = "#15803D"
 SUCCESS_GREEN = "#16A34A"
@@ -680,7 +680,17 @@ def _refetch_series(recipe: dict, grain: str) -> pd.DataFrame:
             return _agg_monthly_multiseries(series_map, agg_df, start, end, facility_codes, districts, grain=grain)
         return pd.DataFrame()
 
-    df = _restore_ui_dataframe(recipe.get("df_key"))
+    # Rebuilds df fresh from the already-cached (self-healing, see
+    # _get_network_df_from_state) network_df instead of keeping a separate
+    # duplicate raw-row copy -- see render_country_profile's _recipe_base
+    # comment for why.
+    network_df = _get_network_df_from_state({
+        "opd_key": recipe.get("opd_key"),
+        "route": route,
+        "ndf_rebuild_sql": recipe.get("ndf_rebuild_sql"),
+        "ndf_rebuild_path": recipe.get("ndf_rebuild_path"),
+    })
+    df = _scope_network_df(network_df, recipe.get("start"), recipe.get("end"), recipe.get("scope_meta")) if network_df is not None else pd.DataFrame()
     if kind == "raw_single":
         mask = _mask_from_spec(df, recipe.get("mask_spec"))
         out = _monthly_series(df, mask, recipe.get("unique_col", "person_id"), grain=grain)
@@ -1002,7 +1012,7 @@ def _mortality_distribution_chart(df: pd.DataFrame, title: str, color: str) -> g
 
 def render_country_profile(
     df: pd.DataFrame, scope_meta: dict | None = None, indicator_label: str = "Maternal Indicators",
-    start_date=None, end_date=None,
+    start_date=None, end_date=None, opd_key=None, ndf_rebuild_sql=None, ndf_rebuild_path=None,
 ) -> html.Div:
     profile_name = _profile_scope_name(scope_meta)
     df = _copy_df(df)
@@ -1019,8 +1029,9 @@ def render_country_profile(
     use_dhis2 = _cp_route == 'dhis2' and agg_df is not None and not agg_df.empty
     # Same ids now have real MAHIS numerator/denominator filters too (see
     # validated_dashboard.json), and the aggregate carries a real 'daily'
-    # grain -- unlike the raw-row recall (_remember_ui_payload/_cp_df_key),
-    # it's disk-persisted with no session-cache TTL/eviction risk, exactly
+    # grain -- unlike the raw-row recall (now rebuilt fresh from network_df
+    # via _scope_network_df, see _recipe_base below), it's disk-persisted
+    # with no session-cache TTL/eviction risk to begin with, exactly
     # what Run Charts already relies on for its own Daily toggle (trends.py's
     # update_trend_chart: agg_df first, fallback_df second). Trend charts
     # below use this instead of a raw scan whenever it's populated,
@@ -1049,7 +1060,13 @@ def render_country_profile(
         # selection and return the whole route's totals instead.
         _, facility_codes, districts = _resolve_scope_filters(df, scope_meta or {})
 
-    if use_dhis2:
+    if _agg_ready:
+        # Same aggregate the trend charts above already use -- keeps headline
+        # counts consistent with them instead of two independent computations
+        # disagreeing (confirmed live: Country Profile showed 85 total births
+        # while Maternal's own KPI card showed 243 for the same facility/
+        # period, before this). completeness has no aggregate counterpart, so
+        # it's computed from df regardless of path, same as before.
         start = pd.to_datetime(start_date) if start_date else None
         end = pd.to_datetime(end_date) if end_date else None
         if start is None or end is None:
@@ -1063,6 +1080,8 @@ def render_country_profile(
         else:
             current_metrics = _agg_metric_snapshot(agg_df, None, None, facility_codes, districts)
             previous_metrics = dict(current_metrics)
+        if "concept_name" in df.columns:
+            current_metrics["completeness"] = round(df["concept_name"].fillna("").astype(str).str.strip().ne("").mean() * 100, 1)
     else:
         current_metrics = _metric_snapshot(df)
         previous_metrics = _metric_snapshot(prev_df)
@@ -1164,21 +1183,22 @@ def render_country_profile(
 
     # Shared with every chart's "recipe" below (route/scope don't vary per
     # chart) -- see _refetch_series's module note for why these exist.
+    # opd_key/scope_meta let the raw-row path rebuild df fresh from the
+    # already-cached network_df on refetch instead of keeping its own
+    # duplicate copy of the same rows -- network_df has a rebuild-on-miss
+    # (see _get_network_df_from_state), this used to be its own separate,
+    # unguarded 6h-TTL cache entry that didn't.
     _recipe_base = {
         "route": _cp_route,
         "facility_codes": facility_codes,
         "districts": districts,
         "start": start.isoformat() if start is not None else None,
         "end": end.isoformat() if end is not None else None,
+        "opd_key": opd_key,
+        "scope_meta": scope_meta,
+        "ndf_rebuild_sql": ndf_rebuild_sql,
+        "ndf_rebuild_path": ndf_rebuild_path,
     }
-    # A single stable-per-render key so every raw-row recipe below recalls
-    # the exact same dataframe instead of each stashing its own duplicate
-    # copy in the disk cache. Longer TTL than the 1h default: this is what
-    # the Daily grain toggle recalls to refetch real day-level detail, and
-    # there's no rebuild-on-miss for it (unlike network_df) -- see
-    # _remember_ui_payload's docstring. Not needed at all once _agg_ready,
-    # since those charts refetch from the aggregate instead.
-    _cp_df_key = None if _agg_ready else _remember_ui_payload("cp", df, expire=6 * 3600)
 
     if _agg_ready:
         total_births_series = _agg_monthly_series(agg_df, "mnid_lab_core_totalbirths", start, end, facility_codes, districts, grain=_fetch_grain)
@@ -1202,10 +1222,10 @@ def render_country_profile(
     else:
         maternal_death_mask_spec = _yn_spec("mnid_pnc_maternal_death")
         maternal_death_series = _monthly_series(df, _mask_from_spec(df, maternal_death_mask_spec), "person_id", grain=_fetch_grain)
-        maternal_death_recipe = {**_recipe_base, "kind": "raw_single", "df_key": _cp_df_key, "mask_spec": maternal_death_mask_spec}
+        maternal_death_recipe = {**_recipe_base, "kind": "raw_single", "mask_spec": maternal_death_mask_spec}
         neonatal_death_mask_spec = _contains_spec("obs_value_coded", ["Died", "Dead", "Death", "Neonatal death"])
         neonatal_death_series = _monthly_series(df, _mask_from_spec(df, neonatal_death_mask_spec), "person_id", grain=_fetch_grain)
-        neonatal_death_recipe = {**_recipe_base, "kind": "raw_single", "df_key": _cp_df_key, "mask_spec": neonatal_death_mask_spec}
+        neonatal_death_recipe = {**_recipe_base, "kind": "raw_single", "mask_spec": neonatal_death_mask_spec}
         # "Baby general condition at birth" is the real Labour concept for
         # this; "Outcome of the delivery" is actually PNC's -- both kept.
         _birth_outcome_concepts = ["Outcome of the delivery", "Baby general condition at birth"]
@@ -1235,7 +1255,7 @@ def render_country_profile(
             PRIMARY_GREEN,
         )}, df, grain=_fetch_grain)
         total_births_series = total_births_series[["month", "value"]].copy() if not total_births_series.empty else pd.DataFrame(columns=["month", "value"])
-        total_births_recipe = {**_recipe_base, "kind": "raw_single", "df_key": _cp_df_key, "mask_spec": total_births_mask_spec, "keep_columns": ["month", "value"]}
+        total_births_recipe = {**_recipe_base, "kind": "raw_single", "mask_spec": total_births_mask_spec, "keep_columns": ["month", "value"]}
         stillbirth_series_specs = {
             "Total stillbirths": (_yn_spec("mnid_labour_stillbirth"), STILLBIRTH_BLUE),
             "Fresh stillbirths": (_contains_spec("obs_value_coded", ["Fresh stillbirth", "Fresh still birth"]), "#DB2777"),
@@ -1244,7 +1264,7 @@ def render_country_profile(
         stillbirth_trend_series = _monthly_multiseries({
             label: (_mask_from_spec(df, spec), color) for label, (spec, color) in stillbirth_series_specs.items()
         }, df, grain=_fetch_grain)
-        stillbirth_trend_recipe = {**_recipe_base, "kind": "raw_multi", "df_key": _cp_df_key, "series_map": stillbirth_series_specs}
+        stillbirth_trend_recipe = {**_recipe_base, "kind": "raw_multi", "series_map": stillbirth_series_specs}
 
     chart_scope_label = _chart_scope_label(scope_meta)
     total_birth_denominator_spec = _and_spec(
@@ -1300,7 +1320,7 @@ def render_country_profile(
             recipe = {**_recipe_base, "kind": "agg_single", "mnid_id": mnid_id, "value_field": "pct", "include_counts": True} if mnid_id else None
         else:
             series_df = _monthly_rate_series(df, mask, total_birth_denominator_mask, "person_id", include_counts=True, grain=_fetch_grain)
-            recipe = {**_recipe_base, "kind": "raw_rate", "df_key": _cp_df_key, "include_counts": True,
+            recipe = {**_recipe_base, "kind": "raw_rate", "include_counts": True,
                       "numerator_mask_spec": mask_spec, "denominator_mask_spec": total_birth_denominator_spec}
         maternal_complication_cards.append(_trend_chart_payload(
             chart_key,
@@ -1327,7 +1347,7 @@ def render_country_profile(
             recipe = {**_recipe_base, "kind": "agg_single", "mnid_id": mnid_id, "value_field": "pct", "include_counts": True} if mnid_id else None
         else:
             series_df = _monthly_rate_series(df, mask, live_birth_denominator_mask, "person_id", include_counts=True, grain=_fetch_grain)
-            recipe = {**_recipe_base, "kind": "raw_rate", "df_key": _cp_df_key, "include_counts": True,
+            recipe = {**_recipe_base, "kind": "raw_rate", "include_counts": True,
                       "numerator_mask_spec": mask_spec, "denominator_mask_spec": live_birth_denominator_spec}
         neonatal_complication_cards.append(_trend_chart_payload(
             chart_key,
