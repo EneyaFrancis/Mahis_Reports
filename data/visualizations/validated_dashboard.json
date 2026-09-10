@@ -4272,7 +4272,7 @@
         "label": "Babies not hypothermic on admission",
         "category": "Newborn",
         "target": 80,
-        "status": "tracked",
+        "status": "awaiting_baseline",
         "numerator_filters": {
           "unique": "person_id",
           "variable1": "mnid_newborn_not_hypothermic_admission",
@@ -4286,14 +4286,15 @@
           "value1": "Newborn",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        }
+        },
+        "note": "Verified against MAHIS-FRONT (src/apps/Neonatal/config/vitals.ts): the underlying temperature/tactile-temperature readings are captured in the app but do not flow into this extract, and no \"thermal status\" categorical field exists either -- there is currently no real data source for this indicator."
       },
       {
         "id": "mnid_nb_core_008",
         "label": "Babies not hypothermic at any time in the neonatal unit",
         "category": "Newborn",
         "target": 80,
-        "status": "tracked",
+        "status": "awaiting_baseline",
         "numerator_filters": {
           "unique": "person_id",
           "variable1": "mnid_newborn_not_hypothermic_anytime",
@@ -4308,7 +4309,7 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Proxy from admission thermal status — longitudinal stay temperature not yet in extract."
+        "note": "Verified against MAHIS-FRONT (src/apps/Neonatal/config/vitals.ts): the underlying temperature/tactile-temperature readings are captured in the app but do not flow into this extract, and no \"thermal status\" categorical field exists either -- there is currently no real data source for this indicator."
       },
       {
         "id": "mnid_lab_core_totalbirths",
@@ -6161,7 +6162,7 @@
         "label": "Babies not hypothermic on admission",
         "category": "Newborn",
         "target": 80,
-        "status": "tracked",
+        "status": "awaiting_baseline",
         "numerator_filters": {
           "unique": "person_id",
           "variable1": "mnid_newborn_not_hypothermic_admission",
@@ -6175,14 +6176,15 @@
           "value1": "Newborn",
           "variable2": "Age_Group",
           "value2": "Under 5"
-        }
+        },
+        "note": "Verified against MAHIS-FRONT (src/apps/Neonatal/config/vitals.ts): the underlying temperature/tactile-temperature readings are captured in the app but do not flow into this extract, and no \"thermal status\" categorical field exists either -- there is currently no real data source for this indicator."
       },
       {
         "id": "mnid_nb_core_008",
         "label": "Babies not hypothermic at any time in the neonatal unit",
         "category": "Newborn",
         "target": 80,
-        "status": "tracked",
+        "status": "awaiting_baseline",
         "numerator_filters": {
           "unique": "person_id",
           "variable1": "mnid_newborn_not_hypothermic_anytime",
@@ -6197,7 +6199,7 @@
           "variable2": "Age_Group",
           "value2": "Under 5"
         },
-        "note": "Proxy from admission thermal status — longitudinal stay temperature not yet in extract."
+        "note": "Verified against MAHIS-FRONT (src/apps/Neonatal/config/vitals.ts): the underlying temperature/tactile-temperature readings are captured in the app but do not flow into this extract, and no \"thermal status\" categorical field exists either -- there is currently no real data source for this indicator."
       },
       {
         "id": "mnid_lab_core_totalbirths",

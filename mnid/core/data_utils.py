@@ -583,23 +583,21 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
         ),
     )
     _assign_flag(
+        # Real MAHIS-FRONT field is "resuscitationMethods" (Neonatal enrollment
+        # multiselect, "Was resuscitation needed at birth?"), not "Neonatal
+        # resuscitation provided" -- that concept_name doesn't exist anywhere
+        # in the export (verified against MAHIS Concept Sheets.xlsx and
+        # MAHIS-FRONT's src/apps/Neonatal/config/enrollment.ts). Real option
+        # values: Stimulation/Suctioning/Oxygen/Bag Valve Mask Ventilation
+        # (BVM)/Cardio Pulmonary Resuscitation (CPR)/Unknown/None -- matched
+        # by "not None/Unknown/empty" rather than listing every positive
+        # value, since a multiselect can record more than one at once.
         'mnid_newborn_resuscitation_given',
-        newborn_mask & (
-            concept.isin(['Neonatal resuscitation provided'])
-            & combined_lower.isin([
-                'yes', 'stimulation only', 'bag and mask',
-                'suctioning', 'oxygen',
-                'cardio pulmonary resuscitation (cpr)',
-            ])
-            & ~combined_lower.isin(['none', 'unknown', ''])
-        ),
+        newborn_mask & concept.eq('resuscitationMethods') & ~combined_lower.isin(['none', 'unknown', '']),
     )
-    _assign_flag(
-        'mnid_newborn_resuscitation_eligible',
-        newborn_mask
-        & concept.eq('Eligible for neonatal resuscitation')
-        & combined_lower.eq('yes'),
-    )
+    # mnid_newborn_resuscitation_eligible assigned further down (derived from
+    # mnid_newborn_birth_asphyxia, needs it already computed as a person_ctx
+    # column -- see that assignment for why).
     _assign_flag('mnid_newborn_sepsis', newborn_mask & _cp_sepsis)
     _assign_flag(
         'mnid_newborn_parenteral_antibiotics',
@@ -628,6 +626,15 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
         'mnid_newborn_bilirubin_measured',
         newborn_mask & _cp_bilirubin & ~combined_lower.isin(['', 'no', 'none', 'unknown']),
     )
+    # "Thermal status on admission" is not a real MAHIS concept -- verified
+    # against MAHIS-FRONT (src/apps/Neonatal/config/vitals.ts): temperature is
+    # captured as a raw numeric reading + a separate tactile-temperature
+    # assessment, neither of which flows into this extract as a concept_name,
+    # and there's no categorical "status" field either. These two flags
+    # always evaluate to False until that data is exported -- both
+    # dependent indicators (mnid_nb_core_007/008) are marked awaiting_baseline
+    # in validated_dashboard.json rather than tracked, so this isn't shown as
+    # if it were real.
     _assign_flag(
         'mnid_newborn_not_hypothermic_admission',
         newborn_mask & concept.eq('Thermal status on admission') & combined_lower.eq('not hypothermic'),
@@ -685,6 +692,15 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
         _ctx_series('mnid_newborn_birth_asphyxia').eq('Yes')
         & _ctx_series('mnid_newborn_resuscitation_given').eq('Yes')
     ).map({True: 'Yes', False: ''})
+    # "Eligible for neonatal resuscitation" is not a real MAHIS concept -- no
+    # eligibility field, and Apgar scores (the real clinical eligibility
+    # criterion per MAHIS-FRONT's own poor-Apgar validation rule,
+    # src/apps/Neonatal/config/enrollment.ts) aren't in this extract either.
+    # Proxied via birth asphyxia, same relationship mnid_lab_prog_012's own
+    # note already assumed ("Eligible for neonatal resuscitation flag as
+    # denominator"). mnid_newborn_birth_asphyxia is already newborn_mask-
+    # scoped from its own _assign_flag call above, so no need to re-AND it.
+    person_ctx['mnid_newborn_resuscitation_eligible'] = _ctx_series('mnid_newborn_birth_asphyxia').eq('Yes').map({True: 'Yes', False: ''})
     person_ctx['mnid_newborn_resuscitation_eligible_received'] = (
         _ctx_series('mnid_newborn_resuscitation_eligible').eq('Yes')
         & _ctx_series('mnid_newborn_resuscitation_given').eq('Yes')

@@ -14,6 +14,23 @@ from mnid.core.constants import FACILITY_NAMES as _FACILITY_NAMES
 _LOGGER = logging.getLogger(__name__)
 
 
+def _tuplify(value):
+    """Recursively convert lists back into tuples.
+
+    opd_key is a nested tuple (route, dataset_version, row_count,
+    columns_tuple, facility_tuple, district_tuple) used as a dict key
+    throughout this module. Country Profile's Daily-grain refetch carries it
+    inside a recipe stored in a dcc.Store, which round-trips through JSON to
+    the browser and back -- JSON has no tuple type, so every tuple in it
+    silently becomes a list, and a list isn't hashable
+    (TypeError: unhashable type: 'list' on opd_key in _network_df_cache,
+    confirmed live via the Daily toggle's pattern-matching callback error).
+    Converts it back before it's ever used as a key."""
+    if isinstance(value, list):
+        return tuple(_tuplify(v) for v in value)
+    return value
+
+
 def _optimize_df_for_disk_cache(df: pd.DataFrame) -> pd.DataFrame:
     """Convert repeated-value string columns (Facility/District/concept_name/
     obs_value_coded/Program, ...) to pandas category dtype before pickling to
@@ -289,7 +306,7 @@ def _get_network_df_from_state(state: dict):
     Rebuilding here means a cache miss just costs one slow request instead of
     a broken page until a full reload.
     """
-    opd_key = state.get('opd_key')
+    opd_key = _tuplify(state.get('opd_key'))
     if opd_key is None:
         return None
     if opd_key in _network_df_cache:
