@@ -111,6 +111,37 @@ def _load_all_indicators(viz_dir: str) -> list[dict]:
     except Exception as exc:
         _LOG.warning('Could not load Nest360 indicators: %s', exc)
 
+    # Add MoH indicators from the MNH-MoH dashboard module (same pattern as
+    # Nest360 above). These used to be defined inline in
+    # _program_based_priority_indicators (mnid/core/indicators.py) with a
+    # '_moh_' id substring, included here unconditionally regardless of the
+    # display-side include_moh flag -- moved to their own file so the MoH
+    # indicator set is separate, but still aggregated the same way.
+    try:
+        from mnid.dashboards import load_dashboard_module as _ldm
+        _moh_module = _ldm('MNH-MoH')
+        get_mnh_moh_indicators = _moh_module.__dict__.get('get_mnh_moh_indicators')
+        if get_mnh_moh_indicators is None:
+            import importlib.util as _ilu
+            from pathlib import Path as _P
+            _ipath = _P(__file__).resolve().parents[1] / 'dashboards' / 'MNH-MoH' / 'indicators.py'
+            _spec = _ilu.spec_from_file_location('mnid.dashboards.mnh_moh_indicators', str(_ipath))
+            _imod = _ilu.module_from_spec(_spec)
+            _spec.loader.exec_module(_imod)
+            get_mnh_moh_indicators = _imod.get_mnh_moh_indicators
+        for ind in get_mnh_moh_indicators():
+            iid = ind.get('id')
+            if (
+                iid and iid not in seen
+                and ind.get('numerator_filters')
+                and ind.get('denominator_filters')
+            ):
+                seen.add(iid)
+                indicators.append(ind)
+        _LOG.info('Loaded %d MoH indicators', sum(1 for i in indicators if '_moh_' in str(i.get('id', ''))))
+    except Exception as exc:
+        _LOG.warning('Could not load MoH indicators: %s', exc)
+
     return indicators
 
 
