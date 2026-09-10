@@ -341,6 +341,26 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
                                   scope_meta: dict | None = None,
                                   include_content: bool = True) -> dict:
     facility_df = _scope_network_df(network_df, start_date, end_date, scope_meta)
+    # _scope_network_df already resolves these internally to filter
+    # facility_df, but doesn't return them -- re-derived here since the rest
+    # of this function (KPI batch facility_code filter, heatmap scoping,
+    # prev-period comparison, aggregate grain/window checks) needs them too.
+    # Cheap, pure computations, not worth threading through as return values
+    # just to avoid redoing them.
+    selected_facilities, selected_facility_codes, selected_districts = _resolve_scope_filters(
+        network_df, scope_meta,
+    )
+    try:
+        _s = pd.to_datetime(start_date).normalize() if start_date else None
+        _e = (
+            (pd.to_datetime(end_date).normalize() + pd.Timedelta(days=1) - pd.Timedelta(seconds=1))
+            if end_date else (
+                network_df['Date'].max() if 'Date' in network_df.columns and not network_df.empty
+                else pd.Timestamp.now()
+            )
+        )
+    except Exception:
+        _s = _e = None
 
     selected_program = (scope_meta or {}).get('mnid_categories')
     selected_program = selected_program[0] if selected_program else 'All'
