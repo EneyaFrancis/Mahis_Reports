@@ -301,10 +301,11 @@ class ReportTableBuilder:
         vals = [str(v).strip() for v in self.report_name["name"].tolist() if str(v).strip()]
         return vals[0] if vals else "Report"
 
-    # (dark, light) header shade per program -- matches the MNH-MoH dashboard's
-    # own ANC/Labour/Newborn/PNC colors (mnid/dashboards/MNH-MoH/layout.py) so an
-    # HMIS report reads as the same program at a glance. Non-MNH programs keep
-    # the original neutral navy/gray.
+    # (dark, light) header shade per program -- matches MNID's own
+    # ANC/Labour/Newborn/PNC colors (mnid/dashboards/MNH-MoH/layout.py, since
+    # removed as a duplicate of render_country_profile/render_operational_
+    # readiness) so an HMIS report reads as the same program at a glance.
+    # Non-MNH programs keep the original neutral navy/gray.
     _PROGRAM_HEADER_COLORS = {
         "anc program": ("#14532D", "#1A7C4F"),                  
         "labour and delivery program": ("#7C4D0A", "#D97706"),  
