@@ -269,12 +269,25 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     encounter_source_lower = _lower_cat(encounter_source)
 
     person_ctx = pd.DataFrame({'person_id': out['person_id'].dropna().astype(str).unique()})
+    # person_ctx's row order is fixed from here on (nothing reorders it
+    # below), so this position lookup, computed once, stays valid for every
+    # _assign_flag call. Previously each of the ~110 calls built a Python
+    # set() of matching person_ids and rescanned all of person_ctx via
+    # .isin() against it -- same result via a dict .map() (vectorized C
+    # loop, not per-call set construction) straight to row positions, set
+    # via numpy fancy indexing instead of a second full-column comparison.
+    _person_pos = {pid: i for i, pid in enumerate(person_ctx['person_id'].to_numpy())}
+    _n_persons = len(person_ctx)
 
     def _assign_flag(name: str, mask: pd.Series) -> None:
         if len(mask) != len(out):
             return
-        people = set(out.loc[mask.fillna(False), 'person_id'].dropna().astype(str))
-        person_ctx[name] = person_ctx['person_id'].isin(people).map({True: 'Yes', False: ''})
+        matched_ids = out.loc[mask.fillna(False), 'person_id'].dropna().astype(str)
+        positions = matched_ids.map(_person_pos).dropna().to_numpy(dtype=int)
+        flags = np.full(_n_persons, '', dtype=object)
+        if positions.size:
+            flags[np.unique(positions)] = 'Yes'
+        person_ctx[name] = flags
 
     def _ctx_series(name: str) -> pd.Series:
         if name in person_ctx.columns:
