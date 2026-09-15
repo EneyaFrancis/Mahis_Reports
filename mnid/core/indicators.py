@@ -188,7 +188,7 @@ def _program_based_priority_indicators(categories: list[str] | None = None) -> l
                 'id': 'mnid_lab_prog_007',
                 'label': 'Deliveries with objective blood loss measurement',
                 'category': 'Labour',
-                'target': 70,
+                'target': 80,
                 'status': 'tracked',
                 'numerator_filters': {'unique': 'person_id', 'variable1': 'Service_Area', 'value1': 'Labour', 'variable2': 'mnid_labour_estimated_blood_loss_recorded', 'value2': 'Yes'},
                 'denominator_filters': {'unique': 'person_id', 'variable1': 'Service_Area', 'value1': 'Labour'},

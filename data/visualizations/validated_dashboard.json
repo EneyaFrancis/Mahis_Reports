@@ -3404,7 +3404,7 @@
         "id": "mnid_lab_prog_007",
         "label": "Deliveries with objective blood loss measurement",
         "category": "Labour",
-        "target": 70,
+        "target": 80,
         "status": "tracked",
         "numerator_filters": {
           "unique": "person_id",
@@ -5311,7 +5311,7 @@
         "id": "mnid_lab_prog_007",
         "label": "Deliveries with objective blood loss measurement",
         "category": "Labour",
-        "target": 70,
+        "target": 80,
         "status": "tracked",
         "numerator_filters": {
           "unique": "person_id",
