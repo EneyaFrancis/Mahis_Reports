@@ -69,8 +69,12 @@ RATE_LABELS = {
 }
 AWAITING_LABEL = f"{STATUS_ICONS['awaiting']} Not yet reported"
 EMONC_LABELS = {
-    "CEmONC": f"{STATUS_ICONS['green']} CEmONC",
-    "BEmONC": f"{STATUS_ICONS['amber']} BEmONC",
+    # No check/warning icon on CEmONC/BEmONC - both are normal, valid
+    # classification tiers, not a pass/fail state; a warning triangle next
+    # to BEmONC read as "something's wrong" when it isn't. Unclassified
+    # keeps its icon - that one is a real gap worth flagging.
+    "CEmONC": "CEmONC",
+    "BEmONC": "BEmONC",
     "Unclassified": f"{STATUS_ICONS['red']} Unclassified",
 }
 EMONC_TONES = {"CEmONC": "green", "BEmONC": "amber", "Unclassified": "red"}
@@ -572,6 +576,15 @@ def _classify_emonc(numerators_by_sig: dict, code: str, level: str,
     if excluded:
         note = (f"Classification based on {len(gated_basic)} of {len(basic)} basic functions "
                 f"({', '.join(excluded)} not reported via this data source)")
+    # A route with none of the 7 basic functions available (e.g. a
+    # NEST/newborn-only aggregate with no "Signal: ..." indicators at all)
+    # left gated_basic empty, and an empty missing_basic list is
+    # vacuously "nothing missing" -- every facility, including genuinely
+    # Primary-level ones, silently classified CEmONC. No data to assess
+    # against isn't evidence of the highest tier; report it as unclassified
+    # instead of defaulting there.
+    if not gated_basic:
+        return "Unclassified", "", note or "No signal function data available via this data source"
     if not missing_basic and not missing_comprehensive:
         return "CEmONC", "", note
     if not missing_basic:
@@ -579,6 +592,27 @@ def _classify_emonc(numerators_by_sig: dict, code: str, level: str,
     if len(missing_basic) == 1:
         return "BEmONC", missing_basic[0], note
     return "Unclassified", ", ".join(missing_basic), note
+
+
+def _classify_emonc_with_static_fallback(numerators_by_sig: dict, code: str, level: str,
+                                          unavailable_ids: frozenset[str] = frozenset()) -> tuple[str, str, str]:
+    """_classify_emonc(), but when the reason for "Unclassified" is that this
+    route has no basic-function data to assess at all (missing == "" - the
+    only path that leaves it empty; a genuine multi-function failure always
+    fills it), fall back to the static HFA facility_level tier
+    (Secondary/Tertiary -> CEmONC, Primary -> BEmONC) instead of reporting
+    "Unclassified" for every facility. A structural facility tier that
+    actually has data behind it is more useful than an honest-but-empty
+    verdict, and it's what the rest of Operational Readiness already uses.
+    A real performance failure (missing non-empty) is left as Unclassified -
+    that's evidence, not a data gap, and shouldn't be papered over."""
+    classification, missing, note = _classify_emonc(numerators_by_sig, code, level, unavailable_ids)
+    if classification == "Unclassified" and not missing and is_readiness_data_available():
+        static_tier = "CEmONC" if level in ("Secondary", "Tertiary") else "BEmONC"
+        fallback_note = f"{note} -- no performance data for this route, showing static HFA facility level instead" if note else \
+            "No signal function performance data for this route -- showing static HFA facility level instead"
+        return static_tier, "", fallback_note
+    return classification, missing, note
 
 
 def _matrix_tone(pct: float | None) -> str:
@@ -719,7 +753,7 @@ def _signal_functions_detail(code: str, numerators_by_sig: dict, df: pd.DataFram
             html.Span(sf["label"], style={"fontSize": "12px", "color": TEXT, "flex": "1"}),
             _tone_pill(status, SIGNAL_DETAIL_LABELS[status]),
         ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "padding": "8px 0", "borderBottom": f"1px solid {BORDER}"}))
-    classification, missing, note = _classify_emonc(numerators_by_sig, code, level, unavailable_ids)
+    classification, missing, note = _classify_emonc_with_static_fallback(numerators_by_sig, code, level, unavailable_ids)
     classification_line = [
         html.Span(f"{_facility_district(code)} · {level} · ", style={"fontSize": "11px", "color": MUTED}),
         _tone_pill(EMONC_TONES[classification], EMONC_LABELS[classification]),
@@ -754,7 +788,7 @@ def _signal_functions_comparison(facility_codes: list[str], numerators_by_sig: d
     detail a national summary doesn't need.
     """
     classifications = {
-        code: _classify_emonc(numerators_by_sig, code, resolve_facility_level(code, _facility_label(code)), unavailable_ids)[0]
+        code: _classify_emonc_with_static_fallback(numerators_by_sig, code, resolve_facility_level(code, _facility_label(code)), unavailable_ids)[0]
         for code in facility_codes
     }
     cemonc_group = [c for c in facility_codes if classifications[c] == "CEmONC"]
@@ -777,7 +811,18 @@ def _signal_functions_comparison(facility_codes: list[str], numerators_by_sig: d
             "bemonc": bemonc_pct, "bemonc_detail": bemonc_detail,
         })
     if is_readiness_data_available():
-        nb_matrix = compute_readiness_matrix("SF", facility_codes, cemonc_codes=cemonc_group, bemonc_codes=bemonc_group)
+        # Deliberately NOT passing cemonc_group/bemonc_group here: those come
+        # from _classify_emonc, a WHO performance classification scoped to
+        # the selected reporting period (a facility can move between tiers
+        # if you change the date range). The HFA data below is a static,
+        # one-time survey with no date dimension at all -- grouping it by a
+        # period-dependent classification would make the same facility's
+        # static equipment/medicine rows silently shift CEmONC/BEmONC bucket
+        # depending on an unrelated date picker. Omitting cemonc_codes/
+        # bemonc_codes lets compute_readiness_matrix derive its own groups
+        # from facility_level (Secondary/Tertiary vs Primary), which only
+        # changes when the readiness dataset itself is regenerated.
+        nb_matrix = compute_readiness_matrix("SF", facility_codes)
         newborn_rows = [r for r in nb_matrix if r.get("category") == "Newborn signal functions"]
     else:
         newborn_rows = []
@@ -961,7 +1006,7 @@ def _build_overview_tab(facility_codes: list[str], df: pd.DataFrame,
     numerators_by_sig = _signal_function_rows(facility_codes, df, agg_df, start_date, end_date)
     unavailable_ids = frozenset(_unavailable_signal_function_ids(agg_df))
     classification_results = {
-        code: _classify_emonc(numerators_by_sig, code, resolve_facility_level(code, _facility_label(code)), unavailable_ids)
+        code: _classify_emonc_with_static_fallback(numerators_by_sig, code, resolve_facility_level(code, _facility_label(code)), unavailable_ids)
         for code in facility_codes
     }
     classifications = {code: result[0] for code, result in classification_results.items()}
