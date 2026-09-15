@@ -595,27 +595,25 @@ def publish_mnid_aggregate() -> dict:
             'pct': pct,
         })
 
-    # Check if Excel data source exists and merge with high priority for the 7 facilities
-    excel_file = _PROJECT_ROOT / 'data' / 'excel' / 'NEST_BF_facilitites.xlsx'
+    # Check if Excel data sources exist and merge with high priority
     excel_merged_count = 0
-    if excel_file.exists():
-        try:
-            from .tools.excel_to_dhis2_parquet import get_excel_mnid_records
-            excel_rows = get_excel_mnid_records(excel_file)
-            if excel_rows:
-                excel_keys = {
-                    (str(r['facility_code']), str(r['indicator_id']), r['period_start'], str(r['grain']))
-                    for r in excel_rows
-                }
-                rows = [
-                    r for r in rows
-                    if (str(r['facility_code']), str(r['indicator_id']), r['period_start'], str(r['grain'])) not in excel_keys
-                ]
-                rows.extend(excel_rows)
-                excel_merged_count = len(excel_rows)
-                _LOG.info("Merged %d Excel records (high priority) into DHIS2 indicator aggregates", excel_merged_count)
-        except Exception as exc:
-            _LOG.warning("Could not merge Excel data into DHIS2 publish: %s", exc)
+    try:
+        from .tools.excel_to_dhis2_parquet import get_excel_mnid_records
+        excel_rows = get_excel_mnid_records()
+        if excel_rows:
+            excel_keys = {
+                (str(r['facility_code']), str(r['indicator_id']), r['period_start'], str(r['grain']))
+                for r in excel_rows
+            }
+            rows = [
+                r for r in rows
+                if (str(r['facility_code']), str(r['indicator_id']), r['period_start'], str(r['grain'])) not in excel_keys
+            ]
+            rows.extend(excel_rows)
+            excel_merged_count = len(excel_rows)
+            _LOG.info("Merged %d Excel records (high priority) into DHIS2 indicator aggregates", excel_merged_count)
+    except Exception as exc:
+        _LOG.warning("Could not merge Excel data into DHIS2 publish: %s", exc)
 
     out_dir = _PROJECT_ROOT / 'data' / 'mnid_aggregates' / DHIS2_ROUTE
     parquet_out = out_dir / 'indicator_aggregates.parquet'

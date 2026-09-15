@@ -29,6 +29,7 @@ from mnid.core.constants import FACILITY_NAMES, FACILITY_DISTRICT
 from mnid.core.data_utils import resolve_facility_level, _remember_ui_payload, _restore_ui_dataframe
 from mnid.core.data_source import get_mnid_data_source
 from mnid.views.executive_views import _hierarchy_scope, _profile_scope_name, _summary_card
+from mnid.core.readiness_data import is_readiness_data_available, compute_readiness_matrix, compute_readiness_detail
 
 GREEN = "#15803D"
 AMBER = "#D97706"
@@ -46,6 +47,7 @@ STATUS_COLORS = {
     "na": (MUTED, "#F1F5F9"),
     "awaiting": (MUTED, "#F1F5F9"),
     "unavailable": (MUTED, "#F1F5F9"),
+    "plain": (TEXT, "#FFFFFF"),
 }
 STATUS_ICONS = {"green": "✓", "amber": "⚠", "red": "✕", "na": "–", "awaiting": "○"}
 
@@ -585,25 +587,25 @@ def _matrix_tone(pct: float | None) -> str:
     return "green" if pct >= 80 else "amber" if pct >= 50 else "red"
 
 
-def _matrix_cell(pct: float | None, detail: str | None = None) -> html.Td:
-    """One traffic-light cell: a solid tone fill with white text, matching
-    the Facility Performance matrix on the Maternal dashboard
-    (mnid/charts/heatmap.py::_build_facility_performance_heatmap_fig) - a
-    solid, saturated fill scans faster across many rows than the pale-wash
-    pills used elsewhere in this file for single-value status text.
-    `detail` (e.g. "12 of 16 facilities performing") becomes the native
-    hover tooltip via the HTML title attribute - no extra JS/callback
-    needed for a hover to show the calculation behind the percentage."""
-    tone = _matrix_tone(pct)
+def _matrix_cell(pct: float | int | str | None, detail: str | None = None) -> html.Td:
+    """One traffic-light cell: a solid tone fill with white text for percentages,
+    or a plain tabular cell for median-IQR metrics. `detail` becomes the native
+    hover tooltip via the HTML title attribute."""
+    tone = _matrix_tone(float(pct)) if isinstance(pct, (int, float)) else "awaiting"
     common = {"textAlign": "center", "padding": "9px 10px", "fontSize": "12px"}
     if pct is None:
         return html.Td(STATUS_ICONS["awaiting"], title=detail, style={
             **common, "color": MUTED, "background": BACKGROUND, "borderBottom": f"1px solid {BORDER}",
         })
-    color, _ = STATUS_COLORS[tone]
-    return html.Td(f"{pct:.0f}%", title=detail, style={
-        **common, "fontWeight": "700",
-        "color": "#FFFFFF", "background": color, "borderBottom": f"1px solid {SURFACE}",
+    if isinstance(pct, (int, float)):
+        color, _ = STATUS_COLORS[tone]
+        return html.Td(f"{float(pct):.0f}%", title=detail, style={
+            **common, "fontWeight": "700",
+            "color": "#FFFFFF", "background": color, "borderBottom": f"1px solid {SURFACE}",
+        })
+    return html.Td(str(pct), title=detail, style={
+        **common, "fontWeight": "600",
+        "color": TEXT, "borderBottom": f"1px solid {BORDER}", "fontVariantNumeric": "tabular-nums",
     })
 
 
@@ -683,6 +685,30 @@ def _matrix_table(rows: list[dict], columns: list[tuple[str, str]] | None = None
     }), style={"overflowX": "auto"})
 
 
+def _signal_functions_newborn_detail(code: str) -> html.Div:
+    if is_readiness_data_available():
+        hfa_sf = compute_readiness_detail("SF", code)
+        nb_hfa = [r for r in hfa_sf if r.get("category") == "Newborn signal functions"]
+        if nb_hfa:
+            rows = []
+            for r in nb_hfa:
+                st = r["status"]
+                disp = r["display_value"]
+                lbl = SIGNAL_DETAIL_LABELS.get(st, disp) if st in SIGNAL_DETAIL_LABELS else disp
+                rows.append(html.Div([
+                    html.Span(r["label"], style={"fontSize": "12px", "color": TEXT, "flex": "1"}),
+                    _tone_pill(st, lbl),
+                ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "padding": "8px 0", "borderBottom": f"1px solid {BORDER}"}))
+            return html.Div(rows)
+    return html.Div([
+        html.Div([
+            html.Span(label, style={"fontSize": "12px", "color": TEXT, "flex": "1"}),
+            _tone_pill("awaiting", AWAITING_LABEL),
+        ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "padding": "8px 0", "borderBottom": f"1px solid {BORDER}"})
+        for label in NEWBORN_SIGNAL_FUNCTIONS
+    ])
+
+
 def _signal_functions_detail(code: str, numerators_by_sig: dict, df: pd.DataFrame,
                               unavailable_ids: frozenset[str] = frozenset()) -> html.Div:
     level = resolve_facility_level(code, _facility_label(code))
@@ -714,13 +740,7 @@ def _signal_functions_detail(code: str, numerators_by_sig: dict, df: pd.DataFram
         ]),
         _card([
             _section_title("Newborn Signal Functions"),
-            html.Div([
-                html.Div([
-                    html.Span(label, style={"fontSize": "12px", "color": TEXT, "flex": "1"}),
-                    _tone_pill("awaiting", AWAITING_LABEL),
-                ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "padding": "8px 0", "borderBottom": f"1px solid {BORDER}"})
-                for label in NEWBORN_SIGNAL_FUNCTIONS
-            ]),
+            _signal_functions_newborn_detail(code),
         ]),
     ])
 
@@ -756,7 +776,13 @@ def _signal_functions_comparison(facility_codes: list[str], numerators_by_sig: d
             "cemonc": cemonc_pct, "cemonc_detail": cemonc_detail,
             "bemonc": bemonc_pct, "bemonc_detail": bemonc_detail,
         })
-    newborn_rows = [{"label": label, "cemonc": None, "bemonc": None} for label in NEWBORN_SIGNAL_FUNCTIONS]
+    if is_readiness_data_available():
+        nb_matrix = compute_readiness_matrix("SF", facility_codes, cemonc_codes=cemonc_group, bemonc_codes=bemonc_group)
+        newborn_rows = [r for r in nb_matrix if r.get("category") == "Newborn signal functions"]
+    else:
+        newborn_rows = []
+    if not newborn_rows:
+        newborn_rows = [{"label": label, "cemonc": None, "bemonc": None} for label in NEWBORN_SIGNAL_FUNCTIONS]
 
     note_children = [
         f"Share of {len(cemonc_group)} CEmONC- and {len(bemonc_group)} BEmONC-classified facilities in scope "
@@ -1101,6 +1127,38 @@ def _real_indicator_rows(indicators: list[dict], df: pd.DataFrame,
     return rows, tones, tooltips
 
 
+def _hfa_detail_table(sheet_name: str, facility_code: str, label_column: str = "Indicator") -> dash_table.DataTable:
+    detail_records = compute_readiness_detail(sheet_name, facility_code)
+    if not detail_records:
+        return _awaiting_detail_table([], label_column=label_column)
+    rows = []
+    tones = []
+    tooltips = []
+    has_category = any(r.get("category") for r in detail_records)
+    for r in detail_records:
+        disp_val = str(r["display_value"])
+        st = r["status"]
+        if st in ["green", "amber", "red"]:
+            pill_text = f"{STATUS_ICONS.get(st, '')} {disp_val}"
+        elif st == "na":
+            pill_text = f"{STATUS_ICONS['na']} {disp_val}"
+        elif st == "awaiting":
+            pill_text = AWAITING_LABEL
+        else:
+            pill_text = disp_val
+            st = "plain"
+
+        if has_category:
+            rows.append([r.get("category") or "", r["label"], pill_text])
+        else:
+            rows.append([r["label"], pill_text])
+        tones.append(st)
+        tooltips.append({"Result": {"value": f"Survey value: {r.get('raw_value', 'N/A')}", "type": "text"}})
+
+    cols = ["Category", label_column, "Result"] if has_category else [label_column, "Result"]
+    return _data_table(cols, rows, tone_column="Result", tones=tones, tooltips=tooltips)
+
+
 def _people_tab(facility_codes: list[str], wf_inds: list[dict] | None, df: pd.DataFrame) -> html.Div:
     real, tones, tooltips = _real_indicator_rows(wf_inds or [], df, None, None, None, facility_codes)
     real_card = _card([
@@ -1125,47 +1183,87 @@ def _people_tab(facility_codes: list[str], wf_inds: list[dict] | None, df: pd.Da
 def _products_tab(facility_codes: list[str], supply_inds: list[dict] | None, df: pd.DataFrame) -> html.Div:
     real, tones, tooltips = _real_indicator_rows(supply_inds or [], df, None, None, None, facility_codes)
     real_card = _card([
-        _section_title("Commodity Availability (tracked)"),
+        _section_title("Commodity Availability (live tracked)"),
         _data_table(["Indicator", "Assessed, n", "Result"], real, tone_column="Result", tones=tones, tooltips=tooltips) if real else html.Div(
-            "No commodity indicators configured for this report.", style={"fontSize": "12px", "color": MUTED}),
+            "No commodity indicators configured for this live report.", style={"fontSize": "12px", "color": MUTED}),
     ])
-    body = _scope_view(
-        facility_codes,
-        detail_fn=lambda code: html.Div([
-            _card([_section_title(f"Maternity Equipment · {_facility_label(code)}"), _awaiting_domain_detail_table(EQUIPMENT_MATERNITY, label_column="Commodity")]),
-            _card([_section_title(f"Maternity Essential Medicines · {_facility_label(code)}"), _awaiting_domain_detail_table(TRACER_MEDICINES_MATERNITY, label_column="Commodity")]),
-            _card([_section_title(f"Newborn Equipment · {_facility_label(code)}"), _awaiting_domain_detail_table(EQUIPMENT_NEWBORN, label_column="Commodity")]),
-            _card([_section_title(f"Newborn Tracer Medicines · {_facility_label(code)}"), _awaiting_domain_detail_table(TRACER_MEDICINES_NEWBORN, label_column="Commodity")]),
-        ]),
-        comparison_fn=lambda codes: html.Div([
-            _card([_section_title("Maternity Equipment & Medicines"), _matrix_table(_awaiting_matrix_rows(EQUIPMENT_MATERNITY + TRACER_MEDICINES_MATERNITY), label_column="Commodity")]),
-            _card([_section_title("Newborn Equipment & Medicines"), _matrix_table(_awaiting_matrix_rows(EQUIPMENT_NEWBORN + TRACER_MEDICINES_NEWBORN), label_column="Commodity")]),
-        ]),
-    )
+    if is_readiness_data_available():
+        body = _scope_view(
+            facility_codes,
+            detail_fn=lambda code: html.Div([
+                _card([_section_title(f"Maternity Equipment Availability · {_facility_label(code)}"), _hfa_detail_table("Eqt - Maternity (AVL)", code, label_column="Equipment")]),
+                _card([_section_title(f"Maternity Equipment Functionality · {_facility_label(code)}"), _hfa_detail_table("Eqt - Maternity (FC)", code, label_column="Equipment")]),
+                _card([_section_title(f"Maternity Essential Medicines Availability · {_facility_label(code)}"), _hfa_detail_table("Meds - Maternity (AVL)", code, label_column="Medicine")]),
+                _card([_section_title(f"Maternity Medicines Stockouts (last 30 days) · {_facility_label(code)}"), _hfa_detail_table("Meds - Maternity (SO)", code, label_column="Medicine")]),
+                _card([_section_title(f"Newborn Equipment Availability · {_facility_label(code)}"), _hfa_detail_table("Eqt - Newborn (AVL)", code, label_column="Equipment")]),
+                _card([_section_title(f"Newborn Equipment Functionality · {_facility_label(code)}"), _hfa_detail_table("Eqt - Newborn (FC)", code, label_column="Equipment")]),
+                _card([_section_title(f"Newborn Tracer Medicines Availability · {_facility_label(code)}"), _hfa_detail_table("Meds - Newborn (AVL)", code, label_column="Medicine")]),
+                _card([_section_title(f"Newborn Medicines Stockouts (last 30 days) · {_facility_label(code)}"), _hfa_detail_table("Meds - Newborn (SO)", code, label_column="Medicine")]),
+            ]),
+            comparison_fn=lambda codes: html.Div([
+                _card([_section_title("Maternity Equipment Availability"), _matrix_table(compute_readiness_matrix("Eqt - Maternity (AVL)", codes), label_column="Equipment")]),
+                _card([_section_title("Maternity Equipment Functionality (in facilities with equipment available)"), _matrix_table(compute_readiness_matrix("Eqt - Maternity (FC)", codes), label_column="Equipment")]),
+                _card([_section_title("Maternity Essential Medicines Availability"), _matrix_table(compute_readiness_matrix("Meds - Maternity (AVL)", codes), label_column="Medicine")]),
+                _card([_section_title("Maternity Medicines Stockouts (last 30 days)"), _matrix_table(compute_readiness_matrix("Meds - Maternity (SO)", codes), label_column="Medicine")]),
+                _card([_section_title("Newborn Equipment Availability"), _matrix_table(compute_readiness_matrix("Eqt - Newborn (AVL)", codes), label_column="Equipment")]),
+                _card([_section_title("Newborn Equipment Functionality (in facilities with equipment available)"), _matrix_table(compute_readiness_matrix("Eqt - Newborn (FC)", codes), label_column="Equipment")]),
+                _card([_section_title("Newborn Tracer Medicines Availability"), _matrix_table(compute_readiness_matrix("Meds - Newborn (AVL)", codes), label_column="Medicine")]),
+                _card([_section_title("Newborn Medicines Stockouts (last 30 days)"), _matrix_table(compute_readiness_matrix("Meds - Newborn (SO)", codes), label_column="Medicine")]),
+            ]),
+        )
+    else:
+        body = _scope_view(
+            facility_codes,
+            detail_fn=lambda code: html.Div([
+                _card([_section_title(f"Maternity Equipment · {_facility_label(code)}"), _awaiting_domain_detail_table(EQUIPMENT_MATERNITY, label_column="Commodity")]),
+                _card([_section_title(f"Maternity Essential Medicines · {_facility_label(code)}"), _awaiting_domain_detail_table(TRACER_MEDICINES_MATERNITY, label_column="Commodity")]),
+                _card([_section_title(f"Newborn Equipment · {_facility_label(code)}"), _awaiting_domain_detail_table(EQUIPMENT_NEWBORN, label_column="Commodity")]),
+                _card([_section_title(f"Newborn Tracer Medicines · {_facility_label(code)}"), _awaiting_domain_detail_table(TRACER_MEDICINES_NEWBORN, label_column="Commodity")]),
+            ]),
+            comparison_fn=lambda codes: html.Div([
+                _card([_section_title("Maternity Equipment & Medicines"), _matrix_table(_awaiting_matrix_rows(EQUIPMENT_MATERNITY + TRACER_MEDICINES_MATERNITY), label_column="Commodity")]),
+                _card([_section_title("Newborn Equipment & Medicines"), _matrix_table(_awaiting_matrix_rows(EQUIPMENT_NEWBORN + TRACER_MEDICINES_NEWBORN), label_column="Commodity")]),
+            ]),
+        )
     return html.Div([real_card, body])
 
 
 def _systems_tab(facility_codes: list[str], dq_inds: list[dict] | None, df: pd.DataFrame) -> html.Div:
     real, tones, tooltips = _real_indicator_rows(dq_inds or [], df, None, None, None, facility_codes)
     real_card = _card([
-        _section_title("Data Quality (tracked)"),
+        _section_title("Data Quality (live tracked)"),
         _data_table(["Indicator", "Assessed, n", "Result"], real, tone_column="Result", tones=tones, tooltips=tooltips) if real else html.Div(
-            "No data-quality indicators configured for this report.", style={"fontSize": "12px", "color": MUTED}),
+            "No data-quality indicators configured for this live report.", style={"fontSize": "12px", "color": MUTED}),
     ])
-    body = _scope_view(
-        facility_codes,
-        detail_fn=lambda code: html.Div([
-            _card([_section_title(f"Maternity Unit Infrastructure · {_facility_label(code)}"), _awaiting_domain_detail_table(INFRASTRUCTURE_MATERNITY, label_column="Infrastructure Indicator")]),
-            _card([_section_title(f"Neonatal Care Unit Infrastructure · {_facility_label(code)}"), _awaiting_domain_detail_table(INFRASTRUCTURE_NEONATAL, label_column="Infrastructure Indicator")]),
-            _card([_section_title(f"Referral and Transport · {_facility_label(code)}"), _awaiting_detail_table(REFERRAL_TRANSPORT)]),
-            _card([_section_title(f"Data and Quality-Improvement Systems · {_facility_label(code)}"), _awaiting_detail_table(DATA_QI_SYSTEMS)]),
-        ]),
-        comparison_fn=lambda codes: html.Div([
-            _card([_section_title("Maternity Infrastructure"), _matrix_table(_awaiting_matrix_rows(INFRASTRUCTURE_MATERNITY), label_column="Infrastructure Indicator")]),
-            _card([_section_title("Neonatal Care Unit Infrastructure"), _matrix_table(_awaiting_matrix_rows(INFRASTRUCTURE_NEONATAL), label_column="Infrastructure Indicator")]),
-            _card([_section_title("Referral, Transport & QI Systems"), _matrix_table(_awaiting_matrix_rows(REFERRAL_TRANSPORT + DATA_QI_SYSTEMS), label_column="Indicator")]),
-        ]),
-    )
+    if is_readiness_data_available():
+        body = _scope_view(
+            facility_codes,
+            detail_fn=lambda code: html.Div([
+                _card([_section_title(f"Maternity Unit Infrastructure · {_facility_label(code)}"), _hfa_detail_table("INF - Maternity", code, label_column="Infrastructure Indicator")]),
+                _card([_section_title(f"Neonatal Care Unit Infrastructure · {_facility_label(code)}"), _hfa_detail_table("INF - Newborn", code, label_column="Infrastructure Indicator")]),
+                _card([_section_title(f"Facility Systems, Referral & Governance · {_facility_label(code)}"), _hfa_detail_table("Facility systems", code, label_column="System Indicator")]),
+            ]),
+            comparison_fn=lambda codes: html.Div([
+                _card([_section_title("Maternity Unit Infrastructure"), _matrix_table(compute_readiness_matrix("INF - Maternity", codes), label_column="Infrastructure Indicator")]),
+                _card([_section_title("Neonatal Care Unit Infrastructure"), _matrix_table(compute_readiness_matrix("INF - Newborn", codes), label_column="Infrastructure Indicator")]),
+                _card([_section_title("Facility Systems, Referral & Governance"), _matrix_table(compute_readiness_matrix("Facility systems", codes), label_column="System Indicator")]),
+            ]),
+        )
+    else:
+        body = _scope_view(
+            facility_codes,
+            detail_fn=lambda code: html.Div([
+                _card([_section_title(f"Maternity Unit Infrastructure · {_facility_label(code)}"), _awaiting_domain_detail_table(INFRASTRUCTURE_MATERNITY, label_column="Infrastructure Indicator")]),
+                _card([_section_title(f"Neonatal Care Unit Infrastructure · {_facility_label(code)}"), _awaiting_domain_detail_table(INFRASTRUCTURE_NEONATAL, label_column="Infrastructure Indicator")]),
+                _card([_section_title(f"Referral and Transport · {_facility_label(code)}"), _awaiting_detail_table(REFERRAL_TRANSPORT)]),
+                _card([_section_title(f"Data and Quality-Improvement Systems · {_facility_label(code)}"), _awaiting_detail_table(DATA_QI_SYSTEMS)]),
+            ]),
+            comparison_fn=lambda codes: html.Div([
+                _card([_section_title("Maternity Infrastructure"), _matrix_table(_awaiting_matrix_rows(INFRASTRUCTURE_MATERNITY), label_column="Infrastructure Indicator")]),
+                _card([_section_title("Neonatal Care Unit Infrastructure"), _matrix_table(_awaiting_matrix_rows(INFRASTRUCTURE_NEONATAL), label_column="Infrastructure Indicator")]),
+                _card([_section_title("Referral, Transport & QI Systems"), _matrix_table(_awaiting_matrix_rows(REFERRAL_TRANSPORT + DATA_QI_SYSTEMS), label_column="Indicator")]),
+            ]),
+        )
     return html.Div([real_card, body])
 
 
