@@ -2279,15 +2279,15 @@ def sync_picker_with_logic(period_type, n, current_active, urlparams):
 
     # "Today" is the dropdown's own untouched initial value -- meaningless
     # for DHIS2's monthly grain (it collapsed the whole range to a single
-    # day, completely bypassing _default_date_window's 6-month default
-    # below). Auto-switch it to "Last 6 Months" -- both the picker's dates
-    # AND the dropdown's own displayed label -- the first time a DHIS2
-    # report becomes active while it's still sitting on that default. A
-    # period_type the user actually picked themselves (anything other than
-    # the untouched 'Today') is left alone, same as before.
+    # day, completely bypassing _default_date_window's last-month default
+    # below). Auto-switch it to "Last Month" -- both the picker's dates AND
+    # the dropdown's own displayed label -- the first time a DHIS2 report
+    # becomes active while it's still sitting on that default. A period_type
+    # the user actually picked themselves (anything other than the untouched
+    # 'Today') is left alone, same as before.
     if date_route == 'dhis2' and period_type in (None, '', 'Today'):
-        s, e = get_relative_date_range('Last 6 Months', current_date=anchor)
-        return (s or default_start), (e or default_end), 'Last 6 Months'
+        s, e = get_relative_date_range('Last Month', current_date=anchor)
+        return (s or default_start), (e or default_end), 'Last Month'
 
     # dashboard-interval-update-today ticks specifically so relative periods
     # ("Today", "Yesterday", "This Week", ...) stay correct as the real
