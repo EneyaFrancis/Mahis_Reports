@@ -423,7 +423,21 @@ def _render_mnh_dashboard_view(selected_view: str, state: dict, views: dict):
     return _render_mnh_placeholder(label_map.get(selected_view, selected_view))
 
 
-_MNID_SQL_COLUMNS = "*" #kept all for now
+# SELECT * pulled every raw column (incl. PII: given_name, family_name,
+# birthdate, cell, identifier, ...) across the full row count -- on a 3-month
+# MAHIS selection (3.9M rows) that's enough object-dtype column data to blow
+# out available memory during DuckDB's pandas conversion (confirmed:
+# ArrayMemoryError in pandas' block-consolidation step). Same 22-column set
+# mnid/aggregation/engine.py already uses for this exact class of computation
+# (raw MAHIS rows -> MNID indicator numerator/denominator filters) -- grepped
+# the whole mnid/ package for every column SELECT * previously supplied and
+# this list doesn't; none are referenced anywhere in it.
+_MNID_SQL_COLUMNS = (
+    "person_id, encounter_id, Date, Program, Reporting_Program, Service_Area, "
+    "Facility, Facility_CODE, District, Encounter, obs_value_coded, concept_name, "
+    "Value, ValueN, new_revisit, Home_district, TA, Village, Age, Age_Group, "
+    "Gender, Source_Program"
+)
 def render_mnid_dashboard(filtered, data_opd, data_path, config, 
                           facility_code, start_date, end_date,
                           scope_meta: dict | None = None,

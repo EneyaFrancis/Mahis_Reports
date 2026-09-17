@@ -1200,6 +1200,17 @@ def render_country_profile(
         "ndf_rebuild_path": ndf_rebuild_path,
     }
 
+    # Pure label constants (not derived from df/agg_df) -- used both by the
+    # raw-row branch below and unconditionally further down (total_birth_
+    # denominator_spec/live_birth_denominator_spec), regardless of which
+    # branch runs. Previously defined only inside the else: (raw-row) branch,
+    # so _agg_ready=True (only reachable once a route's aggregate actually
+    # exists -- never true for MAHIS/default until one was built) raised
+    # UnboundLocalError the first time this path actually executed.
+    _birth_outcome_concepts = ["Outcome of the delivery", "Baby general condition at birth"]
+    _birth_concepts = _birth_outcome_concepts + ["Status of baby", "Admission outcome"]
+    _live_birth_values = ["Live birth", "Live births", "Alive", "Live full term", "Live preterm"]
+
     if _agg_ready:
         total_births_series = _agg_monthly_series(agg_df, "mnid_lab_core_totalbirths", start, end, facility_codes, districts, grain=_fetch_grain)
         total_births_recipe = {**_recipe_base, "kind": "agg_single", "mnid_id": "mnid_lab_core_totalbirths"}
@@ -1228,9 +1239,8 @@ def render_country_profile(
         neonatal_death_recipe = {**_recipe_base, "kind": "raw_single", "mask_spec": neonatal_death_mask_spec}
         # "Baby general condition at birth" is the real Labour concept for
         # this; "Outcome of the delivery" is actually PNC's -- both kept.
-        _birth_outcome_concepts = ["Outcome of the delivery", "Baby general condition at birth"]
-        _birth_concepts = _birth_outcome_concepts + ["Status of baby", "Admission outcome"]
-        _live_birth_values = ["Live birth", "Live births", "Alive", "Live full term", "Live preterm"]
+        # (_birth_outcome_concepts/_birth_concepts/_live_birth_values are
+        # defined above, before the _agg_ready branch.)
         live_birth_denominator_mask = (
             _contains_mask(df, "concept_name", _birth_outcome_concepts)
             & _contains_mask(df, "obs_value_coded", _live_birth_values)

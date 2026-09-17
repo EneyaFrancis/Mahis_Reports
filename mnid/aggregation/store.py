@@ -118,6 +118,56 @@ def _meta_source_matches(output_dir: str) -> bool:
     return True
 
 
+def _raw_source_newer_than_aggregate(output_dir: str, route: str) -> bool:
+    """True if any raw parquet file under this route's source is newer than
+    the aggregate's own generated_at.
+
+    run_aggregation_job is normally triggered right after data_storage.py
+    writes fresh parquet, so the aggregate and its source stay in lockstep
+    automatically. A file dropped into data/<route>/parquet by hand (outside
+    that refresh flow -- e.g. manually replacing the MAHIS extract) never
+    fires that trigger, so without this check a stale aggregate built before
+    the swap would keep being trusted indefinitely: _meta_source_matches only
+    catches a route/demo-flag mismatch, not "the source data changed under
+    an otherwise-matching aggregate." DHIS2 is excluded -- mnid_publish.py
+    writes indicator_aggregates.parquet directly, there's no separate raw
+    source directory to compare it against."""
+    import json
+    if route == 'dhis2':
+        return False
+    try:
+        meta_path = Path(output_dir) / 'meta.json'
+        if not meta_path.exists():
+            return False
+        with open(meta_path, encoding='utf-8') as f:
+            meta = json.load(f)
+        generated_at = meta.get('generated_at')
+        if not generated_at:
+            return False
+        agg_time = pd.Timestamp(generated_at)
+
+        source_dir = Path(meta.get('data_source') or f'data/{route}/parquet')
+        if not source_dir.exists():
+            return False
+        newest_source_mtime = max(
+            (f.stat().st_mtime for f in source_dir.glob('*.parquet')),
+            default=None,
+        )
+        if newest_source_mtime is None:
+            return False
+        newest_source_time = pd.Timestamp(newest_source_mtime, unit='s')
+        if newest_source_time > agg_time:
+            _LOG.warning(
+                'Raw source data for route=%s changed (newest file %s) after the '
+                'aggregate was built (%s) -- discarding stale aggregate.',
+                route, newest_source_time, agg_time,
+            )
+            return True
+    except Exception:
+        pass
+    return False
+
+
 def load_aggregate(route: str = _DEFAULT_ROUTE, output_dir: str | None = None) -> pd.DataFrame | None:
     """Read the aggregate parquet for one route from disk into memory. Returns None if absent."""
     output_dir = output_dir or _route_out_dir(route)
@@ -141,6 +191,14 @@ def load_aggregate(route: str = _DEFAULT_ROUTE, output_dir: str | None = None) -
         return None
 
     if not _meta_source_matches(output_dir):
+        _LOADED_ROUTES.add(route)
+        _AGG_DF_BY_ROUTE[route] = None
+        _LOADED_ROUTE_STAMP[route] = current_stamp
+        _trim_route_cache()
+        return None
+
+    if _raw_source_newer_than_aggregate(output_dir, route):
+        _trigger_background_build(route)
         _LOADED_ROUTES.add(route)
         _AGG_DF_BY_ROUTE[route] = None
         _LOADED_ROUTE_STAMP[route] = current_stamp
