@@ -17,6 +17,8 @@ from mnid.core.cache import (
 from mnid.aggregation.store import (
     get_aggregate as _get_aggregate,
     query_coverage as _agg_coverage,
+    get_relative_period_aggregate as _get_relative_period_aggregate,
+    query_relative_period_coverage as _agg_relative_coverage,
     _floor_to_period as _agg_floor_period,
     _candidate_grains as _agg_candidate_grains,
     resolve_indicator_id as _agg_resolve_id,
@@ -444,6 +446,15 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
     _t0 = _time.monotonic()
 
     _agg = _get_aggregate(route=(scope_meta or {}).get('route', 'default'))
+    # A named relative period (Today, Last Month, ...) selected via the
+    # period-type dropdown, not a custom date-range pick -- when the
+    # aggregate has a matching grain='relative_period' slice for it, the
+    # per-indicator _agg_coverage calls below prefer it (see _compute_inds/
+    # _add_delta) instead of resolving which calendar-grain rows fall
+    # inside the window from scratch. None (most requests: custom ranges,
+    # or a label the aggregate hasn't been rebuilt with yet) leaves every
+    # call site's existing date-range path completely unchanged.
+    _rel_agg = _get_relative_period_aggregate((scope_meta or {}).get('route', 'default'), (scope_meta or {}).get('period_label'))
     _fac_filter  = selected_facility_codes or None
     _dist_filter = selected_districts or None
     _kpi_grain   = 'monthly'
@@ -512,7 +523,23 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
             # fallback, so any such indicator silently landed on 0 of 0 here
             # while the exact same indicator showed real data on Coverage charts.
             _batch_id = _agg_resolve_id(_agg, ind['id'], ind.get('label')) if _agg is not None else ind['id']
-            if _cur_batch and _kpi_window_safe:
+            num = den = pct = None
+            if _rel_agg is not None:
+                num, den, pct = _agg_relative_coverage(
+                    _rel_agg, ind['id'],
+                    facility_codes=_fac_filter,
+                    districts=_dist_filter if not _fac_filter else None,
+                    indicator_label=ind.get('label'),
+                )
+                if den == 0:
+                    # This indicator isn't in the relative_period slice (not yet
+                    # rebuilt with it, or genuinely no data) -- fall through to
+                    # the existing date-range path below exactly as if no
+                    # relative period had been selected at all.
+                    num = den = pct = None
+            if den is not None:
+                pass
+            elif _cur_batch and _kpi_window_safe:
                 num, den, pct = _batch_cov(_cur_batch, _batch_id, _kpi_fallbacks)
                 if den == 0 and ind.get('numerator_filters') and ind.get('denominator_filters'):
                     num, den, pct = _cov(facility_df, ind['numerator_filters'], ind['denominator_filters'])

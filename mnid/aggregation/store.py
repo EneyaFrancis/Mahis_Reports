@@ -265,6 +265,25 @@ def get_aggregate(route: str = _DEFAULT_ROUTE, output_dir: str | None = None) ->
     return load_aggregate(route, output_dir)
 
 
+def get_relative_period_aggregate(route: str, period_label: str | None) -> pd.DataFrame | None:
+    """The pre-computed grain='relative_period' slice for one named window
+    (e.g. 'Today', 'Last Month') -- same columns as any other aggregate
+    slice, so callers can use it exactly like a date-filtered agg_df, just
+    without doing the date filtering. Returns None if period_label is
+    empty/not a real relative period, or the aggregate has no matching rows
+    for it (not yet rebuilt with this grain, or genuinely no data in that
+    window -- see _aggregate_relative_periods's empty-window skip) -- either
+    way callers should fall back to their existing date-range-based path.
+    """
+    if not period_label:
+        return None
+    agg_df = get_aggregate(route)
+    if agg_df is None or agg_df.empty or 'period_label' not in agg_df.columns:
+        return None
+    sliced = agg_df[(agg_df['grain'] == 'relative_period') & (agg_df['period_label'] == period_label)]
+    return sliced if not sliced.empty else None
+
+
 def invalidate_cache(route: str | None = None) -> None:
     """Force the next get_aggregate() call to reload from disk. route=None clears every route."""
     if route is None:
@@ -405,6 +424,31 @@ def query_coverage(
     if sub.empty:
         return 0, 0, 0.0
 
+    num = int(sub['numerator'].sum())
+    den = int(sub['denominator'].sum())
+    pct = round(min(num / den * 100, 100.0), 1) if den > 0 else 0.0
+    return num, den, pct
+
+
+def query_relative_period_coverage(
+    rel_df: pd.DataFrame,
+    indicator_id: str,
+    facility_codes: list[str] | None = None,
+    districts: list[str] | None = None,
+    indicator_label: str | None = None,
+) -> tuple[int, int, float]:
+    """Same (numerator, denominator, pct) contract as query_coverage(), but
+    against a get_relative_period_aggregate() slice -- every row already
+    belongs to the requested window, so there's no grain fallback or
+    period_start filtering to do, just indicator + facility/district."""
+    resolved_indicator_id = resolve_indicator_id(rel_df, indicator_id, indicator_label)
+    sub = rel_df[rel_df['indicator_id'] == resolved_indicator_id]
+    if facility_codes:
+        sub = sub[sub['facility_code'].isin([str(f) for f in facility_codes])]
+    elif districts:
+        sub = sub[sub['district'].isin([str(d) for d in districts])]
+    if sub.empty:
+        return 0, 0, 0.0
     num = int(sub['numerator'].sum())
     den = int(sub['denominator'].sum())
     pct = round(min(num / den * 100, 100.0), 1) if den > 0 else 0.0
