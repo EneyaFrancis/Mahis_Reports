@@ -25,10 +25,11 @@ from dash.exceptions import PreventUpdate
 import dash_mantine_components as dmc
 
 from mnid.charts.chart_helpers import _cov, _grouped_filter_counts
+from mnid.core.cache import _MNID_DATA_DISK_CACHE
 from mnid.core.constants import FACILITY_NAMES, FACILITY_DISTRICT
-from mnid.core.data_utils import resolve_facility_level, _remember_ui_payload, _restore_ui_dataframe
+from mnid.core.data_utils import resolve_facility_level, _remember_ui_payload, deserialize_store_df
 from mnid.core.data_source import get_mnid_data_source
-from mnid.views.executive_views import _hierarchy_scope, _profile_scope_name, _summary_card
+from mnid.views.executive_views import _profile_scope_name, _summary_card
 from mnid.core.readiness_data import (
     is_readiness_data_available,
     compute_readiness_matrix,
@@ -1173,8 +1174,13 @@ def _real_indicator_rows(indicators: list[dict], df: pd.DataFrame, agg_df: pd.Da
                           start_date, end_date, facility_codes: list[str]) -> tuple[list[list], list[str], list[dict]]:
     rows, tones, tooltips = [], [], []
     for ind in indicators:
+        if not isinstance(ind, dict) or "id" not in ind:
+            continue
         label = ind.get("name") or ind.get("label", ind["id"])
-        num, den, rate = _cov(df, ind["id"], facility_codes)
+        try:
+            num, den, rate = _cov(df, ind["id"], facility_codes)
+        except Exception:
+            num, den, rate = 0, 0, None
         if rate is not None:
             pct = round(rate * 100, 1)
             tone = "green" if pct >= 80 else "amber" if pct >= 50 else "red"
@@ -1186,7 +1192,6 @@ def _real_indicator_rows(indicators: list[dict], df: pd.DataFrame, agg_df: pd.Da
         else:
             rows.append([label, f"{den:,}", AWAITING_LABEL])
             tones.append("awaiting")
-            tooltips.append({"Result": {"value": "No assessed records", "type": "text"}})
     return rows, tones, tooltips
 
 
@@ -1319,18 +1324,23 @@ _TABS = [
 
 def render_operational_readiness(
     df: pd.DataFrame,
-    indicators: list[dict],
+    indicators: list[dict] | None = None,
     selected_indicators: list[str] | None = None,
     scope_meta: dict | None = None,
     start_date=None,
     end_date=None,
     agg_df: pd.DataFrame | None = None,
+    supply_inds: list[dict] | None = None,
+    wf_inds: list[dict] | None = None,
+    dq_inds: list[dict] | None = None,
+    **kwargs,
 ) -> html.Div:
     """The root Operational Readiness view. Lazily mounts 5 sub-tabs so we
     don't compute all 5 tabs on every load."""
     facility_codes = _source_facility_universe(df, scope_meta)
-    scope_name = _profile_scope_name(scope_meta)
-    hierarchy_badge = _hierarchy_scope(scope_meta)
+    scope_info = _profile_scope_name(scope_meta)
+    scope_name = scope_info.get("eyebrow") if isinstance(scope_info, dict) else str(scope_info or "National")
+    level_label = str((scope_meta or {}).get("level") or "National").capitalize()
 
     header = html.Div([
         html.Div([
@@ -1345,37 +1355,101 @@ def render_operational_readiness(
                 "fontSize": "12px", "color": MUTED, "marginTop": "2px",
             }),
         ]),
-        html.Div(hierarchy_badge, style={"alignSelf": "flex-start"}),
+        html.Div(html.Span(level_label, style={
+            "background": "#f0fdf4", "border": f"1px solid {GREEN}",
+            "color": GREEN, "fontSize": "11px", "fontWeight": "700",
+            "padding": "4px 10px", "borderRadius": "6px",
+        }), style={"alignSelf": "flex-start"}),
     ], style={
         "display": "flex", "justifyContent": "space-between", "alignItems": "flex-start",
         "marginBottom": "16px", "paddingBottom": "12px", "borderBottom": f"1px solid {BORDER}",
     })
 
-    tabs = dmc.Tabs(
-        [
-            dmc.TabsList([
-                dmc.Tab(label, value=val, style={"fontSize": "13px", "fontWeight": "600"})
-                for val, label in _TABS
-            ]),
-            *[
-                dmc.TabsPanel(
-                    dcc.Loading(
-                        html.Div(id=f"operational-readiness-tab-{val}-content"),
-                        type="dot", color=GREEN,
-                    ),
-                    value=val, pt="md",
-                )
-                for val, _ in _TABS
-            ],
-        ],
+    tabs = dcc.Tabs(
         id="operational-readiness-subtabs",
         value="overview",
-        color="green",
+        children=[
+            dcc.Tab(
+                label=label,
+                value=val,
+                style={
+                    "padding": "10px 18px",
+                    "fontSize": "13px",
+                    "fontWeight": "600",
+                    "color": MUTED,
+                    "backgroundColor": "#FFFFFF",
+                    "border": f"1px solid {BORDER}",
+                    "borderRadius": "8px 8px 0 0",
+                    "marginRight": "4px",
+                },
+                selected_style={
+                    "padding": "10px 18px",
+                    "fontSize": "13px",
+                    "fontWeight": "700",
+                    "color": GREEN,
+                    "backgroundColor": "#F0FDF4",
+                    "border": f"1px solid {BORDER}",
+                    "borderBottom": "2px solid transparent",
+                    "borderTop": f"3px solid {GREEN}",
+                    "borderRadius": "8px 8px 0 0",
+                    "marginRight": "4px",
+                },
+                children=dcc.Loading(
+                    html.Div(id=f"operational-readiness-tab-{val}-content", style={"paddingTop": "16px"}),
+                    type="dot",
+                    color=GREEN,
+                ),
+            )
+            for val, label in _TABS
+        ],
+        style={"marginBottom": "16px"},
     )
 
-    payload_id = _remember_ui_payload(df, agg_df, scope_meta, start_date, end_date)
+    payload_id = _remember_ui_payload("op_readiness", {
+        "df": df,
+        "agg_df": agg_df,
+        "scope_meta": scope_meta,
+        "start_date": start_date,
+        "end_date": end_date,
+        "supply_inds": supply_inds or indicators or [],
+        "wf_inds": wf_inds or [],
+        "dq_inds": dq_inds or [],
+    })
     store = dcc.Store(id="operational-readiness-tab-data-store", data={"payload_id": payload_id})
     return html.Div([header, tabs, store])
+
+
+def _restore_readiness_payload(payload_id: str | None) -> dict:
+    if not payload_id:
+        return {}
+    data = _MNID_DATA_DISK_CACHE.get(payload_id)
+    if isinstance(data, dict):
+        raw_df = data.get("df")
+        df = raw_df if isinstance(raw_df, pd.DataFrame) else (deserialize_store_df(raw_df) if raw_df is not None else pd.DataFrame())
+        raw_agg = data.get("agg_df")
+        agg_df = raw_agg if isinstance(raw_agg, pd.DataFrame) else (deserialize_store_df(raw_agg) if raw_agg is not None else None)
+        return {
+            "df": df,
+            "agg_df": agg_df,
+            "scope_meta": data.get("scope_meta"),
+            "start_date": data.get("start_date"),
+            "end_date": data.get("end_date"),
+            "supply_inds": data.get("supply_inds") or [],
+            "wf_inds": data.get("wf_inds") or [],
+            "dq_inds": data.get("dq_inds") or [],
+        }
+    if isinstance(data, pd.DataFrame):
+        return {
+            "df": data,
+            "agg_df": None,
+            "scope_meta": None,
+            "start_date": None,
+            "end_date": None,
+            "supply_inds": [],
+            "wf_inds": [],
+            "dq_inds": [],
+        }
+    return {}
 
 
 # ---------------------------------------------------------------------------
@@ -1395,7 +1469,12 @@ def render_operational_readiness(
 def _render_operational_readiness_tab(active_tab: str | None, store_data: dict | None):
     if not active_tab or not store_data:
         raise PreventUpdate
-    df, agg_df, scope_meta, start_date, end_date = _restore_ui_dataframe(store_data.get("payload_id"))
+    payload = _restore_readiness_payload(store_data.get("payload_id"))
+    df = payload.get("df") if payload.get("df") is not None else pd.DataFrame()
+    agg_df = payload.get("agg_df")
+    scope_meta = payload.get("scope_meta")
+    start_date = payload.get("start_date")
+    end_date = payload.get("end_date")
     facility_codes = _source_facility_universe(df, scope_meta)
 
     # Empty responses for inactive tabs so we don't re-render them
@@ -1410,17 +1489,11 @@ def _render_operational_readiness_tab(active_tab: str | None, store_data: dict |
     elif active_tab == "signal-functions":
         content = _build_signal_functions_tab(facility_codes, df, agg_df, start_date, end_date)
     elif active_tab == "people":
-        from mnid.core.indicators import INDICATORS
-        wf_inds = [ind for ind in INDICATORS.values() if ind.get("category") == "Workforce"]
-        content = _people_tab(facility_codes, wf_inds, df)
+        content = _people_tab(facility_codes, payload.get("wf_inds") or [], df)
     elif active_tab == "products":
-        from mnid.core.indicators import INDICATORS
-        supply_inds = [ind for ind in INDICATORS.values() if ind.get("category") == "Supplies"]
-        content = _products_tab(facility_codes, supply_inds, df)
+        content = _products_tab(facility_codes, payload.get("supply_inds") or [], df)
     elif active_tab == "systems":
-        from mnid.core.indicators import INDICATORS
-        dq_inds = [ind for ind in INDICATORS.values() if ind.get("category") == "Data Quality"]
-        content = _systems_tab(facility_codes, dq_inds, df)
+        content = _systems_tab(facility_codes, payload.get("dq_inds") or [], df)
     else:
         content = html.Div("Tab content not found")
 
