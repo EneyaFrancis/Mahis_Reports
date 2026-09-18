@@ -246,8 +246,15 @@ def _aggregate_relative_periods(prepared_df: pd.DataFrame, indicators: list[dict
     dist_col = 'District' if 'District' in prepared_df.columns else None
     base_fac_col = fac_col or '_all_facilities'
 
+    # Today/Yesterday are a 1-2 day window -- cheap enough to pull straight
+    # from raw rows on demand (that's what the raw-load path is for below
+    # the skip-cap), so pre-aggregating them just bloats the aggregate file
+    # for no real benefit.
+    _SKIP_LABELS = {'Today', 'Yesterday'}
     parts = []
     for label in RELATIVE_PERIOD_LIST:
+        if label in _SKIP_LABELS:
+            continue
         try:
             start, end = get_relative_date_range(label, current_date=anchor)
         except Exception as exc:

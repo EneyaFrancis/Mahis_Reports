@@ -28,7 +28,7 @@ from mnid.views.kpi_engine import (
     _get_facility_df_from_state,
     _load_mnid_report_config,
 )
-from mnid.core.data_utils import prepare_mnid_dataframe as _prepare_mnid_dataframe
+from mnid.core.data_utils import prepare_mnid_dataframe as _prepare_mnid_dataframe, register_facility_metadata as _register_facility_metadata
 from mnid.core.data_source import get_mnid_data_source
 from mnid.views.executive_views import render_country_profile, _profile_scope_name, _refetch_series
 from mnid.views.operational_readiness import render_operational_readiness
@@ -36,7 +36,7 @@ from mnid.components.run_charts import (
     bucket_multi_series, bucket_time_series,
     _multi_run_chart, _run_chart, describe_grain_window,
 )
-from mnid.core.constants import BORDER, TEXT
+from mnid.core.constants import BORDER, TEXT, FACILITY_NAMES as _FACILITY_NAMES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -456,6 +456,13 @@ _MNID_SQL_COLUMNS = (
 # path the 242-day case already proved fast (under 3s end-to-end).
 _RAW_LOAD_WINDOW_DAYS_CAP = 45
 
+# Facility_CODE->name/district registration only otherwise happens inside
+# prepare_mnid_dataframe's non-empty branch (see register_facility_metadata
+# callers in data_utils.py) -- once the skip-raw-load path below started
+# passing it an empty frame for every wide-window MAHIS render, facility
+# names silently stopped resolving anywhere that reads FACILITY_NAMES (e.g.
+# the Facility Performance table), regressing to raw codes.
+
 
 def render_mnid_dashboard(filtered, data_opd, data_path, config,
                           facility_code, start_date, end_date,
@@ -515,6 +522,15 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
             # way -- the aggregate-aware paths below already prefer it.
             filtered = pd.DataFrame()
             data_opd = pd.DataFrame()
+            if _skip_raw_load and not _FACILITY_NAMES and source_path.exists():
+                from data_storage import DataStorage as _DS
+                try:
+                    _fac_meta = _DS.query_duckdb(
+                        f"SELECT DISTINCT Facility_CODE, Facility, District FROM '{data_path}'"
+                    )
+                    _register_facility_metadata(_fac_meta, route=route)
+                except Exception:
+                    _LOGGER.exception('MNID facility metadata registration failed (route=%s)', route)
         else:
             from data_storage import DataStorage as _DS
             _raw_t0 = _time.monotonic()

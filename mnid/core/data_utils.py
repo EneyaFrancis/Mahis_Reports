@@ -409,7 +409,12 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     _assign_flag(
         'mnid_anc_bp_screened',
         anc_mask & (
-            concept.isin(['Systolic blood pressure', 'Diastolic blood pressure', 'Systolic', 'Diastolic', 'Blood Pressure'])
+            concept.isin(['Systolic blood pressure', 'Diastolic blood pressure', 'Systolic', 'Diastolic'])
+            # "Blood Pressure" itself records WHY it wasn't measured (e.g. "Machine
+            # not available") when Systolic/Diastolic weren't -- exclude those.
+            | (concept.eq('Blood Pressure') & ~combined_lower.isin([
+                'machine not available', 'machine not working', 'patient uncooperative',
+            ]))
             | (concept.eq('High blood pressure screening') & combined_lower.eq('yes'))
         ),
     )
@@ -476,14 +481,14 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     )
     _assign_flag(
         'mnid_labour_stillbirth',
-        # Real Labour concept is "Baby general condition at birth" (options:
-        # Fresh/Macerated stillbirth, one word) -- "Outcome of the delivery"
-        # is actually a PNC concept, kept here as a fallback.
+        # "Outcome of baby at birth" is the concept MAHIS actually records this
+        # under (per MAHIS Concept Sheets.xlsx); "Baby general condition at
+        # birth" and "Outcome of the delivery" (PNC) are kept as fallbacks.
         labour_mask
-        & concept.isin(['Outcome of the delivery', 'Baby general condition at birth'])
+        & concept.isin(['Outcome of baby at birth', 'Outcome of the delivery', 'Baby general condition at birth'])
         & combined_lower.isin([
             'fresh still birth', 'macerated still birth',
-            'fresh stillbirth', 'macerated stillbirth', 'stillbirth',
+            'fresh stillbirth', 'macerated stillbirth', 'stillbirth', 'stillbirths',
         ]),
     )
     _assign_flag(
@@ -575,7 +580,10 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     )
     _assign_flag(
         'mnid_pnc_breastfeeding_initiated',
-        (pnc_mask | labour_mask) & concept.eq('Breast feeding') & combined_lower.eq('yes'),
+        # Real MAHIS records this as "Exclusive"/"Breastfed exclusively", not
+        # a plain "Yes".
+        (pnc_mask | labour_mask) & concept.eq('Breast feeding')
+        & combined_lower.isin(['yes', 'exclusive', 'breastfed exclusively']),
     )
 
     _assign_flag(
@@ -818,15 +826,20 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     # mohupdate: Labour MOH dashboard flags
     _assign_flag(
         'mnid_labour_home_birth',
-        labour_mask & concept.eq('Place of delivery') & combined_lower.isin(['home', 'community', 'referral facility']),
+        # Real MAHIS records this as "Home/TBA" (per the Place of delivery
+        # options in MAHIS Concept Sheets.xlsx), not a bare "home".
+        labour_mask & concept.eq('Place of delivery') & combined_lower.isin([
+            'home', 'home/tba', 'community', 'referral facility',
+        ]),
     )
     _assign_flag(
         'mnid_labour_facility_birth',
         labour_mask & concept.eq('Place of delivery') & combined_lower.eq('this facility'),
     )
-    # Real Labour concept is "Baby general condition at birth", not "Outcome
-    # of the delivery" (that's actually a PNC concept) -- kept as a fallback.
-    _birth_condition_concept = concept.isin(['Outcome of the delivery', 'Baby general condition at birth'])
+    # "Outcome of baby at birth" is the concept MAHIS actually records this
+    # under (per MAHIS Concept Sheets.xlsx); "Baby general condition at birth"
+    # and "Outcome of the delivery" (PNC) are kept as fallbacks.
+    _birth_condition_concept = concept.isin(['Outcome of baby at birth', 'Outcome of the delivery', 'Baby general condition at birth'])
     _assign_flag(
         'mnid_labour_fresh_stillbirth',
         labour_mask & _birth_condition_concept & combined_lower.isin(['fresh still birth', 'fresh stillbirth']),
@@ -838,11 +851,17 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     _assign_flag(
         'mnid_labour_live_birth',
         # "Neonatal Death" as a birth condition still means born alive.
-        labour_mask & _birth_condition_concept & combined_lower.isin(['live birth', 'live full term', 'live preterm', 'neonatal death']),
+        labour_mask & _birth_condition_concept & combined_lower.isin(['live birth', 'live births', 'live full term', 'live preterm', 'neonatal death']),
     )
     _assign_flag(
         'mnid_labour_normal_delivery',
-        labour_mask & concept.eq('Mode of delivery') & combined_lower.eq('normal vaginal delivery'),
+        # Real MAHIS records this as "SVD"/"Spontaneous Vertex Delivery", not
+        # the textbook "Normal vaginal delivery" string (see ground-truth check
+        # against MAHIS Concept Sheets.xlsx).
+        labour_mask & concept.eq('Mode of delivery') & combined_lower.isin([
+            'normal vaginal delivery', 'normal', 'svd',
+            'spontaneous vertex delivery', 'spontaneous vaginal delivery',
+        ]),
     )
     _assign_flag(
         'mnid_labour_maternal_death',
@@ -878,24 +897,20 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     )
     _assign_flag(
         'mnid_labour_referred_out',
-        labour_mask & concept.eq('Referred to another facility') & combined_lower.eq('yes'),
+        # Real MAHIS has no "Referred to another facility" Yes/No concept --
+        # "Referral facility" holds the destination facility's name when a
+        # referral happened, and is blank otherwise (per MAHIS Concept
+        # Sheets.xlsx / ground-truth check).
+        labour_mask & concept.eq('Referral facility') & ~combined_lower.isin(['', 'none']),
     )
-    _assign_flag(
-        'mnid_labour_referral_pph',
-        labour_mask & concept.eq('Referral reason') & combined_lower.eq('pph'),
-    )
-    _assign_flag(
-        'mnid_labour_referral_eclampsia',
-        labour_mask & concept.eq('Referral reason') & combined_lower.eq('eclampsia'),
-    )
-    _assign_flag(
-        'mnid_labour_referral_obstructed',
-        labour_mask & concept.eq('Referral reason') & combined_lower.eq('obstructed labour'),
-    )
-    _assign_flag(
-        'mnid_labour_referral_sepsis',
-        labour_mask & concept.eq('Referral reason') & combined_lower.eq('sepsis'),
-    )
+    # mnid_labour_referral_{pph,eclampsia,obstructed,sepsis} are derived below
+    # (see mnid_labour_complication) -- MAHIS's real "referral reasons" concept
+    # uses intervention-type codes (ICU_ADVANCED_MONITORING, SURGICAL_
+    # INTERVENTION, BLOOD_TRANSFUSION, SPECIALIST_CONSULTATION, OTHER), not a
+    # clinical diagnosis, so mapping one to the other would be a guess. Instead
+    # each is "referred out AND this complication was documented" -- two real,
+    # independently-recorded facts, combined at person level since they may
+    # come from different rows.
     _assign_flag(
         'mnid_labour_skilled_attendant',
         labour_mask & concept.eq('Skilled birth attendant') & combined_lower.eq('yes'),
@@ -916,7 +931,11 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     )
     _assign_flag(
         'mnid_labour_signal_assisted_delivery',
-        labour_mask & concept.eq('Mode of delivery') & combined_lower.eq('assisted vaginal delivery'),
+        # Real MAHIS records this as "Forceps"/"Vacuum" (per ANC's Mode of
+        # delivery options), not a single "assisted vaginal delivery" value.
+        labour_mask & concept.eq('Mode of delivery') & combined_lower.isin([
+            'assisted vaginal delivery', 'forceps', 'vacuum', 'vacuum extraction delivery',
+        ]),
     )
     _assign_flag(
         'mnid_labour_signal_resuscitation',
@@ -956,11 +975,13 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     )
     _assign_flag(
         'mnid_pnc_check_7days',
-        pnc_mask & concept.eq('Postnatal check period') & combined_lower.eq('within 7 days'),
+        # Real MAHIS bins this as "3-7 days"/"8-42 days"/"After 6 weeks" (per
+        # MAHIS Concept Sheets.xlsx), not "within 7 days"/"at 6 weeks".
+        pnc_mask & concept.eq('Postnatal check period') & combined_lower.isin(['within 7 days', '3-7 days']),
     )
     _assign_flag(
         'mnid_pnc_check_6weeks',
-        pnc_mask & concept.eq('Postnatal check period') & combined_lower.eq('at 6 weeks'),
+        pnc_mask & concept.eq('Postnatal check period') & combined_lower.isin(['at 6 weeks', '8-42 days', 'after 6 weeks']),
     )
     _assign_flag(
         'mnid_pnc_family_planning',
@@ -980,7 +1001,9 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     )
     _assign_flag(
         'mnid_pnc_polio_0',
-        pnc_mask & (concept.eq('Immunisation given') & combined_lower.isin(['polio 0', 'opv'])),
+        # Real MAHIS records this as plain "polio" under "Immunisation given"
+        # (per MAHIS Concept Sheets.xlsx), not "polio 0".
+        pnc_mask & (concept.eq('Immunisation given') & combined_lower.isin(['polio 0', 'opv', 'polio'])),
     )
     _assign_flag(
         'mnid_pnc_exclusive_breastfeeding',
@@ -1013,10 +1036,15 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
         | _ctx_series('mnid_labour_pph').eq('Yes')
         | _ctx_series('mnid_labour_eclampsia').eq('Yes')
     ).map({True: 'Yes', False: ''})
-    person_ctx['mnid_labour_live_birth'] = (
-        _ctx_series('mnid_labour_visit_documented').eq('Yes')
-        & _ctx_series('mnid_labour_stillbirth').ne('Yes')
-    ).map({True: 'Yes', False: ''})
+    _referred = _ctx_series('mnid_labour_referred_out').eq('Yes')
+    person_ctx['mnid_labour_referral_pph'] = (_referred & _ctx_series('mnid_labour_pph').eq('Yes')).map({True: 'Yes', False: ''})
+    person_ctx['mnid_labour_referral_eclampsia'] = (_referred & _ctx_series('mnid_labour_eclampsia').eq('Yes')).map({True: 'Yes', False: ''})
+    person_ctx['mnid_labour_referral_obstructed'] = (_referred & _ctx_series('mnid_labour_obstructed_labour').eq('Yes')).map({True: 'Yes', False: ''})
+    person_ctx['mnid_labour_referral_sepsis'] = (_referred & _ctx_series('mnid_labour_maternal_sepsis').eq('Yes')).map({True: 'Yes', False: ''})
+    # mnid_labour_live_birth is already set from the real birth-condition
+    # concept (see _assign_flag call above) -- do not overwrite it with an
+    # inferred guess, or it stops matching Country Profile's own concept-based
+    # live-birth count.
     # Total births = live birth or stillbirth -- denominator for stillbirth/mortality rates.
     person_ctx['mnid_labour_total_birth'] = (
         _ctx_series('mnid_labour_live_birth').eq('Yes')

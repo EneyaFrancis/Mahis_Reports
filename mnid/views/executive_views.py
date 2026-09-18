@@ -289,9 +289,10 @@ def _metric_snapshot(df: pd.DataFrame) -> dict:
     maternal_mask = _service_mask(df, ["ANC", "Labour", "PNC"])
     newborn_mask = _service_mask(df, ["Newborn"])
     labour_mask = _service_mask(df, ["Labour"])
-    # "Baby general condition at birth" is the real Labour concept; "Outcome
-    # of the delivery" is actually PNC's -- both kept, doesn't hurt either way.
-    _birth_outcome_concepts = ["Outcome of the delivery", "Baby general condition at birth"]
+    # "Outcome of baby at birth" is the concept MAHIS actually records this
+    # under (per MAHIS Concept Sheets.xlsx); "Baby general condition at
+    # birth" and "Outcome of the delivery" (PNC) kept as fallbacks.
+    _birth_outcome_concepts = ["Outcome of baby at birth", "Outcome of the delivery", "Baby general condition at birth"]
     _birth_concepts = _birth_outcome_concepts + ["Status of baby", "Admission outcome"]
     live_birth_mask = (
         _contains_mask(df, "concept_name", _birth_outcome_concepts)
@@ -1207,7 +1208,10 @@ def render_country_profile(
     # so _agg_ready=True (only reachable once a route's aggregate actually
     # exists -- never true for MAHIS/default until one was built) raised
     # UnboundLocalError the first time this path actually executed.
-    _birth_outcome_concepts = ["Outcome of the delivery", "Baby general condition at birth"]
+    # "Outcome of baby at birth" is the concept MAHIS actually records this
+    # under (per MAHIS Concept Sheets.xlsx); "Baby general condition at
+    # birth" and "Outcome of the delivery" (PNC) kept as fallbacks.
+    _birth_outcome_concepts = ["Outcome of baby at birth", "Outcome of the delivery", "Baby general condition at birth"]
     _birth_concepts = _birth_outcome_concepts + ["Status of baby", "Admission outcome"]
     _live_birth_values = ["Live birth", "Live births", "Alive", "Live full term", "Live preterm"]
 
