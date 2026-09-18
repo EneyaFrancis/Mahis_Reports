@@ -165,6 +165,48 @@ class TestReadinessConversionAndProvider(unittest.TestCase):
         dt = _facility_comparison_table(records)
         self.assertIsNotNone(dt)
 
+    def test_render_operational_readiness_invocation(self):
+        from mnid.views.operational_readiness import render_operational_readiness, _render_operational_readiness_tab, _TABS
+        df = get_readiness_data()
+        self.assertIsNotNone(df)
+
+        # 1. Call with supply_inds, wf_inds, dq_inds (as called by mnid.views.renderer)
+        view = render_operational_readiness(
+            df,
+            supply_inds=[{"id": "test_s1"}],
+            wf_inds=[{"id": "test_w1"}],
+            dq_inds=[{"id": "test_d1"}],
+            scope_meta={"scope_type": "national"},
+            start_date="2026-01-01",
+            end_date="2026-06-30",
+        )
+        self.assertIsNotNone(view)
+
+        # Verify store payload
+        store_comp = view.children[-1]
+        self.assertIn("payload_id", store_comp.data)
+
+        # Test rendering each subtab
+        for tab_val, _ in _TABS:
+            outputs = _render_operational_readiness_tab(tab_val, store_comp.data)
+            self.assertEqual(len(outputs), 5)
+            # Find the active tab index
+            tab_indices = {v: i for i, (v, _) in enumerate(_TABS)}
+            active_idx = tab_indices[tab_val]
+            self.assertIsNotNone(outputs[active_idx])
+
+        # 2. Call with indicators positional or keyword
+        view_with_inds = render_operational_readiness(
+            df,
+            indicators=[{"id": "ind1"}],
+            selected_indicators=["ind1"],
+        )
+        self.assertIsNotNone(view_with_inds)
+
+        # 3. Call minimal
+        view_minimal = render_operational_readiness(df)
+        self.assertIsNotNone(view_minimal)
+
 
 if __name__ == "__main__":
     unittest.main()
