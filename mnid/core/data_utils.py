@@ -504,10 +504,14 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     _assign_flag(
         'mnid_labour_visit_documented',
         # A recorded birth outcome is itself proof the visit happened, even
-        # under a differently-named encounter type.
+        # under a differently-named encounter type. Must include the same
+        # concept list as mnid_labour_live_birth's _birth_condition_concept
+        # below, or someone whose only labour row is a birth-outcome obs
+        # counts as a live birth without counting as a documented visit --
+        # numerator exceeding denominator on mnid_lab_overview_004.
         labour_mask & (
             encounter_source_lower.eq('labour and delivery visit')
-            | concept.isin(['Outcome of the delivery', 'Baby general condition at birth'])
+            | concept.isin(['Outcome of baby at birth', 'Outcome of the delivery', 'Baby general condition at birth'])
         ),
     )
     _assign_flag(
