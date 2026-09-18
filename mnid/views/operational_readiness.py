@@ -29,7 +29,12 @@ from mnid.core.constants import FACILITY_NAMES, FACILITY_DISTRICT
 from mnid.core.data_utils import resolve_facility_level, _remember_ui_payload, _restore_ui_dataframe
 from mnid.core.data_source import get_mnid_data_source
 from mnid.views.executive_views import _hierarchy_scope, _profile_scope_name, _summary_card
-from mnid.core.readiness_data import is_readiness_data_available, compute_readiness_matrix, compute_readiness_detail
+from mnid.core.readiness_data import (
+    is_readiness_data_available,
+    compute_readiness_matrix,
+    compute_readiness_detail,
+    get_facility_emonc_classification,
+)
 
 GREEN = "#15803D"
 AMBER = "#D97706"
@@ -241,10 +246,16 @@ def _tone_column_style(column_id: str, tones: list[str]) -> list[dict]:
     """Color one column's text per row by an explicit tone list (row order must
     match the table's rows) - for columns whose text varies per row rather than
     coming from one of the fixed *_LABELS maps, e.g. a rate row's "✓ On track · 83%"."""
-    return [
-        {"if": {"row_index": i, "column_id": column_id}, "color": STATUS_COLORS[tone][0], "fontWeight": "700"}
-        for i, tone in enumerate(tones)
-    ]
+    styles = []
+    for i, tone in enumerate(tones):
+        color, _ = STATUS_COLORS.get(tone, (TEXT, "#FFFFFF"))
+        rule = {"if": {"row_index": i, "column_id": column_id}, "color": color, "fontWeight": "700"}
+        if tone == "na":
+            rule["backgroundColor"] = "#F1F5F9"
+            rule["color"] = MUTED
+            rule["fontWeight"] = "600"
+        styles.append(rule)
+    return styles
 
 
 def _data_table(
@@ -429,8 +440,7 @@ def _resolve_aggregate_indicator_id(agg_df: pd.DataFrame | None, indicator_id: s
     caesarean section - where the DHIS2 row reuses an unrelated existing
     indicator's id/label rather than a dedicated one). Returns None if the
     aggregate has no data for this indicator under any of the three, which
-    is distinct from "resolved fine but the numerator happens to be zero".
-    """
+    is distinct from "resolved fine but the numerator happens to be zero"."""
     if agg_df is None or agg_df.empty:
         return None
     from mnid.aggregation.store import resolve_indicator_id as _resolve_id, _resolve_lookup
@@ -452,8 +462,7 @@ def _numerators_by_facility(indicator_id: str, numerator_filters: dict,
     Prefers the pre-built aggregate (single filtered groupby, same fast path
     every other MNID view uses); falls back to a live groupby over raw rows
     when the aggregate isn't available - same resilience pattern used
-    throughout mnid/views/trends.py.
-    """
+    throughout mnid/views/trends.py."""
     if agg_df is not None and not agg_df.empty:
         from mnid.aggregation.store import _candidate_grains, _floor_to_period
         resolved = _resolve_aggregate_indicator_id(agg_df, indicator_id, indicator_label, alias_id)
@@ -581,6 +590,35 @@ def _classify_emonc(numerators_by_sig: dict, code: str, level: str,
     return "Unclassified", ", ".join(missing_basic), note
 
 
+def _get_facility_classification(code: str, numerators_by_sig: dict, level: str,
+                                 unavailable_ids: frozenset[str] = frozenset()) -> tuple[str, str, str]:
+    """Get EmONC classification for a facility, prioritizing the HFA survey's sd_del_emonc2 classification."""
+    if is_readiness_data_available():
+        hfa_cls = get_facility_emonc_classification()
+        # 1. Direct facility_code lookup
+        if code in hfa_cls:
+            return hfa_cls[code], "", "Classification from Health Facility Assessment (HFA)"
+        # 2. Facility label / name lookup
+        label = _facility_label(code)
+        if label in hfa_cls:
+            return hfa_cls[label], "", "Classification from Health Facility Assessment (HFA)"
+        # 3. Normalized name lookup
+        from mnid.core.readiness_data import _normalize_name
+        norm_label = _normalize_name(label)
+        if norm_label in hfa_cls:
+            return hfa_cls[norm_label], "", "Classification from Health Facility Assessment (HFA)"
+        norm_code = _normalize_name(code)
+        if norm_code in hfa_cls:
+            return hfa_cls[norm_code], "", "Classification from Health Facility Assessment (HFA)"
+
+    # Fallback to referral level classification or signal function gate
+    if level in ["Secondary", "Tertiary"]:
+        return "CEmONC", "", f"Classification based on facility tier ({level})"
+    elif level == "Primary":
+        return "BEmONC", "", f"Classification based on facility tier ({level})"
+    return _classify_emonc(numerators_by_sig, code, level, unavailable_ids)
+
+
 def _matrix_tone(pct: float | None) -> str:
     if pct is None:
         return "awaiting"
@@ -589,15 +627,21 @@ def _matrix_tone(pct: float | None) -> str:
 
 def _matrix_cell(pct: float | int | str | None, detail: str | None = None) -> html.Td:
     """One traffic-light cell: a solid tone fill with white text for percentages,
+    or a grey background with 'N/A' for CEmONC-only / not applicable items,
     or a plain tabular cell for median-IQR metrics. `detail` becomes the native
     hover tooltip via the HTML title attribute."""
-    tone = _matrix_tone(float(pct)) if isinstance(pct, (int, float)) else "awaiting"
     common = {"textAlign": "center", "padding": "9px 10px", "fontSize": "12px"}
-    if pct is None:
+    if pct in (None, ""):
         return html.Td(STATUS_ICONS["awaiting"], title=detail, style={
             **common, "color": MUTED, "background": BACKGROUND, "borderBottom": f"1px solid {BORDER}",
         })
+    if isinstance(pct, str) and pct.strip().upper() in ["N/A", "NOT APPLICABLE", "NA", "–", "-"]:
+        return html.Td("N/A", title=detail or "Not applicable for BEmONC facilities (CEmONC-only indicator)", style={
+            **common, "color": MUTED, "background": "#F1F5F9", "borderBottom": f"1px solid {BORDER}",
+            "fontWeight": "600", "fontSize": "11px",
+        })
     if isinstance(pct, (int, float)):
+        tone = _matrix_tone(float(pct))
         color, _ = STATUS_COLORS[tone]
         return html.Td(f"{float(pct):.0f}%", title=detail, style={
             **common, "fontWeight": "700",
@@ -618,6 +662,11 @@ def _plain_cell(value: str | None, detail: str | None = None) -> html.Td:
     if value in (None, ""):
         return html.Td(STATUS_ICONS["awaiting"], title=detail, style={
             **common, "color": MUTED, "borderBottom": f"1px solid {BORDER}",
+        })
+    if isinstance(value, str) and value.strip().upper() in ["N/A", "NOT APPLICABLE", "NA", "–", "-"]:
+        return html.Td("N/A", title=detail or "Not applicable for BEmONC facilities (CEmONC-only indicator)", style={
+            **common, "color": MUTED, "background": "#F1F5F9", "borderBottom": f"1px solid {BORDER}",
+            "fontWeight": "600", "fontSize": "11px",
         })
     return html.Td(value, title=detail, style={
         **common, "fontWeight": "600",
@@ -647,6 +696,11 @@ def _matrix_table(rows: list[dict], columns: list[tuple[str, str]] | None = None
     are (Signal Function, Cadre, Commodity, Facility Type...), never the bare
     generic "Item".
     """
+    if not rows:
+        return html.Div(
+            "No indicators with reported data currently available for the selected facilities.",
+            style={"fontSize": "12px", "color": MUTED, "padding": "12px 8px"},
+        )
     columns = columns or _DEFAULT_MATRIX_COLUMNS
     cell_fn = cell_fn or _matrix_cell
     span = 1 + len(columns)
@@ -694,19 +748,13 @@ def _signal_functions_newborn_detail(code: str) -> html.Div:
             for r in nb_hfa:
                 st = r["status"]
                 disp = r["display_value"]
-                lbl = SIGNAL_DETAIL_LABELS.get(st, disp) if st in SIGNAL_DETAIL_LABELS else disp
+                lbl = "N/A" if st == "na" else (SIGNAL_DETAIL_LABELS.get(st, disp) if st in SIGNAL_DETAIL_LABELS else disp)
                 rows.append(html.Div([
                     html.Span(r["label"], style={"fontSize": "12px", "color": TEXT, "flex": "1"}),
                     _tone_pill(st, lbl),
                 ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "padding": "8px 0", "borderBottom": f"1px solid {BORDER}"}))
             return html.Div(rows)
-    return html.Div([
-        html.Div([
-            html.Span(label, style={"fontSize": "12px", "color": TEXT, "flex": "1"}),
-            _tone_pill("awaiting", AWAITING_LABEL),
-        ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "padding": "8px 0", "borderBottom": f"1px solid {BORDER}"})
-        for label in NEWBORN_SIGNAL_FUNCTIONS
-    ])
+    return html.Div("No newborn signal function data currently available for this facility.", style={"fontSize": "12px", "color": MUTED, "padding": "8px 0"})
 
 
 def _signal_functions_detail(code: str, numerators_by_sig: dict, df: pd.DataFrame,
@@ -715,11 +763,17 @@ def _signal_functions_detail(code: str, numerators_by_sig: dict, df: pd.DataFram
     rows = []
     for sf in SIGNAL_FUNCTIONS:
         status = _facility_status(sf, numerators_by_sig[sf["id"]], code, level, unavailable_ids)
-        rows.append(html.Div([
-            html.Span(sf["label"], style={"fontSize": "12px", "color": TEXT, "flex": "1"}),
-            _tone_pill(status, SIGNAL_DETAIL_LABELS[status]),
-        ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "padding": "8px 0", "borderBottom": f"1px solid {BORDER}"}))
-    classification, missing, note = _classify_emonc(numerators_by_sig, code, level, unavailable_ids)
+        if status == "na":
+            rows.append(html.Div([
+                html.Span(sf["label"], style={"fontSize": "12px", "color": TEXT, "flex": "1"}),
+                _tone_pill("na", "N/A"),
+            ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "padding": "8px 0", "borderBottom": f"1px solid {BORDER}"}))
+        else:
+            rows.append(html.Div([
+                html.Span(sf["label"], style={"fontSize": "12px", "color": TEXT, "flex": "1"}),
+                _tone_pill(status, SIGNAL_DETAIL_LABELS[status]),
+            ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "padding": "8px 0", "borderBottom": f"1px solid {BORDER}"}))
+    classification, missing, note = _get_facility_classification(code, numerators_by_sig, level, unavailable_ids)
     classification_line = [
         html.Span(f"{_facility_district(code)} · {level} · ", style={"fontSize": "11px", "color": MUTED}),
         _tone_pill(EMONC_TONES[classification], EMONC_LABELS[classification]),
@@ -754,13 +808,13 @@ def _signal_functions_comparison(facility_codes: list[str], numerators_by_sig: d
     detail a national summary doesn't need.
     """
     classifications = {
-        code: _classify_emonc(numerators_by_sig, code, resolve_facility_level(code, _facility_label(code)), unavailable_ids)[0]
+        code: _get_facility_classification(code, numerators_by_sig, resolve_facility_level(code, _facility_label(code)), unavailable_ids)[0]
         for code in facility_codes
     }
     cemonc_group = [c for c in facility_codes if classifications[c] == "CEmONC"]
     bemonc_group = [c for c in facility_codes if classifications[c] == "BEmONC"]
 
-    def _group_pct(sf: dict, group: list[str], group_label: str) -> tuple[float | None, str | None]:
+    def _group_pct(sf: dict, group: list[str], group_label: str) -> tuple[float | str | None, str | None]:
         if sf["id"] in unavailable_ids or not group:
             return None, None
         performing = sum(1 for code in group if numerators_by_sig[sf["id"]].get(code, 0) > 0)
@@ -770,7 +824,14 @@ def _signal_functions_comparison(facility_codes: list[str], numerators_by_sig: d
     maternal_rows = []
     for sf in SIGNAL_FUNCTIONS:
         cemonc_pct, cemonc_detail = _group_pct(sf, cemonc_group, "CEmONC")
-        bemonc_pct, bemonc_detail = _group_pct(sf, bemonc_group, "BEmONC")
+        if sf.get("comprehensive_only"):
+            bemonc_pct = "N/A"
+            bemonc_detail = "Not applicable for BEmONC facilities (CEmONC-only indicator)"
+        else:
+            bemonc_pct, bemonc_detail = _group_pct(sf, bemonc_group, "BEmONC")
+        # Deactivate / remove variable if there is no data for both CEmONC and BEmONC
+        if cemonc_pct is None and (bemonc_pct is None or (sf.get("comprehensive_only") and bemonc_pct == "N/A")):
+            continue
         maternal_rows.append({
             "label": sf["label"],
             "cemonc": cemonc_pct, "cemonc_detail": cemonc_detail,
@@ -781,8 +842,6 @@ def _signal_functions_comparison(facility_codes: list[str], numerators_by_sig: d
         newborn_rows = [r for r in nb_matrix if r.get("category") == "Newborn signal functions"]
     else:
         newborn_rows = []
-    if not newborn_rows:
-        newborn_rows = [{"label": label, "cemonc": None, "bemonc": None} for label in NEWBORN_SIGNAL_FUNCTIONS]
 
     note_children = [
         f"Share of {len(cemonc_group)} CEmONC- and {len(bemonc_group)} BEmONC-classified facilities in scope "
@@ -793,16 +852,24 @@ def _signal_functions_comparison(facility_codes: list[str], numerators_by_sig: d
         note_children.append(html.Br())
         note_children.append(f"{', '.join(excluded_labels)}: not reported via this data source.")
 
+    newborn_card_content = [
+        _section_title("Newborn Signal Functions"),
+    ]
+    if newborn_rows:
+        newborn_card_content.append(_matrix_table(newborn_rows, label_column="Signal Function"))
+    else:
+        newborn_card_content.append(html.Div(
+            "No newborn signal function data currently available for facilities in scope.",
+            style={"fontSize": "12px", "color": MUTED, "padding": "8px 0"},
+        ))
+
     return html.Div([
         _card([
             _section_title("Maternal Signal Functions"),
             _matrix_table(maternal_rows, label_column="Signal Function"),
             html.Div(note_children, style={"fontSize": "10px", "color": MUTED, "marginTop": "8px"}),
         ]),
-        _card([
-            _section_title("Newborn Signal Functions"),
-            _matrix_table(newborn_rows, label_column="Signal Function"),
-        ]),
+        _card(newborn_card_content),
     ])
 
 
@@ -961,7 +1028,7 @@ def _build_overview_tab(facility_codes: list[str], df: pd.DataFrame,
     numerators_by_sig = _signal_function_rows(facility_codes, df, agg_df, start_date, end_date)
     unavailable_ids = frozenset(_unavailable_signal_function_ids(agg_df))
     classification_results = {
-        code: _classify_emonc(numerators_by_sig, code, resolve_facility_level(code, _facility_label(code)), unavailable_ids)
+        code: _get_facility_classification(code, numerators_by_sig, resolve_facility_level(code, _facility_label(code)), unavailable_ids)
         for code in facility_codes
     }
     classifications = {code: result[0] for code, result in classification_results.items()}
@@ -1049,71 +1116,67 @@ def _build_overview_tab(facility_codes: list[str], df: pd.DataFrame,
             columns=_PROFILE_STATS_COLUMNS, cell_fn=_plain_cell, label_column="Indicator",
         )]),
     ])
-
-    records = _facility_comparison_records(
-        facility_codes, classifications, births_by_facility,
-        caesareans_by_facility, admissions_by_facility, admissions_available,
+    comparison_records = _facility_comparison_records(
+        facility_codes, classifications, births_by_facility, caesareans_by_facility,
+        admissions_by_facility, admissions_available,
     )
-    table_children = [
-        html.Div(
-            dcc.Dropdown(
-                id="oprd-classification-filter",
-                options=_CLASSIFICATION_FILTER_OPTIONS, value="All", clearable=False,
-                style={"width": "220px", "fontSize": "12px"},
-            ),
-            style={"display": "flex", "justifyContent": "flex-end", "marginBottom": "12px"},
-        ),
-        dcc.Store(id="oprd-facility-rows-store", data=records),
-        html.Div(id="oprd-facility-table-container", children=_facility_comparison_table(records)),
-    ]
-    if classification_note:
-        table_children.append(html.Div(classification_note, style={"fontSize": "10px", "color": MUTED, "marginTop": "8px"}))
-    table = html.Div([
+    comparison = html.Div([
         _section_title("Facility Readiness Comparison"),
-        _card(table_children),
+        _card([
+            html.Div([
+                html.Label("Filter by classification:", style={
+                    "fontSize": "11px", "fontWeight": 700, "color": MUTED, "marginRight": "8px",
+                }),
+                dcc.Dropdown(
+                    id="operational-readiness-classification-filter",
+                    options=_CLASSIFICATION_FILTER_OPTIONS,
+                    value="All",
+                    clearable=False,
+                    style={"minWidth": "220px", "fontSize": "12px"},
+                ),
+            ], style={"display": "flex", "alignItems": "center", "marginBottom": "12px"}),
+            dcc.Store(id="operational-readiness-comparison-records", data=comparison_records),
+            html.Div(
+                id="operational-readiness-comparison-table-container",
+                children=_facility_comparison_table(comparison_records),
+            ),
+        ]),
     ])
-    return html.Div([summary, profile, stats, table])
+    return html.Div([summary, profile, stats, comparison])
 
 
 # ---------------------------------------------------------------------------
-# People / Products & Commodities / Systems & Infrastructure -- awaiting data
+# People / Products / Systems
 # ---------------------------------------------------------------------------
-
-def _awaiting_detail_table(items: list[str], label_column: str = "Indicator") -> dash_table.DataTable:
-    rows = [[label, AWAITING_LABEL] for label in items]
-    tones = ["awaiting"] * len(items)
-    return _data_table([label_column, "Result"], rows, tone_column="Result", tones=tones)
-
-
-def _awaiting_domain_detail_table(domain_items: list[tuple[str, str]], label_column: str = "Indicator") -> dash_table.DataTable:
-    rows = [[d, i, AWAITING_LABEL] for d, i in domain_items]
-    tones = ["awaiting"] * len(domain_items)
-    return _data_table(["Domain", label_column, "Result"], rows, tone_column="Result", tones=tones)
-
 
 def _awaiting_matrix_rows(items: list) -> list[dict]:
-    """Convert a flat item list or a list of (category, item) tuples into
-    CEmONC/BEmONC matrix rows with no real per-item data yet - every cell
-    renders as "awaiting" until People/Products/Systems get a real data
-    source, at which point only this function's output changes, not the
-    table it feeds."""
+    """CEmONC/BEmONC matrix rows with no real per-item data yet - every cell
+    renders as 'awaiting'."""
     if items and isinstance(items[0], tuple):
         return [{"label": label, "category": category, "cemonc": None, "bemonc": None} for category, label in items]
     return [{"label": label, "cemonc": None, "bemonc": None} for label in items]
 
 
-def _real_indicator_rows(indicators: list[dict], df: pd.DataFrame,
-                          agg_df: pd.DataFrame | None, start_date, end_date,
-                          facility_codes: list[str]) -> tuple[list[list], list[str], list[dict]]:
-    """Render already-real indicators (supply/workforce/data-quality) the same
-    row shape as the awaiting-data tables, so real and placeholder rows sit
-    together in one table without the UI needing to know which is which.
-    Returns rows, tones and hover details for the percentage result."""
+def _awaiting_detail_table(items: list[str], label_column: str = "Cadre") -> dash_table.DataTable:
+    rows = [[cadre, AWAITING_LABEL] for cadre in items]
+    tones = ["awaiting"] * len(rows)
+    return _data_table([label_column, "Status"], rows, tone_column="Status", tones=tones)
+
+
+def _awaiting_domain_detail_table(items: list[tuple[str, str]], label_column: str = "Commodity") -> dash_table.DataTable:
+    rows = [[cat, label, AWAITING_LABEL] for cat, label in items]
+    tones = ["awaiting"] * len(rows)
+    return _data_table(["Category", label_column, "Status"], rows, tone_column="Status", tones=tones)
+
+
+def _real_indicator_rows(indicators: list[dict], df: pd.DataFrame, agg_df: pd.DataFrame | None,
+                          start_date, end_date, facility_codes: list[str]) -> tuple[list[list], list[str], list[dict]]:
     rows, tones, tooltips = [], [], []
     for ind in indicators:
-        num, den, pct = _cov(df, ind.get("numerator_filters", {}), ind.get("denominator_filters", {}))
-        label = ind.get("label", "Indicator")
-        if den:
+        label = ind.get("name") or ind.get("label", ind["id"])
+        num, den, rate = _cov(df, ind["id"], facility_codes)
+        if rate is not None:
+            pct = round(rate * 100, 1)
             tone = "green" if pct >= 80 else "amber" if pct >= 50 else "red"
             rows.append([label, f"{den:,}", f"{RATE_LABELS[tone]} · {pct:.0f}%"])
             tones.append(tone)
@@ -1141,7 +1204,7 @@ def _hfa_detail_table(sheet_name: str, facility_code: str, label_column: str = "
         if st in ["green", "amber", "red"]:
             pill_text = f"{STATUS_ICONS.get(st, '')} {disp_val}"
         elif st == "na":
-            pill_text = f"{STATUS_ICONS['na']} {disp_val}"
+            pill_text = "N/A"
         elif st == "awaiting":
             pill_text = AWAITING_LABEL
         else:
@@ -1166,18 +1229,11 @@ def _people_tab(facility_codes: list[str], wf_inds: list[dict] | None, df: pd.Da
         _data_table(["Indicator", "Assessed, n", "Result"], real, tone_column="Result", tones=tones, tooltips=tooltips) if real else html.Div(
             "No workforce competency indicators configured for this report.", style={"fontSize": "12px", "color": MUTED}),
     ])
-    body = _scope_view(
-        facility_codes,
-        detail_fn=lambda code: html.Div([
-            _card([_section_title(f"Neonatal Care Unit Staffing · {_facility_label(code)}"), _awaiting_detail_table(CADRES_NEONATAL, label_column="Cadre")]),
-            _card([_section_title(f"Maternity Staffing · {_facility_label(code)}"), _awaiting_detail_table(CADRES_MATERNITY, label_column="Cadre")]),
-        ]),
-        comparison_fn=lambda codes: html.Div([
-            _card([_section_title("Neonatal Care Unit Staffing"), _matrix_table(_awaiting_matrix_rows(CADRES_NEONATAL), label_column="Cadre")]),
-            _card([_section_title("Maternity Staffing"), _matrix_table(_awaiting_matrix_rows(CADRES_MATERNITY), label_column="Cadre")]),
-        ]),
-    )
-    return html.Div([real_card, body])
+    staffing_card = _card([
+        _section_title("Facility Staffing Cadres"),
+        html.Div("Staffing cadre indicators are not currently reported across CeMoC and BEmONC facilities.", style={"fontSize": "12px", "color": MUTED, "padding": "4px 0"}),
+    ])
+    return html.Div([real_card, staffing_card])
 
 
 def _products_tab(facility_codes: list[str], supply_inds: list[dict] | None, df: pd.DataFrame) -> html.Div:
@@ -1212,19 +1268,10 @@ def _products_tab(facility_codes: list[str], supply_inds: list[dict] | None, df:
             ]),
         )
     else:
-        body = _scope_view(
-            facility_codes,
-            detail_fn=lambda code: html.Div([
-                _card([_section_title(f"Maternity Equipment · {_facility_label(code)}"), _awaiting_domain_detail_table(EQUIPMENT_MATERNITY, label_column="Commodity")]),
-                _card([_section_title(f"Maternity Essential Medicines · {_facility_label(code)}"), _awaiting_domain_detail_table(TRACER_MEDICINES_MATERNITY, label_column="Commodity")]),
-                _card([_section_title(f"Newborn Equipment · {_facility_label(code)}"), _awaiting_domain_detail_table(EQUIPMENT_NEWBORN, label_column="Commodity")]),
-                _card([_section_title(f"Newborn Tracer Medicines · {_facility_label(code)}"), _awaiting_domain_detail_table(TRACER_MEDICINES_NEWBORN, label_column="Commodity")]),
-            ]),
-            comparison_fn=lambda codes: html.Div([
-                _card([_section_title("Maternity Equipment & Medicines"), _matrix_table(_awaiting_matrix_rows(EQUIPMENT_MATERNITY + TRACER_MEDICINES_MATERNITY), label_column="Commodity")]),
-                _card([_section_title("Newborn Equipment & Medicines"), _matrix_table(_awaiting_matrix_rows(EQUIPMENT_NEWBORN + TRACER_MEDICINES_NEWBORN), label_column="Commodity")]),
-            ]),
-        )
+        body = _card([
+            _section_title("Operational Readiness Survey Data"),
+            html.Div("Operational readiness survey data is not currently available for the selected facilities.", style={"fontSize": "12px", "color": MUTED, "padding": "4px 0"}),
+        ])
     return html.Div([real_card, body])
 
 
@@ -1250,20 +1297,10 @@ def _systems_tab(facility_codes: list[str], dq_inds: list[dict] | None, df: pd.D
             ]),
         )
     else:
-        body = _scope_view(
-            facility_codes,
-            detail_fn=lambda code: html.Div([
-                _card([_section_title(f"Maternity Unit Infrastructure · {_facility_label(code)}"), _awaiting_domain_detail_table(INFRASTRUCTURE_MATERNITY, label_column="Infrastructure Indicator")]),
-                _card([_section_title(f"Neonatal Care Unit Infrastructure · {_facility_label(code)}"), _awaiting_domain_detail_table(INFRASTRUCTURE_NEONATAL, label_column="Infrastructure Indicator")]),
-                _card([_section_title(f"Referral and Transport · {_facility_label(code)}"), _awaiting_detail_table(REFERRAL_TRANSPORT)]),
-                _card([_section_title(f"Data and Quality-Improvement Systems · {_facility_label(code)}"), _awaiting_detail_table(DATA_QI_SYSTEMS)]),
-            ]),
-            comparison_fn=lambda codes: html.Div([
-                _card([_section_title("Maternity Infrastructure"), _matrix_table(_awaiting_matrix_rows(INFRASTRUCTURE_MATERNITY), label_column="Infrastructure Indicator")]),
-                _card([_section_title("Neonatal Care Unit Infrastructure"), _matrix_table(_awaiting_matrix_rows(INFRASTRUCTURE_NEONATAL), label_column="Infrastructure Indicator")]),
-                _card([_section_title("Referral, Transport & QI Systems"), _matrix_table(_awaiting_matrix_rows(REFERRAL_TRANSPORT + DATA_QI_SYSTEMS), label_column="Indicator")]),
-            ]),
-        )
+        body = _card([
+            _section_title("Operational Readiness Infrastructure & Systems"),
+            html.Div("Operational readiness survey data is not currently available for the selected facilities.", style={"fontSize": "12px", "color": MUTED, "padding": "4px 0"}),
+        ])
     return html.Div([real_card, body])
 
 
@@ -1279,245 +1316,129 @@ _TABS = [
     ("systems", "Systems & Infrastructure"),
 ]
 
-_TAB_STYLE = {
-    "padding": "16px 18px", "fontSize": "14px", "fontWeight": "700",
-    "color": MUTED, "background": "transparent", "border": "none",
-    "borderBottom": "2px solid transparent", "minWidth": "132px", "flexShrink": "0",
-}
-_TAB_SELECTED_STYLE = {
-    **_TAB_STYLE, "color": GREEN, "background": "#F0FDF4",
-    "borderBottom": f"2px solid {GREEN}",
-}
-
-
-def _period_label(start_date, end_date) -> str:
-    def _format(value):
-        if value is None:
-            return "N/A"
-        try:
-            return pd.to_datetime(value).strftime("%d %b %Y")
-        except (TypeError, ValueError):
-            return str(value)
-    return f"{_format(start_date)} - {_format(end_date)}"
-
-
-def _readiness_header(df: pd.DataFrame, scope_meta: dict | None,
-                      facility_codes: list[str], start_date, end_date) -> list:
-    profile = _profile_scope_name(scope_meta)
-    period = _period_label(start_date, end_date)
-    route = (scope_meta or {}).get("route", "default")
-    source = "MAHIS dataset" if _resolve_data_source(route).requires_raw_dataset else "DHIS2 aggregate"
-
-    scope_meta = scope_meta or {}
-    if source == "DHIS2 aggregate" and not scope_meta.get("selected_districts") and not scope_meta.get("selected_facilities"):
-        # Nothing specific picked -- show the crosswalk's own totals (3
-        # districts, 67 facilities) instead of however many of them happen
-        # to have an actual data row in the aggregate right now (which
-        # varies sync to sync, and doesn't match the crosswalk's own
-        # DISTRICT field for the same facility_code either).
-        from mnid.core.dhis2_facilities import dhis2_districts, dhis2_known_facility_codes
-        district_count = len(dhis2_districts())
-        facility_count = len(dhis2_known_facility_codes())
-    else:
-        district_count = len({_facility_district(code) for code in facility_codes if _facility_district(code)})
-        facility_count = len(facility_codes)
-    scope_items = _hierarchy_scope(df if df is not None else pd.DataFrame(), scope_meta, period)
-
-    badge_style = {
-        "background": "#F8FAFC", "border": f"1px solid {BORDER}", "color": "#475569",
-        "fontSize": "11px", "fontWeight": "700", "padding": "5px 11px", "borderRadius": "99px",
-    }
-    hero = dmc.Paper(
-        withBorder=True, radius="lg", shadow="xs", p="xl",
-        style={"marginBottom": "20px", "borderColor": BORDER},
-        children=[
-            # Keep this eyebrow independent of the Country Profile scope label.
-            html.Div("Operational Readiness", style={
-                "fontSize": "11px", "fontWeight": "700", "color": "#0F766E",
-                "letterSpacing": ".12em", "textTransform": "uppercase", "marginBottom": "10px",
-            }),
-            html.H1("Maternal and Newborn Service Readiness", style={
-                "fontSize": "26px", "fontWeight": "800", "color": TEXT,
-                "letterSpacing": "-.04em", "lineHeight": "1.15", "marginBottom": "6px",
-            }),
-            html.P(
-                f"{profile['overview']} · EmONC signal functions · Workforce · Commodities · Systems",
-                style={"fontSize": "13px", "color": MUTED, "marginBottom": "16px"},
-            ),
-            html.Div([
-                html.Span("Live assessment", style={**badge_style, "background": "#ECFDF5", "borderColor": "#BBF7D0", "color": GREEN}),
-                html.Span(period, style=badge_style),
-                html.Span(f"{district_count} Districts · {facility_count} Facilities", style=badge_style),
-                html.Span(source, style=badge_style),
-            ], style={"display": "flex", "gap": "8px", "flexWrap": "wrap"}),
-        ],
-    )
-    scope_band = html.Div([
-        html.Div([
-            html.Span(item["label"], style={
-                "fontSize": "10px", "fontWeight": "700", "color": "#94A3B8",
-                "textTransform": "uppercase", "letterSpacing": ".07em", "display": "block", "marginBottom": "2px",
-            }),
-            html.Span(item["value"], style={"fontSize": "12px", "fontWeight": "600", "color": TEXT}),
-        ], style={"padding": "8px 14px", "borderRight": f"1px solid {BORDER}"})
-        for item in scope_items
-    ], style={
-        "display": "flex", "flexWrap": "wrap", "background": BACKGROUND,
-        "border": f"1px solid {BORDER}", "borderRadius": "10px",
-        "overflow": "hidden", "marginBottom": "20px",
-    })
-    return [hero, scope_band]
-
-
-def _render_tab_content(tab_value: str, stored: dict) -> html.Div:
-    df = _restore_ui_dataframe(stored.get("data_key"))
-    facility_codes = stored.get("facility_codes") or _facility_universe(df)
-    start_date = stored.get("start_date")
-    end_date = stored.get("end_date")
-    agg_df = _resolve_data_source(stored.get("route", "default")).aggregate()
-
-    if not facility_codes:
-        return dmc.Paper(
-            withBorder=True, radius="md", p="xl",
-            style={"borderColor": BORDER, "textAlign": "center"},
-            children=[
-                html.Div("No facilities available in the selected scope", style={
-                    "fontSize": "14px", "fontWeight": "700", "color": TEXT, "marginBottom": "5px",
-                }),
-                html.Div(
-                    "Adjust the district or facility filters, or confirm that the configured data source contains facility-level records.",
-                    style={"fontSize": "12px", "color": MUTED},
-                ),
-            ],
-        )
-
-    if tab_value == "overview":
-        return _build_overview_tab(facility_codes, df, agg_df, start_date, end_date)
-    if tab_value == "signal-functions":
-        return _build_signal_functions_tab(facility_codes, df, agg_df, start_date, end_date)
-    if tab_value == "people":
-        return _people_tab(facility_codes, stored.get("wf_inds"), df)
-    if tab_value == "products":
-        return _products_tab(facility_codes, stored.get("supply_inds"), df)
-    if tab_value == "systems":
-        return _systems_tab(facility_codes, stored.get("dq_inds"), df)
-    return html.Div()
-
-
-@callback(
-    Output("oprd-tab-container", "children"),
-    Input("oprd-subtabs", "value"),
-    State("oprd-store", "data"),
-)
-def _oprd_sync_tab(tab_value, stored):
-    if not tab_value or not stored:
-        raise PreventUpdate
-    return _render_tab_content(tab_value, stored)
-
-
-@callback(
-    Output("oprd-subtabs", "value"),
-    Output("oprd-active-subtab-store", "data"),
-    Input("oprd-subtabs", "value"),
-    Input("oprd-active-subtab-store", "data"),
-)
-def _oprd_sync_subtab(tab_value: str | None, stored_tab: str | None):
-    """Two-way sync between the visible tab and its session-store mirror,
-    written as ONE callback with both properties as both Input and Output -
-    Dash's documented "circular callback" pattern (two separate callbacks
-    each outputting the other's Input raises "Dependency Cycle Found" at
-    startup, which is exactly what tripped here originally).
-
-    `ctx.triggered_id` tells the two directions apart:
-    - user actually changed the tab -> persist that value to the store,
-      leave the tab's own value alone (no_update breaks the loop: the store
-      write below won't re-enter the "restore" branch because tab_value
-      already matches by the time it re-fires).
-    - page/component load (triggered_id is None) or the store itself
-      changed -> restore the stored tab if it's valid and differs from the
-      hardcoded default_tab this component mounted with.
-    """
-    valid_tabs = {value for value, _ in _TABS}
-    if ctx.triggered_id == "oprd-subtabs":
-        if not tab_value:
-            raise PreventUpdate
-        return no_update, tab_value
-    if stored_tab and stored_tab in valid_tabs and stored_tab != tab_value:
-        return stored_tab, no_update
-    raise PreventUpdate
-
-
-@callback(
-    Output("oprd-facility-table-container", "children"),
-    Input("oprd-classification-filter", "value"),
-    State("oprd-facility-rows-store", "data"),
-    prevent_initial_call=True,
-)
-def _oprd_filter_facility_table(selected: str, records: list[dict] | None):
-    """Re-slice the already-computed facility records client round-trip
-    (dcc.Store) rather than recomputing the Overview tab - the same pattern
-    mnid/views/callbacks.py::update_performance_heatmap uses for the Maternal
-    dashboard's district/indicator filters."""
-    if not records:
-        raise PreventUpdate
-    filtered = records if not selected or selected == "All" else [r for r in records if r["classification"] == selected]
-    return _facility_comparison_table(filtered)
-
 
 def render_operational_readiness(
     df: pd.DataFrame,
-    supply_inds: list[dict] | None = None,
-    wf_inds: list[dict] | None = None,
-    dq_inds: list[dict] | None = None,
+    indicators: list[dict],
+    selected_indicators: list[str] | None = None,
     scope_meta: dict | None = None,
     start_date=None,
     end_date=None,
+    agg_df: pd.DataFrame | None = None,
 ) -> html.Div:
-    scope_meta = scope_meta or {}
+    """The root Operational Readiness view. Lazily mounts 5 sub-tabs so we
+    don't compute all 5 tabs on every load."""
     facility_codes = _source_facility_universe(df, scope_meta)
-    route = scope_meta.get("route", "default")
-    store_data = {
-        "data_key": _remember_ui_payload("oprd", df if df is not None else pd.DataFrame()),
-        "facility_codes": facility_codes,
-        "start_date": str(start_date) if start_date else None,
-        "end_date": str(end_date) if end_date else None,
-        "supply_inds": supply_inds or [],
-        "wf_inds": wf_inds or [],
-        "dq_inds": dq_inds or [],
-        "route": route,
-    }
-    default_tab = _TABS[0][0]
-    initial_content = _render_tab_content(default_tab, store_data)
+    scope_name = _profile_scope_name(scope_meta)
+    hierarchy_badge = _hierarchy_scope(scope_meta)
 
-    return html.Div(className="mnid-executive-page", children=[
-        dcc.Store(id="oprd-store", data=store_data),
-        # Session-scoped (survives a dashboard-container rebuild within the
-        # same browser tab, same pattern as pages/home.py's
-        # mnid-active-tab-store) - without this, the periodic
-        # dashboard-interval-update-today tick indirectly forces
-        # update_dashboard to rebuild dashboard-container's children (see
-        # pages/home.py's own comments on that spurious refire), and since
-        # this component always mounts fresh with value=default_tab, whatever
-        # sub-tab (e.g. People) the user had open would silently reset to
-        # Overview on every rebuild - this restores it instead.
-        dcc.Store(id="oprd-active-subtab-store", storage_type="session"),
-        *_readiness_header(df, scope_meta, facility_codes, start_date, end_date),
+    header = html.Div([
         html.Div([
-            dcc.Tabs(
-                id="oprd-subtabs", value=default_tab,
-                children=[dcc.Tab(
-                    label=label, value=value, style=_TAB_STYLE,
-                    selected_style=_TAB_SELECTED_STYLE,
-                ) for value, label in _TABS],
-                style={"borderBottom": "none", "minWidth": "720px"},
-                parent_style={"overflowX": "auto", "overflowY": "hidden"},
-            ),
-        ], style={
-            "background": SURFACE, "border": f"1px solid {BORDER}", "borderRadius": "10px",
-            "overflow": "hidden", "marginBottom": "20px",
-        }),
-        dcc.Loading(
-            html.Div(id="oprd-tab-container", children=initial_content),
-            type="circle", color=GREEN,
-        ),
-    ])
+            html.Span("OPERATIONAL READINESS", style={
+                "fontSize": "11px", "fontWeight": "800", "letterSpacing": ".08em",
+                "color": GREEN, "textTransform": "uppercase",
+            }),
+            html.H2("EmONC Facility Readiness & Capacity", style={
+                "margin": "2px 0 0 0", "fontSize": "20px", "fontWeight": "800", "color": TEXT,
+            }),
+            html.Div(f"Assessing readiness across {len(facility_codes)} facilities in scope ({scope_name})", style={
+                "fontSize": "12px", "color": MUTED, "marginTop": "2px",
+            }),
+        ]),
+        html.Div(hierarchy_badge, style={"alignSelf": "flex-start"}),
+    ], style={
+        "display": "flex", "justifyContent": "space-between", "alignItems": "flex-start",
+        "marginBottom": "16px", "paddingBottom": "12px", "borderBottom": f"1px solid {BORDER}",
+    })
+
+    tabs = dmc.Tabs(
+        [
+            dmc.TabsList([
+                dmc.Tab(label, value=val, style={"fontSize": "13px", "fontWeight": "600"})
+                for val, label in _TABS
+            ]),
+            *[
+                dmc.TabsPanel(
+                    dcc.Loading(
+                        html.Div(id=f"operational-readiness-tab-{val}-content"),
+                        type="dot", color=GREEN,
+                    ),
+                    value=val, pt="md",
+                )
+                for val, _ in _TABS
+            ],
+        ],
+        id="operational-readiness-subtabs",
+        value="overview",
+        color="green",
+    )
+
+    payload_id = _remember_ui_payload(df, agg_df, scope_meta, start_date, end_date)
+    store = dcc.Store(id="operational-readiness-tab-data-store", data={"payload_id": payload_id})
+    return html.Div([header, tabs, store])
+
+
+# ---------------------------------------------------------------------------
+# Lazy sub-tab callback
+# ---------------------------------------------------------------------------
+
+@callback(
+    Output("operational-readiness-tab-overview-content", "children"),
+    Output("operational-readiness-tab-signal-functions-content", "children"),
+    Output("operational-readiness-tab-people-content", "children"),
+    Output("operational-readiness-tab-products-content", "children"),
+    Output("operational-readiness-tab-systems-content", "children"),
+    Input("operational-readiness-subtabs", "value"),
+    State("operational-readiness-tab-data-store", "data"),
+    prevent_initial_call=False,
+)
+def _render_operational_readiness_tab(active_tab: str | None, store_data: dict | None):
+    if not active_tab or not store_data:
+        raise PreventUpdate
+    df, agg_df, scope_meta, start_date, end_date = _restore_ui_dataframe(store_data.get("payload_id"))
+    facility_codes = _source_facility_universe(df, scope_meta)
+
+    # Empty responses for inactive tabs so we don't re-render them
+    outputs = [no_update] * len(_TABS)
+    tab_indices = {val: i for i, (val, _) in enumerate(_TABS)}
+    target_idx = tab_indices.get(active_tab)
+    if target_idx is None:
+        raise PreventUpdate
+
+    if active_tab == "overview":
+        content = _build_overview_tab(facility_codes, df, agg_df, start_date, end_date)
+    elif active_tab == "signal-functions":
+        content = _build_signal_functions_tab(facility_codes, df, agg_df, start_date, end_date)
+    elif active_tab == "people":
+        from mnid.core.indicators import INDICATORS
+        wf_inds = [ind for ind in INDICATORS.values() if ind.get("category") == "Workforce"]
+        content = _people_tab(facility_codes, wf_inds, df)
+    elif active_tab == "products":
+        from mnid.core.indicators import INDICATORS
+        supply_inds = [ind for ind in INDICATORS.values() if ind.get("category") == "Supplies"]
+        content = _products_tab(facility_codes, supply_inds, df)
+    elif active_tab == "systems":
+        from mnid.core.indicators import INDICATORS
+        dq_inds = [ind for ind in INDICATORS.values() if ind.get("category") == "Data Quality"]
+        content = _systems_tab(facility_codes, dq_inds, df)
+    else:
+        content = html.Div("Tab content not found")
+
+    outputs[target_idx] = content
+    return tuple(outputs)
+
+
+@callback(
+    Output("operational-readiness-comparison-table-container", "children"),
+    Input("operational-readiness-classification-filter", "value"),
+    State("operational-readiness-comparison-records", "data"),
+    prevent_initial_call=True,
+)
+def _filter_facility_comparison_table(selected_classification: str | None, records: list[dict] | None):
+    if not records:
+        raise PreventUpdate
+    if not selected_classification or selected_classification == "All":
+        filtered = records
+    else:
+        filtered = [r for r in records if r.get("classification") == selected_classification]
+    return _facility_comparison_table(filtered)
