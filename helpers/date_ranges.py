@@ -141,16 +141,15 @@ def get_relative_date_range(option, current_date=None):
         last_day_last_month = first_day_this_month - timedelta(days=1)
         start_date = last_day_last_month.replace(day=1)
         return start_date, last_day_last_month
-    # option Last 3 Months
+    # option Last 3 Months -- trailing window ENDING at today/anchor (like
+    # Last 6 Months below), i.e. the anchor's own month plus the 2 before it.
+    # Previously excluded the anchor's month entirely (ending at last month),
+    # which silently dropped the most recent month's data and disagreed with
+    # every other window-resolution path in the app that treats "Last 3
+    # Months" as inclusive of now.
     elif option == 'Last 3 Months':
-        first_day_this_month = today.replace(day=1)
-        last_day_last_month = first_day_this_month - timedelta(days=1)
-        first_day_last_month = last_day_last_month.replace(day=1)
-        last_day_two_months_ago = first_day_last_month - timedelta(days=1)
-        first_day_two_months_ago = last_day_two_months_ago.replace(day=1)
-        last_day_three_months_ago = first_day_two_months_ago - timedelta(days=1)
-        start_date = last_day_three_months_ago.replace(day=1)
-        end_date = last_day_last_month
+        end_date = today
+        start_date = (pd.Timestamp(end_date).replace(day=1) - pd.DateOffset(months=2)).date()
         return start_date, end_date
     elif option == 'Last 6 Months':
         # `today` is the anchor passed in by the caller -- for DHIS2 this is

@@ -2179,6 +2179,14 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
             'dataset_version':     dataset_version,
             'route':               aggregate_route,
             'user_facility_level': user_facility_level,
+            # A named relative period (e.g. 'Today', 'Last Month') selected
+            # via the period-type dropdown, not a custom date-range pick --
+            # lets aggregate-reading code use the pre-computed
+            # grain='relative_period' rows (see mnid.aggregation.engine.
+            # _aggregate_relative_periods) instead of resolving which
+            # calendar-grain rows currently fall inside that rolling window.
+            # Empty/None on a custom range, where there's no matching label.
+            'period_label':        period_type or None,
         }
 
         rendered = []

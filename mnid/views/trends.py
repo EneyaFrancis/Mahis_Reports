@@ -23,7 +23,7 @@ from mnid.charts.chart_helpers import (
 from mnid.charts.heatmap import _mask
 from mnid.core.constants import MUTED, FACILITY_NAMES as _FACILITY_NAMES
 from mnid.core.indicators import _resolve_category_order
-from mnid.core.data_utils import _remember_ui_payload, _restore_ui_dataframe
+from mnid.core.data_utils import _remember_ui_payload, _restore_ui_dataframe, _compact_for_cache
 from mnid.components.run_charts import _format_grain_label, _hex_to_rgba
 
 _LOGGER = logging.getLogger(__name__)
@@ -506,7 +506,7 @@ def _trend_switcher(
 
     trend_store = {
         'tracked':         tracked,
-        'data_key':        _remember_ui_payload('trend', df, stable_key=payload_key),
+        'data_key':        _remember_ui_payload('trend', _compact_for_cache(df), stable_key=payload_key),
         'date_min':        _date_min,
         'date_max':        _date_max,
         'scope_meta':      scope_meta or {},

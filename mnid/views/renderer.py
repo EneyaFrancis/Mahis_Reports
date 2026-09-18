@@ -4,6 +4,7 @@ import json
 import logging
 import pickle
 import threading
+import time as _time
 from pathlib import Path
 
 import pandas as pd
@@ -27,7 +28,7 @@ from mnid.views.kpi_engine import (
     _get_facility_df_from_state,
     _load_mnid_report_config,
 )
-from mnid.core.data_utils import prepare_mnid_dataframe as _prepare_mnid_dataframe
+from mnid.core.data_utils import prepare_mnid_dataframe as _prepare_mnid_dataframe, register_facility_metadata as _register_facility_metadata
 from mnid.core.data_source import get_mnid_data_source
 from mnid.views.executive_views import render_country_profile, _profile_scope_name, _refetch_series
 from mnid.views.operational_readiness import render_operational_readiness
@@ -35,7 +36,7 @@ from mnid.components.run_charts import (
     bucket_multi_series, bucket_time_series,
     _multi_run_chart, _run_chart, describe_grain_window,
 )
-from mnid.core.constants import BORDER, TEXT
+from mnid.core.constants import BORDER, TEXT, FACILITY_NAMES as _FACILITY_NAMES
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -423,14 +424,84 @@ def _render_mnh_dashboard_view(selected_view: str, state: dict, views: dict):
     return _render_mnh_placeholder(label_map.get(selected_view, selected_view))
 
 
-_MNID_SQL_COLUMNS = "*" #kept all for now
-def render_mnid_dashboard(filtered, data_opd, data_path, config, 
+# SELECT * pulled every raw column (incl. PII: given_name, family_name,
+# birthdate, cell, identifier, ...) across the full row count -- on a 3-month
+# MAHIS selection (3.9M rows) that's enough object-dtype column data to blow
+# out available memory during DuckDB's pandas conversion (confirmed:
+# ArrayMemoryError in pandas' block-consolidation step). Same 22-column set
+# mnid/aggregation/engine.py already uses for this exact class of computation
+# (raw MAHIS rows -> MNID indicator numerator/denominator filters) -- grepped
+# the whole mnid/ package for every column SELECT * previously supplied and
+# this list doesn't; none are referenced anywhere in it.
+_MNID_SQL_COLUMNS = (
+    "person_id, encounter_id, Date, Program, Reporting_Program, Service_Area, "
+    "Facility, Facility_CODE, District, Encounter, obs_value_coded, concept_name, "
+    "Value, ValueN, new_revisit, Home_district, TA, Village, Age, Age_Group, "
+    "Gender, Source_Program"
+)
+
+# Above this many days, a MAHIS date-range selection skips the eager raw-row
+# load entirely (if the aggregate covers it) rather than loading a window's
+# worth of encounter rows that grows without bound as the range widens.
+# Originally 180 days on the theory that a 92-day (3-month) selection was
+# cheap enough in isolation (~33s, verified) to leave on the raw path --
+# live, under the app's actual concurrent load (background preload threads,
+# multiple tabs), that same selection took 100+ silent seconds (no timing
+# log existed for this step before now -- see the query/prepare logging
+# just below). 45 days keeps the genuinely short, precision-sensitive
+# selections (Today/Yesterday/This Week/This Month, where Daily-grain raw
+# fallback detail can matter) on the raw path, where loading is cheap
+# regardless of contention; anything wider -- including "Last 3/6 Months",
+# the exact selection that prompted this -- now takes the aggregate-only
+# path the 242-day case already proved fast (under 3s end-to-end).
+_RAW_LOAD_WINDOW_DAYS_CAP = 45
+
+# Facility_CODE->name/district registration only otherwise happens inside
+# prepare_mnid_dataframe's non-empty branch (see register_facility_metadata
+# callers in data_utils.py) -- once the skip-raw-load path below started
+# passing it an empty frame for every wide-window MAHIS render, facility
+# names silently stopped resolving anywhere that reads FACILITY_NAMES (e.g.
+# the Facility Performance table), regressing to raw codes.
+
+
+def render_mnid_dashboard(filtered, data_opd, data_path, config,
                           facility_code, start_date, end_date,
                           scope_meta: dict | None = None,
                           initial_tab: dict | None = None):
 
     route = (scope_meta or {}).get('route', 'default')
     source = get_mnid_data_source(route, source='dhis2' if route == 'dhis2' else 'mahis')
+
+    # MAHIS raw-row count scales linearly with the selected window (3
+    # months here is already 3.9M rows) -- fine up to a few months, but a
+    # multi-year selection would try to load tens of millions of rows into
+    # memory no matter how compact each row is. The aggregate doesn't have
+    # that problem: its size is periods x indicators x facilities, not
+    # encounters, so 5 years of monthly grain is maybe 20x today's ~11K
+    # rows, not 20x today's 3.9M. Above _RAW_LOAD_WINDOW_DAYS_CAP, skip the
+    # eager raw load the same way DHIS2 always does (empty filtered/
+    # data_opd) *only* when the aggregate already covers the full requested
+    # window -- every aggregate-aware path (KPI batch, Country Profile,
+    # coverage/trend/comparative) already prefers it over raw rows whenever
+    # present; the trade-off is that a rare indicator not yet in the
+    # aggregate shows "awaiting data" for a window this wide instead of a
+    # raw-computed value, rather than loading everything to compute it.
+    # Windows within the cap are untouched -- same code path as always.
+    _skip_raw_load = False
+    if source.requires_raw_dataset and isinstance(filtered, str) and start_date is not None and end_date is not None:
+        _window_days = (pd.Timestamp(end_date) - pd.Timestamp(start_date)).days
+        if _window_days > _RAW_LOAD_WINDOW_DAYS_CAP:
+            _agg_start, _agg_end = source.reporting_bounds()
+            if (
+                _agg_start is not None and _agg_end is not None
+                and _agg_start <= pd.Timestamp(start_date) and pd.Timestamp(end_date) <= _agg_end
+            ):
+                _skip_raw_load = True
+                _LOGGER.info(
+                    'MNID raw load skipped: %d-day window exceeds %d-day cap, aggregate covers it (route=%s)',
+                    _window_days, _RAW_LOAD_WINDOW_DAYS_CAP, route,
+                )
+
     # Captured before data_opd gets overwritten by its own query result below --
     # this is the recipe _get_network_df_from_state needs to rebuild network_df
     # on a cache miss instead of returning None (see that function's docstring).
@@ -439,24 +510,41 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
         source_path = Path(data_path)
         if not source_path.is_absolute():
             source_path = Path.cwd() / source_path
-        if not source_path.exists():
-            if source.requires_raw_dataset:
+        if _skip_raw_load or not source_path.exists():
+            if source.requires_raw_dataset and not source_path.exists() and not _skip_raw_load:
                 return html.Div(
                     'The local MAHIS dataset is unavailable for this dashboard.',
                     style={'padding': '24px', 'color': '#64748B'},
                 )
             # DHIS2 dashboards read indicator values from the published aggregate
-            # store. They do not require encounter-level MAHIS rows to render.
+            # store, never encounter-level rows. A MAHIS window wide enough to
+            # skip the raw load (see _skip_raw_load above) is treated the same
+            # way -- the aggregate-aware paths below already prefer it.
             filtered = pd.DataFrame()
             data_opd = pd.DataFrame()
+            if _skip_raw_load and not _FACILITY_NAMES and source_path.exists():
+                from data_storage import DataStorage as _DS
+                try:
+                    _fac_meta = _DS.query_duckdb(
+                        f"SELECT DISTINCT Facility_CODE, Facility, District FROM '{data_path}'"
+                    )
+                    _register_facility_metadata(_fac_meta, route=route)
+                except Exception:
+                    _LOGGER.exception('MNID facility metadata registration failed (route=%s)', route)
         else:
             from data_storage import DataStorage as _DS
+            _raw_t0 = _time.monotonic()
             filtered = _DS.query_duckdb(
                 f"SELECT {_MNID_SQL_COLUMNS} FROM '{data_path}' WHERE {filtered}"
             )
             data_opd = _DS.query_duckdb(
                 f"SELECT {_MNID_SQL_COLUMNS} FROM '{data_path}' WHERE {data_opd}"
             )
+            # This step had no timing log at all until now -- a 90-day (in-cap)
+            # MAHIS selection silently spent minutes here with zero visibility
+            # in the logs, showing up as an unexplained gap between the fast,
+            # already-instrumented steps around it.
+            _LOGGER.info('MNID raw query: %.2fs (%d rows, route=%s)', _time.monotonic() - _raw_t0, len(data_opd), route)
     dataset_version     = (scope_meta or {}).get('dataset_version')
     selected_programs   = tuple(sorted((scope_meta or {}).get('mnid_categories') or []))
     selected_facilities = tuple(sorted((scope_meta or {}).get('selected_facilities') or []))
@@ -471,7 +559,9 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
         selected_districts,
     )
     if _opd_key not in _network_df_cache:
+        _prep_t0 = _time.monotonic()
         _network_df_cache[_opd_key] = _prepare_mnid_dataframe(data_opd, route=route)
+        _LOGGER.info('MNID prepare_mnid_dataframe: %.2fs (%d rows in)', _time.monotonic() - _prep_t0, len(data_opd))
         _trim_cache(_network_df_cache, _NETWORK_DF_CACHE_MAX)
     network_df = _network_df_cache[_opd_key]
 

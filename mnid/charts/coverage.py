@@ -39,6 +39,7 @@ from mnid.core.indicators import _resolve_category_order
 from mnid.core.data_utils import (
     serialize_store_df as _serialize_store_df,
     _remember_ui_payload,
+    _compact_for_cache,
 )
 from mnid.core.data_source import get_mnid_data_source
 
@@ -1528,7 +1529,7 @@ def _comparative_analysis_section(indicators: list, facility_code: str,
     return html.Div(children=[
         dcc.Store(id='mnid-compare-store', data={
             'tracked':    tracked,
-            'data_key':   _remember_ui_payload('compare', mch_full, stable_key=payload_key),
+            'data_key':   _remember_ui_payload('compare', _compact_for_cache(mch_full), stable_key=payload_key),
             'facility_options': fac_opts,
             'district_options': dist_opts,
             'current_fac': facility_code,

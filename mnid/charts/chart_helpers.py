@@ -44,7 +44,13 @@ def _grouped_filter_counts(df: pd.DataFrame, group_cols: list[str], cfg: dict) -
             break
     if data.empty or unique_col not in data.columns or _DATE_COL not in data.columns:
         return pd.Series(dtype='int64')
-    data = data.drop_duplicates(subset=group_cols + [unique_col, _DATE_COL])
+    # create_count (the SQL reference this is meant to match) dedupes on
+    # {DATE_}::DATE -- calendar day, not the full timestamp. A single
+    # encounter can spawn dozens of obs rows a few seconds apart, so without
+    # flooring to day precision this barely dedupes at all and inflates
+    # counts by roughly however many obs rows a visit has.
+    day_key = pd.to_datetime(data[_DATE_COL], errors='coerce').dt.floor('D')
+    data = data.assign(**{_DATE_COL: day_key}).drop_duplicates(subset=group_cols + [unique_col, _DATE_COL])
     return data.groupby(group_cols).size()
 
 _CHART_LAYOUT = dict(
