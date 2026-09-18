@@ -1095,6 +1095,33 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     person_ctx['person_id'] = person_ctx['person_id'].astype(str)
     merged = out
     merged['person_id'] = merged['person_id'].astype(str)
+    # person_ctx is fully built by this point (nothing below mutates it) --
+    # ~110+ object-dtype flag columns, each just 'Yes'/'' repeated across
+    # every row. Left-joining that as plain object dtype onto the 400K+ row
+    # `merged` forces pandas to allocate and consolidate a wide object block
+    # for the combined result (confirmed: ArrayMemoryError on a routine
+    # ~490MB allocation for a 136-col frame -- the merge itself, not the
+    # data size, is what's expensive). Category dtype fixes the same class
+    # of bug _compact_for_cache() already fixed for the disk-cache write;
+    # explicit categories=['Yes', ''] (rather than inferring from whichever
+    # values happen to appear in this window) guarantees both are always
+    # valid categories, so a later fillna('') elsewhere in the pipeline
+    # can't hit the "category doesn't exist yet" crash that ruled out
+    # categorizing raw Program/Reporting_Program columns earlier.
+    _yn_dtype = pd.CategoricalDtype(categories=['Yes', ''])
+    for _col in person_ctx.columns:
+        if _col == 'person_id' or person_ctx[_col].dtype != object:
+            continue
+        # CategoricalDtype(categories=[...]) silently NaNs out any value not
+        # in that list rather than raising -- only apply the restricted
+        # Yes/'' dtype when every actual value really is one of the two;
+        # anything else (e.g. mnid_birth_weight_band's '1000-1499g' etc.)
+        # gets plain unrestricted category dtype instead (inferred from
+        # its own real values, so nothing can go missing).
+        if set(person_ctx[_col].dropna().unique()) <= {'Yes', ''}:
+            person_ctx[_col] = person_ctx[_col].astype(_yn_dtype)
+        else:
+            person_ctx[_col] = person_ctx[_col].astype('category')
     return merged.merge(person_ctx, on='person_id', how='left')
 
 
