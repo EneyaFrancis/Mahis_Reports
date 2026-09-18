@@ -11,6 +11,35 @@ pd.options.mode.chained_assignment = None
 from mnid.core.cache import _MNID_DATA_DISK_CACHE, _MNID_UI_CACHE_TTL_SECONDS
 
 
+def _compact_for_cache(df: pd.DataFrame) -> pd.DataFrame:
+    """Cast every object-dtype column to category before disk-caching a
+    prepared MNID dataframe -- the ~100+ mnid_* flag columns prepare_mnid_
+    dataframe adds are each 'Yes'/'' for every row, so as plain object dtype
+    they're wildly over-provisioned (confirmed: a 471K-row/22-raw-column
+    frame ballooned to 3.4GB once prepared, taking ~39s to pickle to disk in
+    _remember_ui_payload -- the actual cause of Maternal/Newborn tab builds
+    stalling for a minute-plus on the MAHIS route). Category dtype cut that
+    to 87.7MB / ~4s in verification, a 38.9x reduction, with no behavior
+    change confirmed against every operation the trend/compare fallback path
+    actually performs on a restored frame (facility filter + astype(str),
+    date parsing, flag-column equality, fillna("")).
+
+    Safe specifically because this runs on prepare_mnid_dataframe's OUTPUT,
+    never its input -- the flag columns' real values ('Yes'/'') are already
+    present in the data at this point, so categorizing here doesn't risk the
+    "fillna() with a category that doesn't exist yet" crash that ruled out
+    categorizing before prepare_mnid_dataframe runs (it calls fillna('') on
+    raw Program/Reporting_Program columns whose real values don't include
+    '' until that call introduces it)."""
+    if df is None or df.empty:
+        return df
+    out = df.copy()
+    for col in out.columns:
+        if out[col].dtype == object:
+            out[col] = out[col].astype('category')
+    return out
+
+
 def _remember_ui_payload(prefix: str, records_or_fn, stable_key: str | None = None, expire: int | None = None) -> str:
     """Stash a DataFrame payload the trend/compare/Nest360 callbacks need to
     restore later, in the shared "data" disk cache (large/disposable, kept
