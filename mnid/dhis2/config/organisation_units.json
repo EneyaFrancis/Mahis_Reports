@@ -5286,7 +5286,7 @@
             "name": "Dziwe Health Centre",
             "level": "facility",
             "district": "Balaka-DHO",
-            "local_facility_code": "BT240373",
+            "local_facility_code": null,
             "active_from": "2025-04",
             "active_to": null,
             "enabled": true,

@@ -1215,13 +1215,45 @@ def _facility_registry_by_code() -> dict[str, dict]:
     return _FACILITY_REGISTRY_BY_CODE
 
 
+_DHIS2_FACILITY_LEVEL_BY_CODE: dict[str, str] | None = None
+
+
+def _dhis2_facility_level_by_code() -> dict[str, str]:
+    """Second-tier level source: data/geo/facilities_dhis2.json's own
+    FACILITY LEVEL field, covering facilities facilities_levels.json misses
+    (e.g. Bwaila Hospital) -- see resolve_facility_level."""
+    global _DHIS2_FACILITY_LEVEL_BY_CODE
+    if _DHIS2_FACILITY_LEVEL_BY_CODE is not None:
+        return _DHIS2_FACILITY_LEVEL_BY_CODE
+    try:
+        from mnid.core.dhis2_facilities import dhis2_facility_records
+        _DHIS2_FACILITY_LEVEL_BY_CODE = {
+            str(r.get('CODE')): r.get('FACILITY LEVEL')
+            for r in dhis2_facility_records()
+            if r.get('CODE') and r.get('FACILITY LEVEL')
+        }
+    except Exception:
+        _DHIS2_FACILITY_LEVEL_BY_CODE = {}
+    return _DHIS2_FACILITY_LEVEL_BY_CODE
+
+
 def resolve_facility_level(facility_code: str | None, facility_name: str | None = None) -> str:
     """Look up a facility's Primary/Secondary/Tertiary level.
 
-    Prefers the authoritative facilities_levels.json (keyed by Facility_CODE);
-    falls back to a name-pattern guess for facilities it doesn't cover.
+    Prefers the authoritative facilities_levels.json (keyed by Facility_CODE),
+    then facilities_dhis2.json's own FACILITY LEVEL field for facilities the
+    first file doesn't cover (67 facilities vs facilities_levels.json's
+    narrower set), then a name-pattern guess as a last resort. The name-guess
+    alone used to be the only fallback and only matched a literal "DISTRICT
+    HOSPITAL"/"CENTRAL HOSPITAL" substring -- "Bwaila Hospital" (a real
+    Secondary-level district hospital, DHIS2 code LL040122) silently defaulted
+    to Primary because neither file was consulted for it. Confirmed via the
+    same bug found and fixed in mnid/tools/convert_readiness_data.py.
     """
     level = _facility_level_by_code().get(str(facility_code)) if facility_code else None
+    if level:
+        return level
+    level = _dhis2_facility_level_by_code().get(str(facility_code)) if facility_code else None
     if level:
         return level
     name_upper = str(facility_name or '').upper()
