@@ -438,13 +438,54 @@ _MNID_SQL_COLUMNS = (
     "Value, ValueN, new_revisit, Home_district, TA, Village, Age, Age_Group, "
     "Gender, Source_Program"
 )
-def render_mnid_dashboard(filtered, data_opd, data_path, config, 
+
+# Above this many days, a MAHIS date-range selection skips the eager raw-row
+# load entirely (if the aggregate covers it) rather than loading a window's
+# worth of encounter rows that grows without bound as the range widens. 180
+# days keeps every range this session has actually loaded and verified (up
+# to 3 months) on the existing, proven code path -- only genuinely wide
+# selections (a year-plus) take the new aggregate-only path.
+_RAW_LOAD_WINDOW_DAYS_CAP = 180
+
+
+def render_mnid_dashboard(filtered, data_opd, data_path, config,
                           facility_code, start_date, end_date,
                           scope_meta: dict | None = None,
                           initial_tab: dict | None = None):
 
     route = (scope_meta or {}).get('route', 'default')
     source = get_mnid_data_source(route, source='dhis2' if route == 'dhis2' else 'mahis')
+
+    # MAHIS raw-row count scales linearly with the selected window (3
+    # months here is already 3.9M rows) -- fine up to a few months, but a
+    # multi-year selection would try to load tens of millions of rows into
+    # memory no matter how compact each row is. The aggregate doesn't have
+    # that problem: its size is periods x indicators x facilities, not
+    # encounters, so 5 years of monthly grain is maybe 20x today's ~11K
+    # rows, not 20x today's 3.9M. Above _RAW_LOAD_WINDOW_DAYS_CAP, skip the
+    # eager raw load the same way DHIS2 always does (empty filtered/
+    # data_opd) *only* when the aggregate already covers the full requested
+    # window -- every aggregate-aware path (KPI batch, Country Profile,
+    # coverage/trend/comparative) already prefers it over raw rows whenever
+    # present; the trade-off is that a rare indicator not yet in the
+    # aggregate shows "awaiting data" for a window this wide instead of a
+    # raw-computed value, rather than loading everything to compute it.
+    # Windows within the cap are untouched -- same code path as always.
+    _skip_raw_load = False
+    if source.requires_raw_dataset and isinstance(filtered, str) and start_date is not None and end_date is not None:
+        _window_days = (pd.Timestamp(end_date) - pd.Timestamp(start_date)).days
+        if _window_days > _RAW_LOAD_WINDOW_DAYS_CAP:
+            _agg_start, _agg_end = source.reporting_bounds()
+            if (
+                _agg_start is not None and _agg_end is not None
+                and _agg_start <= pd.Timestamp(start_date) and pd.Timestamp(end_date) <= _agg_end
+            ):
+                _skip_raw_load = True
+                _LOGGER.info(
+                    'MNID raw load skipped: %d-day window exceeds %d-day cap, aggregate covers it (route=%s)',
+                    _window_days, _RAW_LOAD_WINDOW_DAYS_CAP, route,
+                )
+
     # Captured before data_opd gets overwritten by its own query result below --
     # this is the recipe _get_network_df_from_state needs to rebuild network_df
     # on a cache miss instead of returning None (see that function's docstring).
@@ -453,14 +494,16 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
         source_path = Path(data_path)
         if not source_path.is_absolute():
             source_path = Path.cwd() / source_path
-        if not source_path.exists():
-            if source.requires_raw_dataset:
+        if _skip_raw_load or not source_path.exists():
+            if source.requires_raw_dataset and not source_path.exists() and not _skip_raw_load:
                 return html.Div(
                     'The local MAHIS dataset is unavailable for this dashboard.',
                     style={'padding': '24px', 'color': '#64748B'},
                 )
             # DHIS2 dashboards read indicator values from the published aggregate
-            # store. They do not require encounter-level MAHIS rows to render.
+            # store, never encounter-level rows. A MAHIS window wide enough to
+            # skip the raw load (see _skip_raw_load above) is treated the same
+            # way -- the aggregate-aware paths below already prefer it.
             filtered = pd.DataFrame()
             data_opd = pd.DataFrame()
         else:
