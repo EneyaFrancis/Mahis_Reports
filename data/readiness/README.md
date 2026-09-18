@@ -1,4 +1,4 @@
-   # Operational Readiness & Health Facility Assessment (HFA) Data
+# Operational Readiness & Health Facility Assessment (HFA) Data
 
 This directory contains the compiled dataset, metadata catalog, and audit report for the **Operational Readiness** tab of the dashboard.
 
@@ -18,7 +18,24 @@ data/readiness/
 
 ---
 
-## 2. Pluggable Conversion Pipeline
+## 2. EmONC Classification and UI Conventions
+
+### Facility Classification from `sd_del_emonc2`:
+- Facilities assessed in the Health Facility Assessment are classified directly from the survey's `sd_del_emonc2` column in the dataset workbook (`Malawi HFA summary indicators for dashboard dataset_10Sept2026.xlsx`):
+  - **`CEmONC`**: Facilities marked `CEmONC IEmONC` or `CEmONC` in `sd_del_emonc2` (19 facilities).
+  - **`BEmONC`**: Facilities marked `BEmONC` in `sd_del_emonc2` (48 facilities).
+- In the Overview tab's **Facility readiness comparison** table and sub-tabs, facilities are classified based on `sd_del_emonc2` (with fallback to referral tiers for facilities outside the survey).
+
+### Indicator Deactivation (No Data for CeMoC and BeMoC):
+- When an indicator or variable has no reported observations across both CeMoC and BeMoC facilities in scope, it is deactivated and suppressed from rendering in comparison tables and detail views rather than displaying empty or confusing rows.
+
+### CEmONC-Only Indicator Styling on BEmONC Facilities:
+- Indicators marked as `cemonc_only: true` (applicable only to Comprehensive EmONC facilities, such as blood transfusion and Caesarean section) are rendered in BEmONC columns with a distinctive **grey background (`#F1F5F9`)** and bold text **`N/A`** (or `Not Applicable`) by default.
+- Users see the `N/A` indicator status immediately without needing to hover over the cell.
+
+---
+
+## 3. Pluggable Conversion Pipeline
 
 When a new annual assessment workbook or analysis variable definition workbook is provided, no application code needs to be modified. Simply update the source Excel workbooks and run the CLI converter tool.
 
@@ -52,7 +69,7 @@ python mnid/tools/convert_readiness_data.py \
 
 ---
 
-## 3. Generated Artifacts
+## 4. Generated Artifacts
 
 1. **`hfa_data.parquet`**:
    - High-performance columnar dataset containing all surveyed facilities.
@@ -73,12 +90,13 @@ python mnid/tools/convert_readiness_data.py \
 
 ---
 
-## 4. Operational Readiness Data Provider
+## 5. Operational Readiness Data Provider
 
 The core module [`mnid.core.readiness_data`](../../mnid/core/readiness_data.py) provides optimized, cached access for the dashboard:
 
 - `is_readiness_data_available() -> bool`: Returns `True` when compiled HFA artifacts are present.
-- `compute_readiness_matrix(sheet_name, facility_codes=None, cemonc_codes=None, bemonc_codes=None) -> list[dict]`: Computes traffic-light performance percentages for CEmONC vs. BEmONC facility groups across an entire domain.
+- `get_facility_emonc_classification() -> dict[str, str]`: Mapping of facility codes and names to `CEmONC` or `BEmONC` from `sd_del_emonc2`.
+- `compute_readiness_matrix(sheet_name, facility_codes=None, cemonc_codes=None, bemonc_codes=None) -> list[dict]`: Computes traffic-light performance percentages for CEmONC vs. BEmONC facility groups across an entire domain, automatically omitting variables with no reported data.
 - `compute_readiness_detail(sheet_name, facility_code) -> list[dict]`: Computes single-facility status rows and values.
 
-The dashboard view in [`mnid/views/operational_readiness.py`](../../mnid/views/operational_readiness.py) seamlessly connects to these functions for **Products & Commodities**, **Systems & Infrastructure**, and **Signal Functions**, presenting live survey data and metrics across both single-facility and multi-facility scopes.
+The dashboard view in [`mnid/views/operational_readiness.py`](../../mnid/views/operational_readiness.py) seamlessly connects to these functions for **Overview**, **Signal Functions**, **Products & Commodities**, and **Systems & Infrastructure**, presenting live survey data and metrics across both single-facility and multi-facility scopes.
