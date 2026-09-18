@@ -4,6 +4,7 @@ import json
 import logging
 import pickle
 import threading
+import time as _time
 from pathlib import Path
 
 import pandas as pd
@@ -441,11 +442,19 @@ _MNID_SQL_COLUMNS = (
 
 # Above this many days, a MAHIS date-range selection skips the eager raw-row
 # load entirely (if the aggregate covers it) rather than loading a window's
-# worth of encounter rows that grows without bound as the range widens. 180
-# days keeps every range this session has actually loaded and verified (up
-# to 3 months) on the existing, proven code path -- only genuinely wide
-# selections (a year-plus) take the new aggregate-only path.
-_RAW_LOAD_WINDOW_DAYS_CAP = 180
+# worth of encounter rows that grows without bound as the range widens.
+# Originally 180 days on the theory that a 92-day (3-month) selection was
+# cheap enough in isolation (~33s, verified) to leave on the raw path --
+# live, under the app's actual concurrent load (background preload threads,
+# multiple tabs), that same selection took 100+ silent seconds (no timing
+# log existed for this step before now -- see the query/prepare logging
+# just below). 45 days keeps the genuinely short, precision-sensitive
+# selections (Today/Yesterday/This Week/This Month, where Daily-grain raw
+# fallback detail can matter) on the raw path, where loading is cheap
+# regardless of contention; anything wider -- including "Last 3/6 Months",
+# the exact selection that prompted this -- now takes the aggregate-only
+# path the 242-day case already proved fast (under 3s end-to-end).
+_RAW_LOAD_WINDOW_DAYS_CAP = 45
 
 
 def render_mnid_dashboard(filtered, data_opd, data_path, config,
@@ -508,12 +517,18 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
             data_opd = pd.DataFrame()
         else:
             from data_storage import DataStorage as _DS
+            _raw_t0 = _time.monotonic()
             filtered = _DS.query_duckdb(
                 f"SELECT {_MNID_SQL_COLUMNS} FROM '{data_path}' WHERE {filtered}"
             )
             data_opd = _DS.query_duckdb(
                 f"SELECT {_MNID_SQL_COLUMNS} FROM '{data_path}' WHERE {data_opd}"
             )
+            # This step had no timing log at all until now -- a 90-day (in-cap)
+            # MAHIS selection silently spent minutes here with zero visibility
+            # in the logs, showing up as an unexplained gap between the fast,
+            # already-instrumented steps around it.
+            _LOGGER.info('MNID raw query: %.2fs (%d rows, route=%s)', _time.monotonic() - _raw_t0, len(data_opd), route)
     dataset_version     = (scope_meta or {}).get('dataset_version')
     selected_programs   = tuple(sorted((scope_meta or {}).get('mnid_categories') or []))
     selected_facilities = tuple(sorted((scope_meta or {}).get('selected_facilities') or []))
@@ -528,7 +543,9 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
         selected_districts,
     )
     if _opd_key not in _network_df_cache:
+        _prep_t0 = _time.monotonic()
         _network_df_cache[_opd_key] = _prepare_mnid_dataframe(data_opd, route=route)
+        _LOGGER.info('MNID prepare_mnid_dataframe: %.2fs (%d rows in)', _time.monotonic() - _prep_t0, len(data_opd))
         _trim_cache(_network_df_cache, _NETWORK_DF_CACHE_MAX)
     network_df = _network_df_cache[_opd_key]
 
