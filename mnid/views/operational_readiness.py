@@ -1319,7 +1319,6 @@ _TABS = [
 
 def render_operational_readiness(
     df: pd.DataFrame,
-    indicators: list[dict],
     selected_indicators: list[str] | None = None,
     scope_meta: dict | None = None,
     start_date=None,
@@ -1330,7 +1329,7 @@ def render_operational_readiness(
     don't compute all 5 tabs on every load."""
     facility_codes = _source_facility_universe(df, scope_meta)
     scope_name = _profile_scope_name(scope_meta)
-    hierarchy_badge = _hierarchy_scope(scope_meta)
+    hierarchy_badge = _hierarchy_scope(df, scope_meta, (scope_meta or {}).get('period_label') or '')
 
     header = html.Div([
         html.Div([
@@ -1354,7 +1353,7 @@ def render_operational_readiness(
     tabs = dmc.Tabs(
         [
             dmc.TabsList([
-                dmc.Tab(label, value=val, style={"fontSize": "13px", "fontWeight": "600"})
+                dmc.TabsTab(label, value=val, style={"fontSize": "13px", "fontWeight": "600"})
                 for val, label in _TABS
             ]),
             *[
@@ -1373,8 +1372,21 @@ def render_operational_readiness(
         color="green",
     )
 
-    payload_id = _remember_ui_payload(df, agg_df, scope_meta, start_date, end_date)
-    store = dcc.Store(id="operational-readiness-tab-data-store", data={"payload_id": payload_id})
+    # _remember_ui_payload/_restore_ui_dataframe store exactly one DataFrame
+    # each (see trends.py/coverage.py's own calls) -- df and agg_df need the
+    # disk-cache payload mechanism since they can be large and aren't JSON-
+    # safe, but scope_meta/start_date/end_date are small and JSON-safe, so
+    # they ride directly in the Store's own data instead of a fabricated
+    # 5-tuple payload that mechanism was never built to hold.
+    payload_id = _remember_ui_payload('opread', df)
+    agg_payload_id = _remember_ui_payload('opread-agg', agg_df) if agg_df is not None else None
+    store = dcc.Store(id="operational-readiness-tab-data-store", data={
+        "payload_id": payload_id,
+        "agg_payload_id": agg_payload_id,
+        "scope_meta": scope_meta,
+        "start_date": start_date,
+        "end_date": end_date,
+    })
     return html.Div([header, tabs, store])
 
 
@@ -1395,7 +1407,12 @@ def render_operational_readiness(
 def _render_operational_readiness_tab(active_tab: str | None, store_data: dict | None):
     if not active_tab or not store_data:
         raise PreventUpdate
-    df, agg_df, scope_meta, start_date, end_date = _restore_ui_dataframe(store_data.get("payload_id"))
+    df = _restore_ui_dataframe(store_data.get("payload_id"))
+    _agg_payload_id = store_data.get("agg_payload_id")
+    agg_df = _restore_ui_dataframe(_agg_payload_id) if _agg_payload_id else None
+    scope_meta = store_data.get("scope_meta")
+    start_date = store_data.get("start_date")
+    end_date = store_data.get("end_date")
     facility_codes = _source_facility_universe(df, scope_meta)
 
     # Empty responses for inactive tabs so we don't re-render them

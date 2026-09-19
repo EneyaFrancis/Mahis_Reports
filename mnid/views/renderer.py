@@ -199,9 +199,6 @@ def _build_executive_tab_view(
     start_date   = state.get('start_date')
     end_date     = state.get('end_date')
     scope_meta   = scope_meta_override or state.get('scope_meta')
-    supply_inds  = state.get('supply_inds')
-    wf_inds      = state.get('wf_inds')
-    dq_inds      = state.get('dq_inds')
     country_label = state.get('country_label') or 'Maternal'
 
     if selected in views:
@@ -294,7 +291,7 @@ def _build_executive_tab_view(
             _rd_t0 = _time.monotonic()
             try:
                 rendered_view = render_operational_readiness(
-                    facility_df, supply_inds=supply_inds, wf_inds=wf_inds, dq_inds=dq_inds,
+                    facility_df,
                     scope_meta=scope_meta, start_date=start_date, end_date=end_date,
                 )
                 if store_in_views:
