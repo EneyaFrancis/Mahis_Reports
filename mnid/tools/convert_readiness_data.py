@@ -48,7 +48,14 @@ def _normalize_name(name: str) -> str:
     return s
 
 
-def build_facility_crosswalk(dhis2_crosswalk_path: Path, levels_path: Path) -> dict[str, dict]:
+def _simplify_name(name: str) -> str:
+    s = _normalize_name(name)
+    for term in ["health centre", "hospital", "rural", "urban", "community", "mission", "dispensary", "1", "2"]:
+        s = s.replace(term, "")
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def build_facility_crosswalk(dhis2_crosswalk_path: Path, levels_path: Path) -> tuple[dict[tuple[str, str], dict], dict[str, dict]]:
     """Build a lookup map matching HFA facility names to DHIS2 CODE, NAME, DISTRICT, TYPE, and LEVEL."""
     crosswalk_records = []
     if dhis2_crosswalk_path.exists():
@@ -70,36 +77,29 @@ def build_facility_crosswalk(dhis2_crosswalk_path: Path, levels_path: Path) -> d
         str(r.get("CODE")): r for r in levels_records if r.get("CODE")
     }
 
-    # Build multi-key dictionary for matching. Values are LISTS: distinct
-    # facilities in different districts can share a normalized name (e.g.
-    # "Chileka Health Centre" exists in both Blantyre and Lilongwe) -- a
-    # first-wins single-record map silently drops every collision, and
-    # resolve_facility's exact-match path needs every candidate to
-    # disambiguate by district instead of returning the wrong one.
-    lookup: dict[str, list[dict]] = {}
-    for rec in crosswalk_records:
+    all_records = list(crosswalk_records)
+    known_codes = {r.get("CODE") for r in crosswalk_records if r.get("CODE")}
+    for lr in levels_records:
+        if lr.get("CODE") and lr.get("CODE") not in known_codes:
+            all_records.append(lr)
+
+    lookup_exact: dict[tuple[str, str], dict] = {}
+    lookup_fallback: dict[str, dict] = {}
+
+    for rec in all_records:
         code = rec.get("CODE")
         if not code:
             continue
         level_info = levels_by_code.get(code, {})
-        # facilities_levels.json doesn't cover every facility (29 of our 67
-        # HFA facilities, incl. Bwaila Hospital, have no entry there) -- the
-        # old fallback heuristic read level_info.get("TYPE") in that case,
-        # which is always "" when level_info is {}, so it silently defaulted
-        # every uncovered facility to "Primary" regardless of its real type.
-        # rec (facilities_dhis2.json, always present) has its own FACILITY
-        # LEVEL/TYPE fields; prefer those before falling back to a guess.
-        facility_type = level_info.get("TYPE") or rec.get("TYPE") or rec.get("FACILITY LEVEL") or "Health Centre"
-        facility_level = level_info.get("FACILITY LEVEL") or rec.get("FACILITY LEVEL")
-        if not facility_level:
-            type_str = str(level_info.get("TYPE") or rec.get("TYPE") or "")
-            facility_level = "Tertiary" if "Central" in type_str else ("Secondary" if "Hospital" in type_str else "Primary")
+        dist = rec.get("DISTRICT") or level_info.get("DISTRICT") or ""
+        norm_dist = _normalize_name(dist)
+
         full_rec = {
             "facility_code": code,
             "facility_name": rec.get("NAME") or rec.get("COMMON NAME") or level_info.get("NAME") or code,
-            "district": rec.get("DISTRICT") or level_info.get("DISTRICT") or "",
-            "facility_type": facility_type,
-            "facility_level": facility_level,
+            "district": dist,
+            "facility_type": level_info.get("TYPE") or rec.get("FACILITY LEVEL") or "Health Centre",
+            "facility_level": level_info.get("FACILITY LEVEL") or ("Tertiary" if "Central" in str(level_info.get("TYPE", "")) else ("Secondary" if "Hospital" in str(level_info.get("TYPE", "")) else "Primary")),
             "dhis2_id": rec.get("DHIS2 ID") or "",
         }
 
@@ -110,51 +110,43 @@ def build_facility_crosswalk(dhis2_crosswalk_path: Path, levels_path: Path) -> d
             _normalize_name(level_info.get("COMMON NAME", "")),
         ]
         for k in name_keys:
-            if not k:
-                continue
-            bucket = lookup.setdefault(k, [])
-            if not any(r["facility_code"] == code for r in bucket):
-                bucket.append(full_rec)
+            if k:
+                if norm_dist:
+                    lookup_exact[(k, norm_dist)] = full_rec
+                if k not in lookup_fallback:
+                    lookup_fallback[k] = full_rec
 
-    return lookup
-
-
-def _pick_by_district(candidates: list[dict], district_hint: str) -> dict | None:
-    """Disambiguate a bucket of same-named facilities by district. Returns
-    the single record whose district matches the hint, the lone candidate if
-    there's only one, or None if multiple candidates remain ambiguous."""
-    if len(candidates) == 1:
-        return candidates[0]
-    if district_hint:
-        matches = [
-            rec for rec in candidates
-            if rec.get("district") and (
-                district_hint.strip().lower() in rec["district"].lower()
-                or rec["district"].lower() in district_hint.strip().lower()
-            )
-        ]
-        if len(matches) == 1:
-            return matches[0]
-    return None
+    return lookup_exact, lookup_fallback
 
 
-def resolve_facility(orig_name: str, district_hint: str, lookup: dict[str, list[dict]]) -> dict | None:
+def resolve_facility(orig_name: str, district_hint: str, lookup: tuple[dict, dict] | dict) -> dict | None:
     """Resolve an HFA facility string to the master crosswalk record."""
-    norm = _normalize_name(orig_name)
-    if norm in lookup:
-        picked = _pick_by_district(lookup[norm], district_hint)
-        if picked:
-            return picked
+    if isinstance(lookup, tuple):
+        lookup_exact, lookup_fallback = lookup
+    else:
+        lookup_exact, lookup_fallback = {}, lookup
 
-    # Try matching without common suffixes
-    simplified = norm.replace("health centre", "").replace("hospital", "").replace("rural", "").replace("urban", "").replace("community", "").replace("mission", "").replace("dispensary", "").strip()
+    norm_name = _normalize_name(orig_name)
+    norm_dist = _normalize_name(district_hint)
 
-    for key, candidates in lookup.items():
-        key_simp = key.replace("health centre", "").replace("hospital", "").replace("rural", "").replace("urban", "").replace("community", "").replace("mission", "").replace("dispensary", "").strip()
-        if simplified and key_simp and (simplified == key_simp or simplified in key_simp or key_simp in simplified):
-            picked = _pick_by_district(candidates, district_hint)
-            if picked:
-                return picked
+    # 1. Exact match by name and district
+    if norm_dist and (norm_name, norm_dist) in lookup_exact:
+        return lookup_exact[(norm_name, norm_dist)]
+
+    # 2. Simplified name match with district
+    simp = _simplify_name(orig_name)
+    if norm_dist:
+        for (k_name, k_dist), rec in lookup_exact.items():
+            if norm_dist == k_dist and _simplify_name(k_name) == simp:
+                return rec
+
+    # 3. Fallback to name-only match
+    if norm_name in lookup_fallback:
+        return lookup_fallback[norm_name]
+
+    for k_name, rec in lookup_fallback.items():
+        if _simplify_name(k_name) == simp:
+            return rec
 
     return None
 
