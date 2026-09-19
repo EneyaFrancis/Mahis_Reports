@@ -121,12 +121,19 @@ def _hero_donut_card(label, pct, target, color, mode='max', delta_pct=None,
 
 
 def _hero_donut_row(computed, preferred_cat: str = 'ANC', section_title: str | None = None):
-    """Row of large hero donut cards favouring the requested category first."""
+    """Row of large hero donut cards favouring the requested category first.
+
+    computed is already curated by the caller to exactly the cards meant to
+    show here (kpi_engine.py's _activity_stats, one hand-picked list per
+    tab) -- no further truncation here, or a caller who deliberately wants
+    six cards for a tab (e.g. Maternal's critical-activity row) silently
+    loses the last one to an arbitrary five-card cap.
+    """
     if preferred_cat in (None, '', 'All', '__all__'):
-        heroes = computed[:5]
+        heroes = computed
     else:
         preferred = [c for c in computed if c.get('category') == preferred_cat]
-        heroes = preferred[:5] if preferred else computed[:5]
+        heroes = preferred if preferred else computed
     if not heroes:
         return html.Div()
 

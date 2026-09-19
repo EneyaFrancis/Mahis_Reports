@@ -681,31 +681,40 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
         newborn_mask & _cp_bilirubin & ~combined_lower.isin(['', 'no', 'none', 'unknown']),
     )
     # "Thermal status on admission" is not a real MAHIS concept -- verified
-    # against MAHIS-FRONT (src/apps/Neonatal/config/vitals.ts): temperature is
-    # captured as a raw numeric reading + a separate tactile-temperature
-    # assessment, neither of which flows into this extract as a concept_name,
-    # and there's no categorical "status" field either. These two flags
-    # always evaluate to False until that data is exported -- both
-    # dependent indicators (mnid_nb_core_007/008) are marked awaiting_baseline
-    # in validated_dashboard.json rather than tracked, so this isn't shown as
-    # if it were real.
+    # against MAHIS-FRONT (src/apps/Neonatal/config/vitals.ts): no categorical
+    # hypothermia status field exists. What IS real is a raw numeric
+    # "Temperature" reading (real Celsius values, ~6.8K rows with an actual
+    # ValueN out of ~19K rows for the concept) -- compute both flags from
+    # that directly against the WHO neonatal hypothermia threshold
+    # (>=36.5C = not hypothermic) instead of matching a concept that was
+    # never there. There's no field marking which specific reading is "at
+    # admission" -- proxied as each newborn's chronologically first recorded
+    # Temperature reading with a value.
+    _temp_concept = concept.eq('Temperature')
+    _not_hypothermic_reading = value_n.ge(36.5)
+    _temp_rows = newborn_mask & _temp_concept & value_n.notna()
+    _is_first_temp_reading = pd.Series(False, index=out.index)
+    if _temp_rows.any() and 'person_id' in out.columns and 'Date' in out.columns:
+        _first_idx = out.loc[_temp_rows].groupby('person_id')['Date'].idxmin()
+        _is_first_temp_reading.loc[_first_idx] = True
     _assign_flag(
         'mnid_newborn_not_hypothermic_admission',
-        newborn_mask & concept.eq('Thermal status on admission') & combined_lower.eq('not hypothermic'),
+        newborn_mask & _temp_concept & _is_first_temp_reading & _not_hypothermic_reading,
     )
     _assign_flag(
         'mnid_newborn_not_hypothermic_anytime',
-        newborn_mask & (
-            (concept.eq('Thermal status on admission') & combined_lower.eq('not hypothermic'))
-            | combined_lower.eq('not hypothermic')
-        ),
+        newborn_mask & _temp_concept & _not_hypothermic_reading,
     )
     _assign_flag(
         'mnid_newborn_skin_to_skin',
-        newborn_mask & (
-            (concept.eq('thermal care') & combined_lower.eq('yes'))
-            | (concept.eq('Thermal status on admission') & combined_lower.eq('not hypothermic'))
-        ),
+        # "not hypothermic" was OR'd in here before too, on the theory that
+        # a good thermal outcome implies skin-to-skin care was given -- that's
+        # an outcome standing in for an intervention, not evidence the
+        # intervention happened, and was harmless only because the concept it
+        # relied on never matched anything real. Dropped now that the
+        # underlying signal is real and would otherwise wrongly mark
+        # newborns as having received skin-to-skin care.
+        newborn_mask & concept.eq('thermal care') & combined_lower.eq('yes'),
     )
     _assign_flag(
         'mnid_newborn_vit_k',

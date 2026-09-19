@@ -653,9 +653,18 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
     # the DHIS2 aggregate, which has nothing to do with that window.
     if (facility_df is not None and not facility_df.empty) or _agg is not None:
         try:
+            # awaiting_baseline indicators (e.g. the hypothermia-on-admission
+            # pair) are real, computable coverage numbers -- "awaiting_baseline"
+            # just means no validated target/benchmark exists yet, which
+            # doesn't matter for this simple "N of M" activity card. computed/
+            # overview_computed deliberately exclude them everywhere else
+            # (the tracked-vs-pending indicator grid), so this is scoped to
+            # just the lookup here, not a broader status change.
+            _awaiting_for_activity = _compute_inds(awaiting)
+            _add_delta(_awaiting_for_activity)
             computed_by_label = {
                 str(item.get('label', '')): item
-                for item in (computed + overview_computed)
+                for item in (computed + overview_computed + _awaiting_for_activity)
             }
 
             def _indicator_activity(label: str, override_label: str | None = None, summary: str | None = None):
@@ -671,11 +680,12 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
 
             if is_all_programmes:
                 _activity_stats = [
-                    _indicator_activity('ANC Complications'),
-                    _indicator_activity('Labour Complications'),
-                    _indicator_activity('Live Births'),
                     _indicator_activity('Maternal Deaths'),
                     _indicator_activity('Stillbirths'),
+                    _indicator_activity('Obstetric complication: PPH', override_label='PPH'),
+                    _indicator_activity('Screened for syphilis'),
+                    _indicator_activity('Overall caesarean section rate', override_label='C/S Rate'),
+                    _indicator_activity('At least 4 ANC contacts', override_label='4+ ANC Visits'),
                 ]
             elif default_cat == 'Labour':
                 _activity_stats = [
@@ -695,14 +705,10 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
                 ]
             elif default_cat == 'Newborn':
                 _activity_stats = [
-                    # Moved here from Country Profile's summary row -- was
-                    # "Neonatal Care Unit Admissions" there, same underlying
-                    # indicator, now shown on the tab it actually belongs to.
-                    _indicator_activity('Neonatal Admissions', override_label='Neonatal Care Unit Admissions'),
-                    _indicator_activity('Outborn babies'),
-                    _indicator_activity('Neonatal Complications at Birth'),
-                    _indicator_activity('Birth asphyxia among newborn admissions'),
-                    _indicator_activity('iKMC Initiated'),
+                    _indicator_activity('Neonatal Deaths'),
+                    _indicator_activity('Birth asphyxia rate', override_label='Birth Asphyxia'),
+                    _indicator_activity('Babies not hypothermic on admission', override_label='Not Hypothermic at Admission'),
+                    _indicator_activity('Preterm birth rate', override_label='Preterm Birth'),
                 ]
             else:
                 _activity_stats = [

@@ -37,6 +37,7 @@ from mnid.components.run_charts import (
     _multi_run_chart, _run_chart, describe_grain_window,
 )
 from mnid.core.constants import BORDER, TEXT, FACILITY_NAMES as _FACILITY_NAMES
+import mnid.core.constants as _mnid_constants
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -512,7 +513,14 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
             # way -- the aggregate-aware paths below already prefer it.
             filtered = pd.DataFrame()
             data_opd = pd.DataFrame()
-            if _skip_raw_load and not _FACILITY_NAMES and source_path.exists():
+            # FACILITY_NAMES is one global dict shared by every route -- "not
+            # _FACILITY_NAMES" only asks whether it's empty, not whether it
+            # holds *this* route's codes. Once DHIS2 (or MAHIS) has populated
+            # it, the other route's numeric/alpha codes never get registered
+            # via this check, permanently, since the dict is never empty
+            # again -- exactly what the toggle now makes routine. Compare
+            # against the route actually last registered instead.
+            if _skip_raw_load and _mnid_constants._METADATA_ROUTE != route and source_path.exists():
                 from data_storage import DataStorage as _DS
                 try:
                     _fac_meta = _DS.query_duckdb(
