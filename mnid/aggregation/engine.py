@@ -216,6 +216,105 @@ def _aggregate_grain(prepared_df: pd.DataFrame, indicators: list[dict], grain: s
     return out
 
 
+def _aggregate_relative_periods(prepared_df: pd.DataFrame, indicators: list[dict]) -> pd.DataFrame:
+    """Compute coverage per facility/indicator for each named relative
+    period (Today, This Week, Last Month, Last 3 Months, This Year, ...),
+    not a repeating calendar bucket like _aggregate_grain's daily/weekly/
+    monthly rows -- one row per facility per indicator per period LABEL, so
+    a dashboard can read "Last Month" as a single O(1) lookup by label
+    instead of resolving which calendar-grain rows currently fall inside
+    that rolling/anchored window every time the real date moves on.
+
+    Anchored to this data's own latest date (matching how DHIS2 routes
+    already anchor "today" to their latest reported period, not the literal
+    calendar date) -- a MAHIS extract that stops in August has no business
+    resolving "This Week" against a September day it has no rows for.
+    """
+    from mnid.charts.chart_helpers import _grouped_filter_counts
+    from helpers.date_ranges import RELATIVE_PERIOD_LIST, get_relative_date_range
+
+    if prepared_df.empty or 'Date' not in prepared_df.columns:
+        return pd.DataFrame()
+
+    dates = pd.to_datetime(prepared_df['Date'], errors='coerce')
+    valid_dates = dates.dropna()
+    if valid_dates.empty:
+        return pd.DataFrame()
+    anchor = valid_dates.max().date()
+
+    fac_col = 'Facility_CODE' if 'Facility_CODE' in prepared_df.columns else None
+    dist_col = 'District' if 'District' in prepared_df.columns else None
+    base_fac_col = fac_col or '_all_facilities'
+
+    # Today/Yesterday are a 1-2 day window -- cheap enough to pull straight
+    # from raw rows on demand (that's what the raw-load path is for below
+    # the skip-cap), so pre-aggregating them just bloats the aggregate file
+    # for no real benefit.
+    _SKIP_LABELS = {'Today', 'Yesterday'}
+    parts = []
+    for label in RELATIVE_PERIOD_LIST:
+        if label in _SKIP_LABELS:
+            continue
+        try:
+            start, end = get_relative_date_range(label, current_date=anchor)
+        except Exception as exc:
+            _LOG.warning('Could not resolve relative period %r: %s', label, exc)
+            continue
+        start_ts = pd.Timestamp(start)
+        end_ts = pd.Timestamp(end) + pd.Timedelta(hours=23, minutes=59, seconds=59)
+        window_df = prepared_df.loc[(dates >= start_ts) & (dates <= end_ts)]
+        if window_df.empty:
+            continue  # no rows in this window -- same "just don't emit a row" convention _aggregate_grain follows for empty combinations
+        window_df = window_df.copy()
+        if fac_col is None:
+            window_df[base_fac_col] = '__all__'
+
+        group_cols = [base_fac_col]
+        skeleton = window_df.groupby(group_cols, sort=False).size().reset_index(name='_n')
+        skeleton['district'] = (
+            skeleton[base_fac_col].map(window_df.groupby(base_fac_col, sort=False)[dist_col].first()).fillna('').astype(str)
+            if dist_col else ''
+        )
+        target_index = pd.Index(skeleton[base_fac_col].values, name=base_fac_col)
+
+        for ind in indicators:
+            try:
+                num_counts = _grouped_filter_counts(window_df, group_cols, ind['numerator_filters'])
+                den_counts = _grouped_filter_counts(window_df, group_cols, ind['denominator_filters'])
+            except Exception:
+                num_counts = pd.Series(dtype='int64')
+                den_counts = pd.Series(dtype='int64')
+
+            part = skeleton[[base_fac_col, 'district']].copy()
+            part['numerator'] = num_counts.reindex(target_index).fillna(0).to_numpy().astype(int)
+            part['denominator'] = den_counts.reindex(target_index).fillna(0).to_numpy().astype(int)
+            den_safe = part['denominator'].where(part['denominator'] > 0, 1)
+            part['pct'] = (
+                (part['numerator'] / den_safe * 100).clip(upper=100.0).round(1)
+                .where(part['denominator'] > 0, 0.0)
+            )
+            part['indicator_id'] = ind['id']
+            part['indicator_label'] = ind.get('label', '')
+            part['category'] = ind.get('category', '')
+            part['target'] = ind.get('target', 0)
+            part['facility_code'] = part[base_fac_col].astype(str)
+            part['grain'] = 'relative_period'
+            part['period_label'] = label
+            part['period_start'] = start_ts
+            parts.append(part[[
+                'indicator_id', 'indicator_label', 'category', 'target', 'facility_code',
+                'district', 'grain', 'period_label', 'period_start', 'numerator', 'denominator', 'pct',
+            ]])
+
+    if not parts:
+        return pd.DataFrame()
+    out = pd.concat(parts, ignore_index=True)
+    out['numerator'] = out['numerator'].astype(int)
+    out['denominator'] = out['denominator'].astype(int)
+    out['pct'] = out['pct'].astype(float)
+    return out
+
+
 def run_aggregation(
     viz_dir: str = _DEFAULT_VIZ_DIR,
     output_dir: str = _DEFAULT_OUT_DIR,
@@ -283,8 +382,15 @@ def run_aggregation(
     for grain in active_grains:
         _LOG.info('  grain=%s ...', grain)
         part = _aggregate_grain(prepared_df, indicators, grain)
+        if not part.empty:
+            part['period_label'] = ''  # only relative_period rows carry a label; keeps one shared schema across all grains
         _LOG.info('  grain=%s: %d rows', grain, len(part))
         parts.append(part)
+
+    _LOG.info('  grain=relative_period ...')
+    relative_part = _aggregate_relative_periods(prepared_df, indicators)
+    _LOG.info('  grain=relative_period: %d rows', len(relative_part))
+    parts.append(relative_part)
 
     agg_df = pd.concat(parts, ignore_index=True)
     agg_df['period_start'] = pd.to_datetime(agg_df['period_start'])
@@ -309,7 +415,7 @@ def run_aggregation(
         'elapsed_sec':     round(elapsed, 1),
         'rows':            len(agg_df),
         'indicators':      len(indicators),
-        'grains':          active_grains,
+        'grains':          active_grains + ['relative_period'],
         'data_source':     data_source,
         'use_demo_data':   bool(USE_DEMO_DATA),
         'last_run_status': 'ok',
