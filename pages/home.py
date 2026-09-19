@@ -2122,6 +2122,20 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
         # Date Logic
         date_route = 'dhis2' if _is_dhis2_mnid_report(selected_reports, menu_json, data_route) else data_route
         default_start, default_end = _default_date_window(date_route)
+        if route_toggled:
+            # start_date/end_date are State here, so they're still whatever
+            # the picker showed before this click -- sync_picker_with_logic
+            # (a separate callback on the same Input) re-derives its own
+            # correct dates, but has no way to feed them into this callback
+            # on the same round trip. Re-derive independently here too, same
+            # policy: an untouched Today snaps to Last Month when landing on
+            # DHIS2, anything else re-resolves against the new route's anchor.
+            if date_route == 'dhis2' and period_type in (None, '', 'Today'):
+                start_date, end_date = get_relative_date_range('Last Month', current_date=default_end)
+            elif period_type:
+                _s, _e = get_relative_date_range(period_type, current_date=default_end)
+                if _s and _e:
+                    start_date, end_date = _s, _e
         if date_route == 'dhis2':
             start_date, end_date = _resolve_dhis2_date_window(start_date, end_date)
         if is_clearing_filters:

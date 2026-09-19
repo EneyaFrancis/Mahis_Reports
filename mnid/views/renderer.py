@@ -440,22 +440,6 @@ _MNID_SQL_COLUMNS = (
     "Gender, Source_Program"
 )
 
-# Above this many days, a MAHIS date-range selection skips the eager raw-row
-# load entirely (if the aggregate covers it) rather than loading a window's
-# worth of encounter rows that grows without bound as the range widens.
-# Originally 180 days on the theory that a 92-day (3-month) selection was
-# cheap enough in isolation (~33s, verified) to leave on the raw path --
-# live, under the app's actual concurrent load (background preload threads,
-# multiple tabs), that same selection took 100+ silent seconds (no timing
-# log existed for this step before now -- see the query/prepare logging
-# just below). 45 days keeps the genuinely short, precision-sensitive
-# selections (Today/Yesterday/This Week/This Month, where Daily-grain raw
-# fallback detail can matter) on the raw path, where loading is cheap
-# regardless of contention; anything wider -- including "Last 3/6 Months",
-# the exact selection that prompted this -- now takes the aggregate-only
-# path the 242-day case already proved fast (under 3s end-to-end).
-_RAW_LOAD_WINDOW_DAYS_CAP = 45
-
 # Facility_CODE->name/district registration only otherwise happens inside
 # prepare_mnid_dataframe's non-empty branch (see register_facility_metadata
 # callers in data_utils.py) -- once the skip-raw-load path below started
@@ -477,46 +461,35 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
     # multi-year selection would try to load tens of millions of rows into
     # memory no matter how compact each row is. The aggregate doesn't have
     # that problem: its size is periods x indicators x facilities, not
-    # encounters, so 5 years of monthly grain is maybe 20x today's ~11K
-    # rows, not 20x today's 3.9M. Above _RAW_LOAD_WINDOW_DAYS_CAP, skip the
-    # eager raw load the same way DHIS2 always does (empty filtered/
-    # data_opd) *only* when the aggregate already covers the full requested
-    # window -- every aggregate-aware path (KPI batch, Country Profile,
-    # coverage/trend/comparative) already prefers it over raw rows whenever
-    # present; the trade-off is that a rare indicator not yet in the
-    # aggregate shows "awaiting data" for a window this wide instead of a
-    # raw-computed value, rather than loading everything to compute it.
-    # Windows within the cap are untouched -- same code path as always.
+    # encounters. Skip the eager raw load the same way DHIS2 always does
+    # (empty filtered/data_opd) *whenever* the aggregate already covers the
+    # requested window, regardless of width -- every aggregate-aware path
+    # (KPI batch, Country Profile, coverage/trend/comparative) already
+    # prefers it over raw rows whenever present, at daily grain or finer via
+    # relative_period rows, so a narrow "Today"/"Last Month" selection gets
+    # the exact same speed DHIS2 always had instead of a multi-second raw
+    # scan every time. Only the patient-level drill-down modal needs actual
+    # encounter rows, and that's a separate, lazy, on-demand query
+    # (_get_network_df_from_state / ndf_rebuild_sql below), not this eager
+    # load -- the trade-off is that a rare indicator not yet in the
+    # aggregate shows "awaiting data" instead of a raw-computed value,
+    # rather than loading everything up front just in case one needs it.
     _skip_raw_load = False
     if source.requires_raw_dataset and isinstance(filtered, str) and start_date is not None and end_date is not None:
-        _window_days = (pd.Timestamp(end_date) - pd.Timestamp(start_date)).days
-        # "Today" deliberately anchors to the real calendar date, not the
-        # data's own latest date (see _default_date_window in pages/home.py)
-        # -- correct, but when the warehouse genuinely hasn't caught up to
-        # today yet, that turns every "Today" request into a full raw-table
-        # scan for a window guaranteed to have zero rows, regardless of how
-        # narrow it is. If the requested window doesn't overlap the data's
-        # own range at all, there's nothing a raw scan could find -- skip it
-        # the same way a too-wide window does, independent of the day-count cap.
         _agg_start, _agg_end = source.reporting_bounds()
-        if (
-            _agg_start is not None and _agg_end is not None
-            and (pd.Timestamp(start_date) > _agg_end or pd.Timestamp(end_date) < _agg_start)
-        ):
-            _skip_raw_load = True
-            _LOGGER.info(
-                'MNID raw load skipped: %s-%s window has no overlap with available data %s-%s (route=%s)',
-                start_date, end_date, _agg_start.date(), _agg_end.date(), route,
-            )
-        elif _window_days > _RAW_LOAD_WINDOW_DAYS_CAP:
-            if (
-                _agg_start is not None and _agg_end is not None
-                and _agg_start <= pd.Timestamp(start_date) and pd.Timestamp(end_date) <= _agg_end
-            ):
+        if _agg_start is not None and _agg_end is not None:
+            if pd.Timestamp(start_date) > _agg_end or pd.Timestamp(end_date) < _agg_start:
+                # No overlap at all -- a raw scan would find nothing either way.
                 _skip_raw_load = True
                 _LOGGER.info(
-                    'MNID raw load skipped: %d-day window exceeds %d-day cap, aggregate covers it (route=%s)',
-                    _window_days, _RAW_LOAD_WINDOW_DAYS_CAP, route,
+                    'MNID raw load skipped: %s-%s window has no overlap with available data %s-%s (route=%s)',
+                    start_date, end_date, _agg_start.date(), _agg_end.date(), route,
+                )
+            elif _agg_start <= pd.Timestamp(start_date) and pd.Timestamp(end_date) <= _agg_end:
+                _skip_raw_load = True
+                _LOGGER.info(
+                    'MNID raw load skipped: %s-%s window fully covered by aggregate %s-%s (route=%s)',
+                    start_date, end_date, _agg_start.date(), _agg_end.date(), route,
                 )
 
     # Captured before data_opd gets overwritten by its own query result below --
