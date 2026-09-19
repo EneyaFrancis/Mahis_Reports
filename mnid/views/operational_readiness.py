@@ -758,9 +758,22 @@ def _signal_functions_newborn_detail(code: str) -> html.Div:
     return html.Div("No newborn signal function data currently available for this facility.", style={"fontSize": "12px", "color": MUTED, "padding": "8px 0"})
 
 
-def _signal_functions_detail(code: str, numerators_by_sig: dict, df: pd.DataFrame,
-                              unavailable_ids: frozenset[str] = frozenset()) -> html.Div:
-    level = resolve_facility_level(code, _facility_label(code))
+def _signal_functions_maternal_detail(code: str, numerators_by_sig: dict, level: str,
+                                      unavailable_ids: frozenset[str] = frozenset()) -> html.Div:
+    if is_readiness_data_available():
+        hfa_sf = compute_readiness_detail("SF", code)
+        mat_hfa = [r for r in hfa_sf if r.get("category") == "Maternal signal functions"]
+        if mat_hfa:
+            rows = []
+            for r in mat_hfa:
+                st = r["status"]
+                disp = r["display_value"]
+                lbl = "N/A" if st == "na" else (SIGNAL_DETAIL_LABELS.get(st, disp) if st in SIGNAL_DETAIL_LABELS else disp)
+                rows.append(html.Div([
+                    html.Span(r["label"], style={"fontSize": "12px", "color": TEXT, "flex": "1"}),
+                    _tone_pill(st, lbl),
+                ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "padding": "8px 0", "borderBottom": f"1px solid {BORDER}"}))
+            return html.Div(rows)
     rows = []
     for sf in SIGNAL_FUNCTIONS:
         status = _facility_status(sf, numerators_by_sig[sf["id"]], code, level, unavailable_ids)
@@ -774,6 +787,12 @@ def _signal_functions_detail(code: str, numerators_by_sig: dict, df: pd.DataFram
                 html.Span(sf["label"], style={"fontSize": "12px", "color": TEXT, "flex": "1"}),
                 _tone_pill(status, SIGNAL_DETAIL_LABELS[status]),
             ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "padding": "8px 0", "borderBottom": f"1px solid {BORDER}"}))
+    return html.Div(rows)
+
+
+def _signal_functions_detail(code: str, numerators_by_sig: dict, df: pd.DataFrame,
+                              unavailable_ids: frozenset[str] = frozenset()) -> html.Div:
+    level = resolve_facility_level(code, _facility_label(code))
     classification, missing, note = _get_facility_classification(code, numerators_by_sig, level, unavailable_ids)
     classification_line = [
         html.Span(f"{_facility_district(code)} · {level} · ", style={"fontSize": "11px", "color": MUTED}),
@@ -791,7 +810,7 @@ def _signal_functions_detail(code: str, numerators_by_sig: dict, df: pd.DataFram
         _card([
             html.Div(header_children, style={"marginBottom": "12px"}),
             _section_title("Maternal Signal Functions"),
-            html.Div(rows),
+            _signal_functions_maternal_detail(code, numerators_by_sig, level, unavailable_ids),
         ]),
         _card([
             _section_title("Newborn Signal Functions"),
@@ -822,36 +841,49 @@ def _signal_functions_comparison(facility_codes: list[str], numerators_by_sig: d
         pct = round(performing / len(group) * 100, 1)
         return pct, f"{performing} of {len(group)} {group_label}-classified facilities performing"
 
-    maternal_rows = []
-    for sf in SIGNAL_FUNCTIONS:
-        cemonc_pct, cemonc_detail = _group_pct(sf, cemonc_group, "CEmONC")
-        if sf.get("comprehensive_only"):
-            bemonc_pct = "N/A"
-            bemonc_detail = "Not applicable for BEmONC facilities (CEmONC-only indicator)"
-        else:
-            bemonc_pct, bemonc_detail = _group_pct(sf, bemonc_group, "BEmONC")
-        # Deactivate / remove variable if there is no data for both CEmONC and BEmONC
-        if cemonc_pct is None and (bemonc_pct is None or (sf.get("comprehensive_only") and bemonc_pct == "N/A")):
-            continue
-        maternal_rows.append({
-            "label": sf["label"],
-            "cemonc": cemonc_pct, "cemonc_detail": cemonc_detail,
-            "bemonc": bemonc_pct, "bemonc_detail": bemonc_detail,
-        })
     if is_readiness_data_available():
-        nb_matrix = compute_readiness_matrix("SF", facility_codes, cemonc_codes=cemonc_group, bemonc_codes=bemonc_group)
-        newborn_rows = [r for r in nb_matrix if r.get("category") == "Newborn signal functions"]
+        sf_matrix = compute_readiness_matrix("SF", facility_codes, cemonc_codes=cemonc_group, bemonc_codes=bemonc_group)
+        maternal_rows = [r for r in sf_matrix if r.get("category") == "Maternal signal functions"]
+        newborn_rows = [r for r in sf_matrix if r.get("category") == "Newborn signal functions"]
     else:
+        maternal_rows = []
+        for sf in SIGNAL_FUNCTIONS:
+            cemonc_pct, cemonc_detail = _group_pct(sf, cemonc_group, "CEmONC")
+            if sf.get("comprehensive_only"):
+                bemonc_pct = "N/A"
+                bemonc_detail = "Not applicable for BEmONC facilities (CEmONC-only indicator)"
+            else:
+                bemonc_pct, bemonc_detail = _group_pct(sf, bemonc_group, "BEmONC")
+            # Deactivate / remove variable if there is no data for both CEmONC and BEmONC
+            if cemonc_pct is None and (bemonc_pct is None or (sf.get("comprehensive_only") and bemonc_pct == "N/A")):
+                continue
+            maternal_rows.append({
+                "label": sf["label"],
+                "cemonc": cemonc_pct, "cemonc_detail": cemonc_detail,
+                "bemonc": bemonc_pct, "bemonc_detail": bemonc_detail,
+            })
         newborn_rows = []
 
     note_children = [
         f"Share of {len(cemonc_group)} CEmONC- and {len(bemonc_group)} BEmONC-classified facilities in scope "
         "performing each function in the reporting period.",
     ]
-    if unavailable_ids:
+    if not is_readiness_data_available() and unavailable_ids:
         excluded_labels = [sf["label"] for sf in SIGNAL_FUNCTIONS if sf["id"] in unavailable_ids]
         note_children.append(html.Br())
         note_children.append(f"{', '.join(excluded_labels)}: not reported via this data source.")
+
+    maternal_card_content = [
+        _section_title("Maternal Signal Functions"),
+    ]
+    if maternal_rows:
+        maternal_card_content.append(_matrix_table(maternal_rows, label_column="Signal Function"))
+        maternal_card_content.append(html.Div(note_children, style={"fontSize": "10px", "color": MUTED, "marginTop": "8px"}))
+    else:
+        maternal_card_content.append(html.Div(
+            "No maternal signal function data currently available for facilities in scope.",
+            style={"fontSize": "12px", "color": MUTED, "padding": "8px 0"},
+        ))
 
     newborn_card_content = [
         _section_title("Newborn Signal Functions"),
@@ -865,11 +897,7 @@ def _signal_functions_comparison(facility_codes: list[str], numerators_by_sig: d
         ))
 
     return html.Div([
-        _card([
-            _section_title("Maternal Signal Functions"),
-            _matrix_table(maternal_rows, label_column="Signal Function"),
-            html.Div(note_children, style={"fontSize": "10px", "color": MUTED, "marginTop": "8px"}),
-        ]),
+        _card(maternal_card_content),
         _card(newborn_card_content),
     ])
 
