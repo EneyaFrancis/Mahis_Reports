@@ -234,8 +234,11 @@ def _default_relative_period_window(route: str = 'default'):
     return get_relative_date_range(DEFAULT_RELATIVE_PERIOD, current_date=default_end)
 
 
-def _is_dhis2_mnid_report(selected_reports: list[str], menu_json: list[dict]) -> bool:
-    if get_mnid_data_source().source != 'dhis2':
+def _is_dhis2_mnid_report(selected_reports: list[str], menu_json: list[dict], data_route: str = 'default') -> bool:
+    # get_mnid_data_source() with no args always resolves the static
+    # 'default' route regardless of what's actually being viewed -- pass the
+    # real per-request route explicitly, or this always returns False.
+    if get_mnid_data_source(data_route).source != 'dhis2':
         return False
     selected = set(selected_reports or [])
     return any(
@@ -412,8 +415,7 @@ def load_dashboard_menu():
 
 def load_dashboard_tab_config():
     raw_config = {}
-    config_path = json_path
-    # config_path = dashboard_tabs_config_path if os.path.exists(dashboard_tabs_config_path) else dashboard_tabs_example_config_path
+    config_path = dashboard_tabs_config_path if os.path.exists(dashboard_tabs_config_path) else dashboard_tabs_example_config_path
     try:
         with open(config_path, 'r') as f:
             raw_config = json.load(f) or {}
@@ -1632,10 +1634,12 @@ def update_menu(interval, color, urlparams):
         user_props = next((user['properties'] for user in  _load_user_properties(data_route) if user.get('properties').get('uuid') == user_uuid), None)
         limited_dashboards = user_props.get('limited_dashboards', []) if user_props else []
 
-        with open(json_path, 'r') as f:
-            menu_json = json.load(f)
+        menu_json, tab_config = get_enabled_dashboard_menu()
 
-        general_summary_button = [
+        # dashboard_tabs_config.json's mnh_only mode hides "General Summary"
+        # too -- it's a hardcoded button rather than a menu_json entry, so
+        # get_enabled_dashboard_menu()'s report_name filtering never touches it.
+        general_summary_button = [] if tab_config.get("mode") == "mnh_only" else [
                                 html.Button(
                                     "General Summary",
                                     className="menu-btn active" if color == "General Summary" else "menu-btn",
@@ -1760,6 +1764,26 @@ def sync_dashboard_id_to_url(active_report, current_search):
         raise PreventUpdate
 
     params['dashboard_id'] = [report_id]
+    return "?" + urllib.parse.urlencode({k: v[0] for k, v in params.items()})
+
+
+@callback(
+    Output('url', 'search', allow_duplicate=True),
+    Input({"type": "mnid-route-toggle", "index": ALL}, 'n_clicks'),
+    State('url', 'search'),
+    prevent_initial_call=True,
+)
+def toggle_mnid_route(_n_clicks, current_search):
+    """Flip ?route=default (MAHIS) <-> ?route=dhis2 (HMIS), preserving every
+    other query param -- same pattern as sync_dashboard_id_to_url above. Kept
+    for shareable-link/address-bar consistency; update_dashboard and
+    sync_picker_with_logic react to the same click directly rather than
+    waiting on this store round trip (see their own mnid-route-toggle Input)."""
+    if not any(_n_clicks or []):
+        raise PreventUpdate
+    params = urllib.parse.parse_qs((current_search or "").lstrip('?'))
+    current_route = (params.get('route', ['default'])[0] or 'default')
+    params['route'] = ['dhis2' if current_route != 'dhis2' else 'default']
     return "?" + urllib.parse.urlencode({k: v[0] for k, v in params.items()})
 
 
@@ -1998,6 +2022,12 @@ def load_program_filter_options(urlparams):
         # -params-store fired, which was still the "General Summary" default
         # if _set_active_button's own resolution hadn't landed yet by then.
         Input('active-button-store', 'data'),
+        # Same reasoning as toggle_mnid_route below: don't wait on the
+        # url.search -> url.href -> url-params-store round trip to re-render.
+        # A direct click here re-renders immediately, same as a menu-button
+        # click already does; toggle_mnid_route's url.search update just
+        # keeps the address bar/share links in sync alongside this.
+        Input({"type": "mnid-route-toggle", "index": ALL}, 'n_clicks'),
     ],
     [
         State('dashboard-date-range-picker', 'start_date'),
@@ -2019,6 +2049,7 @@ def load_program_filter_options(urlparams):
     ],
 )
 def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosstab_active_cells, current_active,
+                     route_toggle_clicks,
                      start_date, end_date, level,
                      districts, facilities, overview, category, programs,
                      moh_level, age, period_type, active_mnid_tab,
@@ -2026,6 +2057,14 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
     try:
         ctx = callback_context
         triggered_id = ctx.triggered[0]['prop_id'] if ctx.triggered else None
+        # ALL-pattern Inputs also fire when a fresh n_clicks=0 button is
+        # created by this very callback's own last render (not just on a
+        # real click) -- checking the value too, same as the menu-button
+        # click check below, filters that spurious re-creation event out.
+        route_toggled = (
+            bool(triggered_id) and 'mnid-route-toggle' in triggered_id
+            and bool(ctx.triggered[0].get('value'))
+        )
 
         is_clearing_filters = triggered_id == 'clear-filters-link.n_clicks'
 
@@ -2050,6 +2089,11 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
             category, age, period_type = "All", None, DEFAULT_RELATIVE_PERIOD
 
         data_route = (urlparams or {}).get('route', ["default"])[0]
+        if route_toggled:
+            # Render with the flipped route immediately, same click that
+            # triggered this -- don't wait on url.search's own round trip
+            # back through url-params-store to catch up.
+            data_route = 'default' if data_route == 'dhis2' else 'dhis2'
         dataset_version = _dataset_version_token(data_route)
 
         if not districts:
@@ -2068,15 +2112,15 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
             prop_dict = json.loads(triggered_id.split('.')[0])
             clicked_name = prop_dict['name']
 
-        menu_json = load_dashboard_menu()
+        menu_json, tab_config = get_enabled_dashboard_menu()
         if overview:
             selected_reports = overview
         else:
-            default_report = "General Summary" or menu_json[0]["report_name"]
+            default_report = tab_config.get("default_report") or (menu_json[0]["report_name"] if menu_json else "General Summary")
             selected_reports = [clicked_name] if clicked_name in {d.get("report_name") for d in menu_json} else [default_report]
         selected_reports = list(dict.fromkeys(normalize_report_name(r, menu_json) for r in selected_reports))
         # Date Logic
-        date_route = 'dhis2' if _is_dhis2_mnid_report(selected_reports, menu_json) else data_route
+        date_route = 'dhis2' if _is_dhis2_mnid_report(selected_reports, menu_json, data_route) else data_route
         default_start, default_end = _default_date_window(date_route)
         if date_route == 'dhis2':
             start_date, end_date = _resolve_dhis2_date_window(start_date, end_date)
@@ -2208,8 +2252,41 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
                 url_object=url_object,
                 initial_tab=active_mnid_tab,
             )
+            heading_row = html.H3(report_name, style={"marginTop": "10px"})
+            if report_name == 'Maternal Health':
+                heading_row = html.Div([
+                    html.H3(report_name, style={"marginTop": "10px", "marginBottom": "0"}),
+                    html.Div([
+                        html.Span("Data Source", style={
+                            "fontSize": "10px", "fontWeight": "700", "color": "#94a3b8",
+                            "textTransform": "uppercase", "letterSpacing": ".06em",
+                        }),
+                        html.Button(
+                            # Plain string id -- Dash's client-side validator requires
+                            # a non-pattern-matching Input's target to already exist
+                            # in the layout, but this button only exists once
+                            # update_dashboard has rendered at least once (it's a
+                            # chicken-and-egg problem: the callback that reacts to
+                            # this button also produces it). {"type": ..., "index": ALL}
+                            # is exactly how menu-button below already solves this --
+                            # an ALL pattern-match is valid even with zero matches.
+                            id={"type": "mnid-route-toggle", "index": 0},
+                            className='mnid-trend-toggle is-bar' if data_route == 'dhis2' else 'mnid-trend-toggle is-line',
+                            n_clicks=0,
+                            type="button",
+                            title="Toggle between MAHIS and HMIS (DHIS2) data",
+                            children=[
+                                html.Span(
+                                    'HMIS' if data_route == 'dhis2' else 'MAHIS',
+                                    className="mnid-trend-toggle-text",
+                                ),
+                                html.Span(className="mnid-trend-toggle-thumb"),
+                            ],
+                        ),
+                    ], style={"display": "flex", "alignItems": "center", "gap": "8px"}),
+                ], style={"display": "flex", "alignItems": "center", "justifyContent": "space-between", "marginTop": "10px"})
             rendered.append(html.Div([
-                html.H3(report_name, style={"marginTop": "10px"}),
+                heading_row,
                 section
             ]))
 
@@ -2264,14 +2341,24 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
      Output('dashboard-period-type-filter', 'value', allow_duplicate=True)],
     [Input('dashboard-period-type-filter', 'value'),
      Input('dashboard-interval-update-today', 'n_intervals'),
-     Input('active-button-store', 'data')],
+     Input('active-button-store', 'data'),
+     # Same reasoning as update_dashboard's own mnid-route-toggle Input:
+     # react to the click directly instead of waiting on url.search's round
+     # trip back through url-params-store.
+     Input({"type": "mnid-route-toggle", "index": ALL}, 'n_clicks')],
     [State('url-params-store', 'data')],
     prevent_initial_call='initial_duplicate',
 )
-def sync_picker_with_logic(period_type, n, current_active, urlparams):
+def sync_picker_with_logic(period_type, n, current_active, _route_toggle_clicks, urlparams):
     ctx = callback_context
     triggered_id = ctx.triggered_id
     data_route = (urlparams or {}).get('route', ["default"])[0]
+    # See update_dashboard's own route_toggled check: an ALL-pattern Input
+    # also fires on a freshly re-created n_clicks=0 button, not just a real
+    # click -- the value check filters that out.
+    route_toggle_value = (ctx.triggered[0].get('value') if ctx.triggered else None)
+    if isinstance(triggered_id, dict) and triggered_id.get('type') == 'mnid-route-toggle' and route_toggle_value:
+        data_route = 'default' if data_route == 'dhis2' else 'dhis2'
     # Anchor relative periods ("Today" etc.) to DHIS2's own last-reported
     # date only while actually viewing an MNID/DHIS2-backed report -- e.g.
     # "Today" would otherwise land on the real calendar date, which DHIS2
@@ -2281,7 +2368,7 @@ def sync_picker_with_logic(period_type, n, current_active, urlparams):
     # it here instead of the old direct 'Maternal Health' string match,
     # which silently fell through to plain MAHIS-anchored dates (today's
     # calendar date) for anything that didn't match that exact string.
-    date_route = 'dhis2' if _is_dhis2_mnid_report([current_active], load_dashboard_menu()) else data_route
+    date_route = 'dhis2' if _is_dhis2_mnid_report([current_active], load_dashboard_menu(), data_route) else data_route
     default_start, default_end = _default_date_window(date_route)
     anchor = default_end
 

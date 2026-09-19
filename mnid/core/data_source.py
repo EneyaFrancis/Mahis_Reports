@@ -118,6 +118,18 @@ class MNIDDataSource:
 
 
 def get_mnid_data_source(data_route: str = 'default', source: str | None = None) -> MNIDDataSource:
+    # An explicit source= always wins. Otherwise follow data_route (the URL's
+    # ?route=default/dhis2, now user-toggleable -- see toggle_mnid_route in
+    # pages/home.py) rather than the static MNID_DATA_SOURCE config, so
+    # switching the toggle actually changes MAHIS-vs-DHIS2 computation logic,
+    # not just which data/{route} folder gets read. data_route spells MAHIS
+    # as 'default', not 'mahis' -- map it explicitly rather than reusing
+    # _SUPPORTED_SOURCES, which is keyed on the source vocabulary.
+    if source is None:
+        if data_route == 'dhis2':
+            source = 'dhis2'
+        elif data_route == 'default':
+            source = 'mahis'
     resolved = str(source or _configured_source()).strip().lower()
     if resolved not in _SUPPORTED_SOURCES:
         resolved = 'mahis'
