@@ -490,8 +490,25 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
     _skip_raw_load = False
     if source.requires_raw_dataset and isinstance(filtered, str) and start_date is not None and end_date is not None:
         _window_days = (pd.Timestamp(end_date) - pd.Timestamp(start_date)).days
-        if _window_days > _RAW_LOAD_WINDOW_DAYS_CAP:
-            _agg_start, _agg_end = source.reporting_bounds()
+        # "Today" deliberately anchors to the real calendar date, not the
+        # data's own latest date (see _default_date_window in pages/home.py)
+        # -- correct, but when the warehouse genuinely hasn't caught up to
+        # today yet, that turns every "Today" request into a full raw-table
+        # scan for a window guaranteed to have zero rows, regardless of how
+        # narrow it is. If the requested window doesn't overlap the data's
+        # own range at all, there's nothing a raw scan could find -- skip it
+        # the same way a too-wide window does, independent of the day-count cap.
+        _agg_start, _agg_end = source.reporting_bounds()
+        if (
+            _agg_start is not None and _agg_end is not None
+            and (pd.Timestamp(start_date) > _agg_end or pd.Timestamp(end_date) < _agg_start)
+        ):
+            _skip_raw_load = True
+            _LOGGER.info(
+                'MNID raw load skipped: %s-%s window has no overlap with available data %s-%s (route=%s)',
+                start_date, end_date, _agg_start.date(), _agg_end.date(), route,
+            )
+        elif _window_days > _RAW_LOAD_WINDOW_DAYS_CAP:
             if (
                 _agg_start is not None and _agg_end is not None
                 and _agg_start <= pd.Timestamp(start_date) and pd.Timestamp(end_date) <= _agg_end
@@ -534,12 +551,29 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
         else:
             from data_storage import DataStorage as _DS
             _raw_t0 = _time.monotonic()
-            filtered = _DS.query_duckdb(
-                f"SELECT {_MNID_SQL_COLUMNS} FROM '{data_path}' WHERE {filtered}"
-            )
+            # filtered_query's WHERE (see pages/home.py's build_charts_from_json
+            # caller) is always Date BETWEEN start_dt AND end_dt, same scope_suffix
+            # as network_query's Date >= default_start_date AND Date <= end_dt --
+            # same filters, and default_start_date <= start_dt always, so filtered's
+            # row set is always a subset of data_opd's. Query data_opd once and
+            # derive filtered from it in memory instead of scanning the file twice
+            # for what's provably the same-or-narrower result.
             data_opd = _DS.query_duckdb(
                 f"SELECT {_MNID_SQL_COLUMNS} FROM '{data_path}' WHERE {data_opd}"
             )
+            try:
+                _start_ts = pd.Timestamp(start_date)
+                _end_ts = pd.Timestamp(end_date) + pd.Timedelta(hours=23, minutes=59, seconds=59)
+                filtered = data_opd[
+                    (pd.to_datetime(data_opd['Date'], errors='coerce') >= _start_ts)
+                    & (pd.to_datetime(data_opd['Date'], errors='coerce') <= _end_ts)
+                ]
+            except Exception:
+                # Malformed/missing start_date-end_date -- fall back to the
+                # original two-query behavior rather than guess.
+                filtered = _DS.query_duckdb(
+                    f"SELECT {_MNID_SQL_COLUMNS} FROM '{data_path}' WHERE {filtered}"
+                )
             # This step had no timing log at all until now -- a 90-day (in-cap)
             # MAHIS selection silently spent minutes here with zero visibility
             # in the logs, showing up as an unexplained gap between the fast,
