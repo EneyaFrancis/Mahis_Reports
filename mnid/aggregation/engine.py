@@ -216,7 +216,7 @@ def _aggregate_grain(prepared_df: pd.DataFrame, indicators: list[dict], grain: s
     return out
 
 
-def _aggregate_relative_periods(prepared_df: pd.DataFrame, indicators: list[dict]) -> pd.DataFrame:
+def _aggregate_relative_periods(prepared_df: pd.DataFrame, indicators: list[dict], route: str = 'default') -> pd.DataFrame:
     """Compute coverage per facility/indicator for each named relative
     period (Today, This Week, Last Month, Last 3 Months, This Year, ...),
     not a repeating calendar bucket like _aggregate_grain's daily/weekly/
@@ -225,10 +225,19 @@ def _aggregate_relative_periods(prepared_df: pd.DataFrame, indicators: list[dict
     instead of resolving which calendar-grain rows currently fall inside
     that rolling/anchored window every time the real date moves on.
 
-    Anchored to this data's own latest date (matching how DHIS2 routes
-    already anchor "today" to their latest reported period, not the literal
-    calendar date) -- a MAHIS extract that stops in August has no business
-    resolving "This Week" against a September day it has no rows for.
+    Anchor policy must match pages/home.py's _default_date_window for the
+    same route, or a label here silently means a different window than what
+    the live picker/banner shows for that same label (e.g. aggregate's "Last
+    Month" = July while the picker's "Last Month" = August) -- get_relative_
+    period_aggregate is a pure label lookup with no date cross-check, so any
+    drift here is invisible until you compare the actual numbers.
+    DHIS2 anchors to its own latest reported period regardless of the real
+    calendar date (monthly grain, "today" is meaningless there) -- MAHIS
+    anchors to the real calendar date like _default_date_window's MAHIS
+    branch does, now that the live raw-query path (mnid/views/renderer.py)
+    skips fast when that date falls outside the data's own range instead of
+    scanning for nothing, so an anchor mismatch is no longer a performance
+    tradeoff, just a correctness bug.
     """
     from mnid.charts.chart_helpers import _grouped_filter_counts
     from helpers.date_ranges import RELATIVE_PERIOD_LIST, get_relative_date_range
@@ -240,7 +249,14 @@ def _aggregate_relative_periods(prepared_df: pd.DataFrame, indicators: list[dict
     valid_dates = dates.dropna()
     if valid_dates.empty:
         return pd.DataFrame()
-    anchor = valid_dates.max().date()
+    if route == 'dhis2':
+        anchor = valid_dates.max().date()
+    else:
+        # datetime.now(), not utcnow() -- must match _default_date_window's
+        # own anchor = datetime.now().date() exactly (pages/home.py), or a
+        # timezone gap reintroduces the same label-vs-date drift this whole
+        # route split exists to close.
+        anchor = datetime.now().date()
 
     fac_col = 'Facility_CODE' if 'Facility_CODE' in prepared_df.columns else None
     dist_col = 'District' if 'District' in prepared_df.columns else None
@@ -388,7 +404,7 @@ def run_aggregation(
         parts.append(part)
 
     _LOG.info('  grain=relative_period ...')
-    relative_part = _aggregate_relative_periods(prepared_df, indicators)
+    relative_part = _aggregate_relative_periods(prepared_df, indicators, route=Path(output_dir).name)
     _LOG.info('  grain=relative_period: %d rows', len(relative_part))
     parts.append(relative_part)
 
