@@ -207,6 +207,34 @@ class TestReadinessConversionAndProvider(unittest.TestCase):
         view_minimal = render_operational_readiness(df)
         self.assertIsNotNone(view_minimal)
 
+    def test_signal_functions_tab_maternal_and_newborn(self):
+        from mnid.views.operational_readiness import (
+            _build_signal_functions_tab,
+            _signal_functions_comparison,
+            _signal_functions_detail,
+        )
+        df = get_readiness_data()
+        self.assertIsNotNone(df)
+
+        all_codes = list(df["facility_code"].unique())
+        # Test comparison view
+        view = _build_signal_functions_tab(all_codes, df, None, None, None)
+        self.assertIsNotNone(view)
+
+        # Test single facility detail view
+        bwaila_view = _build_signal_functions_tab(["LL040122"], df, None, None, None)
+        self.assertIsNotNone(bwaila_view)
+
+        # Test matrix data for maternal signal functions has non-zero values
+        matrix = compute_readiness_matrix("SF", all_codes)
+        maternal = [r for r in matrix if r.get("category") == "Maternal signal functions"]
+        self.assertGreater(len(maternal), 0)
+        # Verify that maternal signal functions have real non-zero rates
+        has_positive_cemonc = any(isinstance(r["cemonc"], (int, float)) and r["cemonc"] > 0 for r in maternal)
+        has_positive_bemonc = any(isinstance(r["bemonc"], (int, float)) and r["bemonc"] > 0 for r in maternal)
+        self.assertTrue(has_positive_cemonc, "CEmONC maternal signal functions should have positive rates")
+        self.assertTrue(has_positive_bemonc, "BEmONC maternal signal functions should have positive rates")
+
 
 if __name__ == "__main__":
     unittest.main()
