@@ -33,6 +33,13 @@ data/readiness/
 - Indicators marked as `cemonc_only: true` (applicable only to Comprehensive EmONC facilities, such as blood transfusion and Caesarean section) are rendered in BEmONC columns with a distinctive **grey background (`#F1F5F9`)** and bold text **`N/A`** (or `Not Applicable`) by default.
 - Users see the `N/A` indicator status immediately without needing to hover over the cell.
 
+### Occupancy Rate Standards & Traffic-Light Flagging:
+- Under the **Systems & Infrastructure** tab, occupancy rates for Labour & Delivery (`sd_del_cap_num_lddel_occ`) and the Neonatal Unit (`nu_cap_cot`) are evaluated against clinical capacity standards:
+  - **`< 80%` (Green / On track)**: Occupancy is within standard operating capacity (below 80%).
+  - **`80% – 100%` (Amber / Warning)**: High occupancy approaching maximum facility capacity.
+  - **`>= 100%` (Red / Over capacity)**: Overcrowding / unit operating at or beyond designated bed/cot capacity.
+- These thresholds apply consistently across single-facility detail views (with status pills) and cross-facility comparison matrix tables.
+
 ---
 
 ## 3. Pluggable Conversion Pipeline

@@ -235,6 +235,68 @@ class TestReadinessConversionAndProvider(unittest.TestCase):
         self.assertTrue(has_positive_cemonc, "CEmONC maternal signal functions should have positive rates")
         self.assertTrue(has_positive_bemonc, "BEmONC maternal signal functions should have positive rates")
 
+    def test_occupancy_rates_flagging(self):
+        from mnid.views.operational_readiness import (
+            _matrix_cell,
+            _systems_tab,
+        )
+        # 1. Test single-facility detail occupancy thresholds (<80% green, 80-100% amber, >=100% red)
+        # Bwaila (LL040122): maternity occupancy ~66.7% (green), neonatal occupancy ~138.8% (red)
+        mat_bwaila = [r for r in compute_readiness_detail("INF - Maternity", "LL040122") if "occupancy" in r["label"].lower()]
+        self.assertEqual(len(mat_bwaila), 1)
+        self.assertEqual(mat_bwaila[0]["status"], "green")
+        self.assertTrue(mat_bwaila[0]["display_value"].endswith("%"))
+
+        nb_bwaila = [r for r in compute_readiness_detail("INF - Newborn", "LL040122") if "occupancy" in r["label"].lower()]
+        self.assertEqual(len(nb_bwaila), 1)
+        self.assertEqual(nb_bwaila[0]["status"], "red")
+        self.assertTrue(nb_bwaila[0]["display_value"].endswith("%"))
+
+        # MZ161098: neonatal occupancy ~83.3% (amber)
+        nb_mz = [r for r in compute_readiness_detail("INF - Newborn", "MZ161098") if "occupancy" in r["label"].lower()]
+        self.assertEqual(len(nb_mz), 1)
+        self.assertEqual(nb_mz[0]["status"], "amber")
+
+        # MZ160388: neonatal occupancy ~41.7% (green)
+        nb_mz_norm = [r for r in compute_readiness_detail("INF - Newborn", "MZ160388") if "occupancy" in r["label"].lower()]
+        self.assertEqual(len(nb_mz_norm), 1)
+        self.assertEqual(nb_mz_norm[0]["status"], "green")
+
+        # 2. Test matrix row metadata
+        mat_matrix = compute_readiness_matrix("INF - Maternity")
+        mat_occ_rows = [r for r in mat_matrix if "occupancy" in r["label"].lower()]
+        self.assertEqual(len(mat_occ_rows), 1)
+        self.assertTrue(mat_occ_rows[0].get("is_occupancy"))
+        self.assertTrue(mat_occ_rows[0].get("flag_over100"))
+
+        nb_matrix = compute_readiness_matrix("INF - Newborn")
+        nb_occ_rows = [r for r in nb_matrix if "occupancy" in r["label"].lower()]
+        self.assertEqual(len(nb_occ_rows), 1)
+        self.assertTrue(nb_occ_rows[0].get("is_occupancy"))
+        self.assertTrue(nb_occ_rows[0].get("flag_over100"))
+
+        # 3. Test _matrix_cell occupancy styling
+        green_cell = _matrix_cell("45% [31-67%]", is_occupancy=True)
+        self.assertEqual(green_cell.style["color"], "#15803D")
+        self.assertEqual(green_cell.style["background"], "#DCFCE7")
+
+        amber_cell = _matrix_cell("82% [9-120%]", is_occupancy=True)
+        self.assertEqual(amber_cell.style["color"], "#D97706")
+        self.assertEqual(amber_cell.style["background"], "#FEF3C7")
+
+        red_cell = _matrix_cell("115% [90-140%]", is_occupancy=True)
+        self.assertEqual(red_cell.style["color"], "#DC2626")
+        self.assertEqual(red_cell.style["background"], "#FEE2E2")
+
+        # 4. Test systems tab rendering
+        df = get_readiness_data()
+        all_codes = list(df["facility_code"].unique())
+        comp_view = _systems_tab(all_codes, None, df)
+        self.assertIsNotNone(comp_view)
+
+        detail_view = _systems_tab(["LL040122"], None, df)
+        self.assertIsNotNone(detail_view)
+
 
 if __name__ == "__main__":
     unittest.main()
