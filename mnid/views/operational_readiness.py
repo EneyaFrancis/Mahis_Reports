@@ -626,9 +626,10 @@ def _matrix_tone(pct: float | None) -> str:
     return "green" if pct >= 80 else "amber" if pct >= 50 else "red"
 
 
-def _matrix_cell(pct: float | int | str | None, detail: str | None = None) -> html.Td:
+def _matrix_cell(pct: float | int | str | None, detail: str | None = None, is_occupancy: bool = False, **kwargs) -> html.Td:
     """One traffic-light cell: a solid tone fill with white text for percentages,
     or a grey background with 'N/A' for CEmONC-only / not applicable items,
+    or a flagged tone cell for occupancy rates (<80% green, 80-100% amber, >=100% red),
     or a plain tabular cell for median-IQR metrics. `detail` becomes the native
     hover tooltip via the HTML title attribute."""
     common = {"textAlign": "center", "padding": "9px 10px", "fontSize": "12px"}
@@ -641,6 +642,29 @@ def _matrix_cell(pct: float | int | str | None, detail: str | None = None) -> ht
             **common, "color": MUTED, "background": "#F1F5F9", "borderBottom": f"1px solid {BORDER}",
             "fontWeight": "600", "fontSize": "11px",
         })
+    if is_occupancy:
+        val = None
+        if isinstance(pct, (int, float)):
+            val = float(pct)
+        elif isinstance(pct, str):
+            import re
+            m = re.match(r"^(\d+(?:\.\d+)?)\s*%", pct.strip())
+            if m:
+                val = float(m.group(1))
+        if val is not None:
+            tone = "green" if val < 80.0 else "amber" if val < 100.0 else "red"
+            color, bg = STATUS_COLORS[tone]
+            if isinstance(pct, (int, float)):
+                return html.Td(f"{val:.0f}%", title=detail or f"Occupancy standard: <80% (Current: {val:.0f}%)", style={
+                    **common, "fontWeight": "700",
+                    "color": "#FFFFFF", "background": color, "borderBottom": f"1px solid {SURFACE}",
+                })
+            return html.Td(pct, title=detail or f"Occupancy standard: <80% (Current: {pct})", style={
+                **common, "fontWeight": "700",
+                "color": color, "background": bg, "borderBottom": f"1px solid {BORDER}",
+                "fontVariantNumeric": "tabular-nums",
+            })
+
     if isinstance(pct, (int, float)):
         tone = _matrix_tone(float(pct))
         color, _ = STATUS_COLORS[tone]
@@ -654,7 +678,7 @@ def _matrix_cell(pct: float | int | str | None, detail: str | None = None) -> ht
     })
 
 
-def _plain_cell(value: str | None, detail: str | None = None) -> html.Td:
+def _plain_cell(value: str | None, detail: str | None = None, is_occupancy: bool = False, **kwargs) -> html.Td:
     """A plain, uncolored cell for figures with no target to traffic-light
     against - facility counts and median [IQR] service-volume statistics.
     Coloring "928 [546-2260] deliveries" green/amber/red would imply a
@@ -729,11 +753,12 @@ def _matrix_table(rows: list[dict], columns: list[tuple[str, str]] | None = None
                 "background": BACKGROUND, "borderBottom": f"1px solid {BORDER}", "borderTop": f"1px solid {BORDER}",
             })]))
         last_category = category
+        is_occ = bool(row.get("is_occupancy") or row.get("flag_over100") or "occupancy" in row.get("label", "").lower())
         body.append(html.Tr([
             html.Td(row["label"], style={
                 "padding": "9px 10px", "fontSize": "12px", "color": TEXT, "borderBottom": f"1px solid {BORDER}",
             }),
-            *[cell_fn(row.get(key), row.get(f"{key}_detail")) for _, key in columns],
+            *[cell_fn(row.get(key), row.get(f"{key}_detail"), is_occupancy=is_occ) for _, key in columns],
         ]))
     return html.Div(html.Table([html.Thead(header), html.Tbody(body)], style={
         "width": "100%", "borderCollapse": "collapse", "background": SURFACE, "tableLayout": "fixed",
