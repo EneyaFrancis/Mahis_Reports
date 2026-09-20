@@ -1769,6 +1769,7 @@ def sync_dashboard_id_to_url(active_report, current_search):
 
 @callback(
     Output('url', 'search', allow_duplicate=True),
+    Output('mnid-route-store', 'data'),
     Input({"type": "mnid-route-toggle", "index": ALL}, 'n_clicks'),
     State('url', 'search'),
     prevent_initial_call=True,
@@ -1778,28 +1779,25 @@ def toggle_mnid_route(_n_clicks, current_search):
     other query param -- same pattern as sync_dashboard_id_to_url above. Kept
     for shareable-link/address-bar consistency; update_dashboard and
     sync_picker_with_logic react to the same click directly rather than
-    waiting on this store round trip (see their own mnid-route-toggle Input)."""
+    waiting on this store round trip (see their own mnid-route-toggle Input).
+
+    Also the only writer of mnid-route-store (see app.py) -- writing both
+    outputs from the SAME computed new_route here, instead of a second
+    callback independently re-deriving "current route -> flip" from
+    mnid-route-store's own prior value, is deliberate: two callbacks each
+    flipping from a different "current" source (url.search here vs.
+    mnid-route-store's own last write there) can drift out of sync if either
+    round trip lags, at which point one flips one way and the other flips
+    the opposite way and the toggle gets stuck reporting a route that never
+    actually changes. One flip, one source of truth, both outputs written
+    atomically from it."""
     if not any(_n_clicks or []):
         raise PreventUpdate
     params = urllib.parse.parse_qs((current_search or "").lstrip('?'))
     current_route = (params.get('route', ['default'])[0] or 'default')
-    params['route'] = ['dhis2' if current_route != 'dhis2' else 'default']
-    return "?" + urllib.parse.urlencode({k: v[0] for k, v in params.items()})
-
-
-@callback(
-    Output('mnid-route-store', 'data'),
-    Input({"type": "mnid-route-toggle", "index": ALL}, 'n_clicks'),
-    State('mnid-route-store', 'data'),
-    prevent_initial_call=True,
-)
-def _save_mnid_route(_n_clicks, current_route):
-    """The only writer of mnid-route-store (see app.py) -- a real toggle
-    click is the only thing that should ever change the remembered route,
-    per the user's own instruction: slide the toggle, don't auto-revert."""
-    if not any(_n_clicks or []):
-        raise PreventUpdate
-    return 'dhis2' if (current_route or 'default') != 'dhis2' else 'default'
+    new_route = 'dhis2' if current_route != 'dhis2' else 'default'
+    params['route'] = [new_route]
+    return "?" + urllib.parse.urlencode({k: v[0] for k, v in params.items()}), new_route
 
 
 def _resolve_filter_cascade(level, districts, moh_level, active_report, urlparams, data_route):
