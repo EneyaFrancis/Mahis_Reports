@@ -1,17 +1,17 @@
 {
   "status": "success",
-  "generated_at": "2026-09-18T08:24:45.219642+00:00",
-  "duration_seconds": 2.89,
+  "generated_at": "2026-09-20T13:02:23.326538+00:00",
+  "duration_seconds": 12.59,
   "inputs": {
     "data_workbook": {
-      "path": "D:\\codes\\MaHIS_Dashboards\\Mahis_Reports\\data\\excel\\Malawi HFA summary indicators for dashboard dataset_10Sept2026.xlsx",
+      "path": "C:\\dev\\MAHIS-Reports\\Forked\\Mahis_Reports\\data\\excel\\Malawi HFA summary indicators for dashboard dataset_10Sept2026.xlsx",
       "sha256": "34b6f52eede2d2e5a657a10503917160076a140bbf68dd6522662f9516feda88",
       "size_bytes": 49470,
       "rows": 67,
       "columns": 219
     },
     "meta_workbook": {
-      "path": "D:\\codes\\MaHIS_Dashboards\\Mahis_Reports\\data\\excel\\Analysis variables BF HFA dashboard MW 10Sept.xlsx",
+      "path": "C:\\dev\\MAHIS-Reports\\Forked\\Mahis_Reports\\data\\excel\\Analysis variables BF HFA dashboard MW 10Sept.xlsx",
       "sha256": "85d5e44d65f65b581dfd6bc0f53e07b1e115e28b967985dbe639e61a779e3182",
       "size_bytes": 34705,
       "sheets_count": 12,
@@ -20,14 +20,14 @@
   },
   "outputs": {
     "parquet": {
-      "path": "D:\\codes\\MaHIS_Dashboards\\Mahis_Reports\\data\\readiness\\hfa_data.parquet",
-      "sha256": "07e0e84bc9346533a73903fa4c392ff2e497bc86c3ed5a65eeb4f3f51df4423f",
-      "size_bytes": 154499,
+      "path": "C:\\dev\\MAHIS-Reports\\Forked\\Mahis_Reports\\data\\readiness\\hfa_data.parquet",
+      "sha256": "7f97b5a5101e03161fcc6c84c44af2bec5e3f8f771384d639e099750016c705d",
+      "size_bytes": 155847,
       "rows": 67,
       "columns": 224
     },
     "indicators_json": {
-      "path": "D:\\codes\\MaHIS_Dashboards\\Mahis_Reports\\data\\readiness\\hfa_indicators.json",
+      "path": "C:\\dev\\MAHIS-Reports\\Forked\\Mahis_Reports\\data\\readiness\\hfa_indicators.json",
       "sha256": "d60b7fe65f8c3fe461c5bdbfce1442ce41aed9bcd0ac6f5b2e61929d110254de",
       "size_bytes": 243679
     }

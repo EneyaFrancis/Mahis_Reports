@@ -231,6 +231,17 @@ DATA_QI_SYSTEMS = [
 # Shared building blocks
 # ---------------------------------------------------------------------------
 
+def _awaiting_card_value() -> html.Span:
+    """A summary card's value slot renders at 24px/800-weight -- fine for a
+    short number, but "○ Not yet reported" at that size reads oversized and
+    wraps awkwardly. Dash lets a component ride in the same slot a string
+    normally would, so this overrides the inherited size down to something
+    that still reads as a status line rather than a stat."""
+    return html.Span(AWAITING_LABEL, style={
+        "fontSize": "15px", "fontWeight": "700", "color": MUTED, "letterSpacing": "normal",
+    })
+
+
 def _tone_pill(tone: str, text: str) -> html.Span:
     """A rounded, colored badge. `text` is the full display string (icon and
     all) - callers pick the wording from one of the *_LABELS maps above so
@@ -337,6 +348,17 @@ def _resolve_data_source(route: str):
     aggregate access/labeling instead of branching on the route string
     ourselves everywhere it's used."""
     return get_mnid_data_source(route, source="dhis2" if route == "dhis2" else "mahis")
+
+
+def _period_range_label(start_date, end_date) -> str:
+    if not start_date or not end_date:
+        return "Selected period"
+    try:
+        start = pd.Timestamp(start_date).strftime("%d %b %Y")
+        end = pd.Timestamp(end_date).strftime("%d %b %Y")
+    except (ValueError, TypeError):
+        return "Selected period"
+    return f"{start} - {end}"
 
 
 def _facility_universe(df: pd.DataFrame) -> list[str]:
@@ -1065,7 +1087,8 @@ def _build_overview_tab(facility_codes: list[str], df: pd.DataFrame,
         _summary_card("Total deliveries", f"{total_births:,}", "Reported in selected period", GREEN),
         _summary_card("Total caesarean deliveries", f"{caesareans:,}", "Caesarean sections performed", "#DB2777"),
         _summary_card(
-            "Neonatal unit admissions", f"{admissions:,}" if admissions_available else AWAITING_LABEL,
+            "Neonatal unit admissions",
+            f"{admissions:,}" if admissions_available else _awaiting_card_value(),
             "Admitted to newborn/neonatal care unit" if admissions_available else "Not yet published for this data source",
             AMBER,
         ),
@@ -1123,18 +1146,16 @@ def _build_overview_tab(facility_codes: list[str], df: pd.DataFrame,
     comparison = html.Div([
         _section_title("Facility Readiness Comparison"),
         _card([
-            html.Div([
-                html.Label("Filter by classification:", style={
-                    "fontSize": "11px", "fontWeight": 700, "color": MUTED, "marginRight": "8px",
-                }),
+            html.Div(
                 dcc.Dropdown(
                     id="operational-readiness-classification-filter",
                     options=_CLASSIFICATION_FILTER_OPTIONS,
                     value="All",
                     clearable=False,
-                    style={"minWidth": "220px", "fontSize": "12px"},
+                    style={"width": "220px", "fontSize": "12px"},
                 ),
-            ], style={"display": "flex", "alignItems": "center", "marginBottom": "12px"}),
+                style={"display": "flex", "justifyContent": "flex-end", "marginBottom": "12px"},
+            ),
             dcc.Store(id="operational-readiness-comparison-records", data=comparison_records),
             html.Div(
                 id="operational-readiness-comparison-table-container",
@@ -1315,6 +1336,15 @@ _TABS = [
     ("products", "Products & Commodities"),
     ("systems", "Systems & Infrastructure"),
 ]
+_TAB_STYLE = {
+    "padding": "16px 18px", "fontSize": "14px", "fontWeight": "700",
+    "color": MUTED, "background": "transparent", "border": "none",
+    "borderBottom": "2px solid transparent", "minWidth": "132px", "flexShrink": "0",
+}
+_TAB_SELECTED_STYLE = {
+    **_TAB_STYLE, "color": GREEN, "background": "#F0FDF4",
+    "borderBottom": f"2px solid {GREEN}",
+}
 
 
 def render_operational_readiness(
@@ -1327,50 +1357,107 @@ def render_operational_readiness(
 ) -> html.Div:
     """The root Operational Readiness view. Lazily mounts 5 sub-tabs so we
     don't compute all 5 tabs on every load."""
+    if agg_df is None:
+        # The only caller (mnid/views/renderer.py's operational-readiness
+        # branch) never passes one -- without it every _numerators_by_facility
+        # call falls through its numerator_filters={} guard and returns {},
+        # so every signal function read as "not performed" regardless of the
+        # real data. Same route-aware aggregate every other MNID view reads.
+        route = (scope_meta or {}).get('route', 'default')
+        agg_df = _resolve_data_source(route).aggregate()
     facility_codes = _source_facility_universe(df, scope_meta)
-    scope_name = _profile_scope_name(scope_meta)
-    hierarchy_badge = _hierarchy_scope(df, scope_meta, (scope_meta or {}).get('period_label') or '')
-
-    header = html.Div([
+    scope_name = _profile_scope_name(scope_meta)['tab_label']
+    # _hierarchy_scope returns [{"label", "value"}, ...] plain records (same
+    # shape executive_views.py's own scope_band builds pills from) -- not
+    # renderable Dash children on their own.
+    hierarchy_items = _hierarchy_scope(df, scope_meta, (scope_meta or {}).get('period_label') or '')
+    hierarchy_badge = html.Div([
         html.Div([
-            html.Span("OPERATIONAL READINESS", style={
-                "fontSize": "11px", "fontWeight": "800", "letterSpacing": ".08em",
-                "color": GREEN, "textTransform": "uppercase",
+            html.Span(item["label"], style={
+                "fontSize": "9px", "fontWeight": "700", "color": MUTED,
+                "textTransform": "uppercase", "letterSpacing": ".07em", "display": "block",
             }),
-            html.H2("EmONC Facility Readiness & Capacity", style={
-                "margin": "2px 0 0 0", "fontSize": "20px", "fontWeight": "800", "color": TEXT,
-            }),
-            html.Div(f"Assessing readiness across {len(facility_codes)} facilities in scope ({scope_name})", style={
-                "fontSize": "12px", "color": MUTED, "marginTop": "2px",
-            }),
-        ]),
-        html.Div(hierarchy_badge, style={"alignSelf": "flex-start"}),
+            html.Span(item["value"], style={"fontSize": "11px", "fontWeight": "600", "color": TEXT}),
+        ], style={"padding": "4px 10px", "borderRight": f"1px solid {BORDER}"})
+        for item in hierarchy_items
     ], style={
-        "display": "flex", "justifyContent": "space-between", "alignItems": "flex-start",
-        "marginBottom": "16px", "paddingBottom": "12px", "borderBottom": f"1px solid {BORDER}",
+        "display": "flex", "flexWrap": "wrap", "background": BACKGROUND,
+        "border": f"1px solid {BORDER}", "borderRadius": "10px", "overflow": "hidden",
     })
 
-    tabs = dmc.Tabs(
-        [
-            dmc.TabsList([
-                dmc.TabsTab(label, value=val, style={"fontSize": "13px", "fontWeight": "600"})
-                for val, label in _TABS
-            ]),
-            *[
-                dmc.TabsPanel(
-                    dcc.Loading(
-                        html.Div(id=f"operational-readiness-tab-{val}-content"),
-                        type="dot", color=GREEN,
-                    ),
-                    value=val, pt="md",
-                )
-                for val, _ in _TABS
-            ],
+    route = (scope_meta or {}).get('route', 'default')
+    period_text = _period_range_label(start_date, end_date)
+    profile = _profile_scope_name(scope_meta)
+    if route == "dhis2" and not (scope_meta or {}).get("selected_districts") and not (scope_meta or {}).get("selected_facilities"):
+        # Nothing specific picked on the DHIS2 route -- show the crosswalk's
+        # own totals instead of however many facilities happen to have an
+        # actual data row in the aggregate right now (which varies sync to
+        # sync and undercounts relative to the crosswalk's real coverage).
+        from mnid.core.dhis2_facilities import dhis2_districts, dhis2_known_facility_codes
+        district_count = len(dhis2_districts())
+        facility_count = len(dhis2_known_facility_codes())
+    else:
+        district_count = len({d for code in facility_codes if (d := _facility_district(code))})
+        facility_count = len(facility_codes)
+    source_label = "MAHIS dataset" if _resolve_data_source(route).requires_raw_dataset else "DHIS2 aggregate"
+
+    header = dmc.Paper(
+        withBorder=True, radius="lg", shadow="xs", p="xl",
+        style={"marginBottom": "20px", "borderColor": BORDER},
+        children=[
+            html.Div("Operational Readiness", style={
+                "fontSize": "11px", "fontWeight": "700", "color": "#0F766E",
+                "letterSpacing": ".12em", "textTransform": "uppercase", "marginBottom": "10px",
+            }),
+            html.H1("Maternal and Newborn Service Readiness", style={
+                "fontSize": "26px", "fontWeight": "800", "color": TEXT,
+                "letterSpacing": "-.04em", "lineHeight": "1.15", "marginBottom": "6px",
+            }),
+            html.P(
+                f"{profile['overview']} · EmONC signal functions · Workforce · Commodities · Systems",
+                style={"fontSize": "13px", "color": MUTED, "marginBottom": "16px"},
+            ),
+            html.Div([
+                html.Span("Live assessment", style={
+                    "background": "#ECFDF5", "border": "1px solid #BBF7D0", "color": GREEN,
+                    "fontSize": "11px", "fontWeight": "700", "padding": "5px 11px", "borderRadius": "99px",
+                }),
+                *[
+                    html.Span(text, style={
+                        "background": "#F8FAFC", "border": f"1px solid {BORDER}", "color": "#475569",
+                        "fontSize": "11px", "fontWeight": "700", "padding": "5px 11px", "borderRadius": "99px",
+                    })
+                    for text in (period_text, f"{district_count} Districts · {facility_count} Facilities", source_label)
+                ],
+            ], style={"display": "flex", "gap": "8px", "flexWrap": "wrap"}),
         ],
-        id="operational-readiness-subtabs",
-        value="overview",
-        color="green",
     )
+
+    tabs = html.Div([
+        dcc.Tabs(
+            id="operational-readiness-subtabs", value="overview",
+            children=[dcc.Tab(
+                label=label, value=val, style=_TAB_STYLE,
+                selected_style=_TAB_SELECTED_STYLE,
+            ) for val, label in _TABS],
+            style={"borderBottom": "none", "minWidth": "720px"},
+            parent_style={"overflowX": "auto", "overflowY": "hidden"},
+        ),
+    ], style={
+        "background": SURFACE, "border": f"1px solid {BORDER}", "borderRadius": "10px",
+        "overflow": "hidden", "marginBottom": "20px",
+    })
+    tab_panels = html.Div([
+        html.Div(
+            dcc.Loading(
+                html.Div(id=f"operational-readiness-tab-{val}-content"),
+                type="circle", color=GREEN,
+            ),
+            id=f"operational-readiness-tab-{val}-panel",
+            style={} if val == "overview" else {"display": "none"},
+        )
+        for val, _ in _TABS
+    ])
 
     # _remember_ui_payload/_restore_ui_dataframe store exactly one DataFrame
     # each (see trends.py/coverage.py's own calls) -- df and agg_df need the
@@ -1387,7 +1474,7 @@ def render_operational_readiness(
         "start_date": start_date,
         "end_date": end_date,
     })
-    return html.Div([header, tabs, store])
+    return html.Div([header, html.Div(hierarchy_badge, style={"marginBottom": "20px"}), tabs, tab_panels, store])
 
 
 # ---------------------------------------------------------------------------
@@ -1400,6 +1487,11 @@ def render_operational_readiness(
     Output("operational-readiness-tab-people-content", "children"),
     Output("operational-readiness-tab-products-content", "children"),
     Output("operational-readiness-tab-systems-content", "children"),
+    Output("operational-readiness-tab-overview-panel", "style"),
+    Output("operational-readiness-tab-signal-functions-panel", "style"),
+    Output("operational-readiness-tab-people-panel", "style"),
+    Output("operational-readiness-tab-products-panel", "style"),
+    Output("operational-readiness-tab-systems-panel", "style"),
     Input("operational-readiness-subtabs", "value"),
     State("operational-readiness-tab-data-store", "data"),
     prevent_initial_call=False,
@@ -1415,34 +1507,38 @@ def _render_operational_readiness_tab(active_tab: str | None, store_data: dict |
     end_date = store_data.get("end_date")
     facility_codes = _source_facility_universe(df, scope_meta)
 
-    # Empty responses for inactive tabs so we don't re-render them
-    outputs = [no_update] * len(_TABS)
+    # Empty content for inactive tabs so we don't re-render them -- but the
+    # show/hide style for all 5 panels always updates, since dcc.Tabs (unlike
+    # dmc.TabsPanel) has no panel concept of its own to do that for us.
     tab_indices = {val: i for i, (val, _) in enumerate(_TABS)}
     target_idx = tab_indices.get(active_tab)
     if target_idx is None:
         raise PreventUpdate
+    content_outputs = [no_update] * len(_TABS)
+    style_outputs = [{"display": "none"}] * len(_TABS)
+    style_outputs[target_idx] = {}
 
     if active_tab == "overview":
         content = _build_overview_tab(facility_codes, df, agg_df, start_date, end_date)
     elif active_tab == "signal-functions":
         content = _build_signal_functions_tab(facility_codes, df, agg_df, start_date, end_date)
     elif active_tab == "people":
-        from mnid.core.indicators import INDICATORS
-        wf_inds = [ind for ind in INDICATORS.values() if ind.get("category") == "Workforce"]
-        content = _people_tab(facility_codes, wf_inds, df)
+        # No "Workforce"-category indicator exists in mnid.core.indicators yet
+        # (see this module's own docstring) -- _people_tab already renders
+        # the correct "not configured" placeholder for an empty list. This
+        # used to import a nonexistent INDICATORS constant and raise
+        # ImportError on every click, which Dash surfaces as the tab
+        # silently never finishing its (infinite) loading spinner.
+        content = _people_tab(facility_codes, [], df)
     elif active_tab == "products":
-        from mnid.core.indicators import INDICATORS
-        supply_inds = [ind for ind in INDICATORS.values() if ind.get("category") == "Supplies"]
-        content = _products_tab(facility_codes, supply_inds, df)
+        content = _products_tab(facility_codes, [], df)
     elif active_tab == "systems":
-        from mnid.core.indicators import INDICATORS
-        dq_inds = [ind for ind in INDICATORS.values() if ind.get("category") == "Data Quality"]
-        content = _systems_tab(facility_codes, dq_inds, df)
+        content = _systems_tab(facility_codes, [], df)
     else:
         content = html.Div("Tab content not found")
 
-    outputs[target_idx] = content
-    return tuple(outputs)
+    content_outputs[target_idx] = content
+    return tuple(content_outputs) + tuple(style_outputs)
 
 
 @callback(

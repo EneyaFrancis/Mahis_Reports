@@ -50,6 +50,11 @@ app.layout = dmc.MantineProvider(
         [
             dcc.Location(id="url", refresh=False),
             dcc.Store(id="url-params-store", storage_type="memory"),
+            # Remembers the MAHIS/DHIS2 toggle across reloads/navigations that
+            # don't carry ?route=... forward, so store_url_params can fall
+            # back to it instead of silently defaulting to MAHIS on load --
+            # only the toggle click (mnid-route-toggle) ever writes to this.
+            dcc.Store(id="mnid-route-store", storage_type="local", data="default"),
             html.Div(id="nav-container"),
             page_container,
         ],

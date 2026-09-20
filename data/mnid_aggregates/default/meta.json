@@ -1,16 +1,17 @@
 {
-  "generated_at": "2026-08-19T14:51:00.651994",
-  "elapsed_sec": 267.5,
-  "rows": 474984,
-  "indicators": 162,
+  "generated_at": "2026-09-20T13:00:04.303946",
+  "elapsed_sec": 480.9,
+  "rows": 13359,
+  "indicators": 183,
   "grains": [
-    "daily",
-    "weekly",
     "monthly",
+    "weekly",
+    "daily",
     "quarterly",
-    "yearly"
+    "yearly",
+    "relative_period"
   ],
   "data_source": "data/default/parquet",
-  "use_demo_data": true,
+  "use_demo_data": false,
   "last_run_status": "ok"
 }

@@ -1787,6 +1787,21 @@ def toggle_mnid_route(_n_clicks, current_search):
     return "?" + urllib.parse.urlencode({k: v[0] for k, v in params.items()})
 
 
+@callback(
+    Output('mnid-route-store', 'data'),
+    Input({"type": "mnid-route-toggle", "index": ALL}, 'n_clicks'),
+    State('mnid-route-store', 'data'),
+    prevent_initial_call=True,
+)
+def _save_mnid_route(_n_clicks, current_route):
+    """The only writer of mnid-route-store (see app.py) -- a real toggle
+    click is the only thing that should ever change the remembered route,
+    per the user's own instruction: slide the toggle, don't auto-revert."""
+    if not any(_n_clicks or []):
+        raise PreventUpdate
+    return 'dhis2' if (current_route or 'default') != 'dhis2' else 'default'
+
+
 def _resolve_filter_cascade(level, districts, moh_level, active_report, urlparams, data_route):
     """Resolve Level/District/Facility dropdown state -- shared by the live
     cascade callback (fires on every filter change) and the Apply-gated

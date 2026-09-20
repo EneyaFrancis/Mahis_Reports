@@ -472,6 +472,7 @@ def get_excel_mnid_records(
                 "numerator": val,
                 "denominator": val,
                 "pct": 100.0 if val else 0.0,
+                "source": "excel_nest",
             }
             mnid_records.append(mnid_row)
 
@@ -527,6 +528,7 @@ def get_excel_mnid_records(
                     "numerator": val,
                     "denominator": 100.0 if pct_val else 0.0,
                     "pct": round(pct_val, 1),
+                    "source": "excel_pph",
                 }
             else:
                 mnid_row = {
@@ -541,6 +543,7 @@ def get_excel_mnid_records(
                     "numerator": val,
                     "denominator": val,
                     "pct": 100.0 if val else 0.0,
+                    "source": "excel_pph",
                 }
             mnid_records.append(mnid_row)
 
@@ -598,34 +601,52 @@ def merge_excel_into_indicator_aggregates(
     if not df_dhis2.empty:
         df_dhis2["period_start"] = pd.to_datetime(df_dhis2["period_start"])
 
+    if not df_dhis2.empty and "source" not in df_dhis2.columns:
+        df_dhis2["source"] = "dhis2"
+
     overridden_count = 0
     if df_dhis2.empty:
         df_merged = df_excel
     elif df_excel.empty:
         df_merged = df_dhis2
     else:
-        # High priority merge:
-        # Create a unique key (facility_code, indicator_id, period_start, grain)
-        # Drop matching DHIS2 records where Excel has data, then append Excel records
-        excel_keys = set(
-            zip(
-                df_excel["facility_code"].astype(str),
-                df_excel["indicator_id"].astype(str),
-                df_excel["period_start"],
-                df_excel["grain"].astype(str),
-            )
+        # High priority merge, but coexisting rather than deleting: Excel
+        # still wins the *displayed* numerator/denominator/pct for a
+        # matching (facility_code, indicator_id, period_start, grain) key,
+        # but the DHIS2 value it replaces is carried along as
+        # dhis2_numerator/dhis2_denominator/dhis2_pct on that same row
+        # instead of being dropped outright -- so DHIS2's own number for
+        # that period still exists in the aggregate (queryable/inspectable),
+        # it just isn't what a plain numerator/denominator sum reads by
+        # default. One row per key either way, so no downstream consumer
+        # that groups/sums by facility+indicator+period risks double-
+        # counting the same real-world event from two sources.
+        key_cols = ["facility_code", "indicator_id", "period_start", "grain"]
+        df_dhis2_keyed = df_dhis2.copy()
+        df_dhis2_keyed["facility_code"] = df_dhis2_keyed["facility_code"].astype(str)
+        df_dhis2_keyed["indicator_id"] = df_dhis2_keyed["indicator_id"].astype(str)
+        df_dhis2_keyed["grain"] = df_dhis2_keyed["grain"].astype(str)
+
+        df_excel_keyed = df_excel.copy()
+        df_excel_keyed["facility_code"] = df_excel_keyed["facility_code"].astype(str)
+        df_excel_keyed["indicator_id"] = df_excel_keyed["indicator_id"].astype(str)
+        df_excel_keyed["grain"] = df_excel_keyed["grain"].astype(str)
+
+        dhis2_values = df_dhis2_keyed.set_index(key_cols)[["numerator", "denominator", "pct"]]
+        dhis2_values = dhis2_values[~dhis2_values.index.duplicated(keep="last")]
+        dhis2_values = dhis2_values.rename(columns={
+            "numerator": "dhis2_numerator", "denominator": "dhis2_denominator", "pct": "dhis2_pct",
+        })
+
+        df_excel_keyed = df_excel_keyed.join(dhis2_values, on=key_cols)
+        overridden_count = int(df_excel_keyed["dhis2_numerator"].notna().sum())
+
+        mask_override = pd.MultiIndex.from_frame(df_dhis2_keyed[key_cols]).isin(
+            pd.MultiIndex.from_frame(df_excel_keyed[key_cols])
         )
+        df_dhis2_retained = df_dhis2_keyed[~mask_override]
 
-        def is_excel_overridden(row):
-            key = (str(row["facility_code"]), str(row["indicator_id"]), row["period_start"], str(row["grain"]))
-            return key in excel_keys
-
-        # Filter out DHIS2 records that are overridden by Excel
-        mask_override = df_dhis2.apply(is_excel_overridden, axis=1)
-        overridden_count = int(mask_override.sum())
-        df_dhis2_retained = df_dhis2[~mask_override]
-
-        df_merged = pd.concat([df_dhis2_retained, df_excel], ignore_index=True)
+        df_merged = pd.concat([df_dhis2_retained, df_excel_keyed], ignore_index=True)
 
     if not df_merged.empty:
         # Ensure correct schema types
@@ -640,6 +661,14 @@ def merge_excel_into_indicator_aggregates(
         df_merged["district"] = df_merged["district"].astype(str)
         df_merged["grain"] = df_merged["grain"].astype(str)
         df_merged["period_start"] = pd.to_datetime(df_merged["period_start"])
+        if "source" not in df_merged.columns:
+            df_merged["source"] = "dhis2"
+        else:
+            df_merged["source"] = df_merged["source"].fillna("dhis2")
+        for col in ("dhis2_numerator", "dhis2_denominator", "dhis2_pct"):
+            if col not in df_merged.columns:
+                df_merged[col] = pd.NA
+            df_merged[col] = df_merged[col].astype("float64")
 
         # Deduplicate and sort deterministically
         df_merged = df_merged.drop_duplicates(

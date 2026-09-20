@@ -2,7 +2,7 @@ import os
 import urllib.parse
 
 import pandas as pd
-from dash import Input, Output, html
+from dash import Input, Output, State, html
 from dash.exceptions import PreventUpdate
 from config import DEMO_UUID, DEMO_LOCATION
 
@@ -111,8 +111,9 @@ def register_navigation_callbacks(app, pathname_prefix):
     @app.callback(
         Output("url-params-store", "data"),
         Input("url", "href"),
+        State("mnid-route-store", "data"),
     )
-    def store_url_params(href):
+    def store_url_params(href, persisted_route):
         """
         Parse the URL and store query parameters.
 
@@ -133,6 +134,15 @@ def register_navigation_callbacks(app, pathname_prefix):
         # No uuid in URL → return empty so callers get unauthorized state
         if not requested_uuid:
             return {}
+
+        # A shared/bookmarked link's own ?route=... always wins. Otherwise
+        # every downstream urlparams.get('route', ['default'])[0]  read
+        # (update_dashboard, sync_picker_with_logic, etc.) would silently
+        # fall back to MAHIS whenever a navigation doesn't carry that param
+        # forward -- fall back to the last route the toggle actually set
+        # instead, so the data source only ever changes via that toggle.
+        if "route" not in params and persisted_route:
+            params["route"] = [persisted_route]
 
         # uuid present → store and let home.py handle authorization
         return params
