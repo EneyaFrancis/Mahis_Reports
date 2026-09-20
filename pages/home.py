@@ -842,7 +842,20 @@ def _load_filter_source_data(
 layout = html.Div(
     className="dashboard-layout-modern",
     children=[
-        dcc.Location(id='url', refresh=False),
+        # NOT dcc.Location(id='url', ...) here -- app.py's global layout
+        # already mounts exactly one, wrapping page_container, which this
+        # page's own layout renders inside of. A second component sharing
+        # that same id put two live dcc.Location instances in the DOM at
+        # once whenever /home was showing; a callback Output targeting
+        # 'url.search'/'url.pathname' then had two components to choose
+        # from, and which one actually got the browser's real address bar
+        # wired to it was inconsistent -- confirmed live as the MAHIS/DHIS2
+        # toggle: the click's immediate content flip (update_dashboard,
+        # which doesn't touch url.search) always worked, but
+        # toggle_mnid_route's own url.search write landed on the "wrong"
+        # instance often enough that the address bar (and everything that
+        # reads it back, like store_url_params) never actually caught up,
+        # making the toggle look stuck after the first switch.
         dcc.Store(id='active-button-store', data='General Summary'),
         dcc.Store(id='filter-drawer-open', data=False),
         dcc.Store(id='scroll-watcher', data=0),
