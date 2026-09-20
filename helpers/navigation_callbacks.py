@@ -2,7 +2,7 @@ import os
 import urllib.parse
 
 import pandas as pd
-from dash import Input, Output, State, html
+from dash import Input, Output, State, ctx, html
 from dash.exceptions import PreventUpdate
 from config import DEMO_UUID, DEMO_LOCATION
 
@@ -111,10 +111,9 @@ def register_navigation_callbacks(app, pathname_prefix):
     @app.callback(
         Output("url-params-store", "data"),
         Input("url", "href"),
-        Input("url", "search"),
-        State("mnid-route-store", "data"),
+        Input("mnid-route-store", "data"),
     )
-    def store_url_params(href, search, persisted_route):
+    def store_url_params(href, persisted_route):
         """
         Parse the URL and store query parameters.
 
@@ -124,19 +123,30 @@ def register_navigation_callbacks(app, pathname_prefix):
 
         Returns {} only when no 'uuid' is present in the URL.
 
-        Both href and search are Inputs, not just href, because dcc.Location
-        doesn't reliably re-fire href when a callback (toggle_mnid_route,
-        sync_dashboard_id_to_url) sets search alone -- confirmed live: after
-        such an Output, url.search itself was correctly updated (later State
-        reads of it saw the new value), but this callback's href-only Input
-        never fired again, so url-params-store stayed on its initial route
-        forever and every later toggle click recomputed its flip from that
-        same stale baseline instead of the route actually just set.
+        mnid-route-store is a second Input, not just a State fallback,
+        because dcc.Location doesn't reliably re-fire href when a callback
+        (toggle_mnid_route) sets url.search alone -- confirmed live: url
+        .search itself updated correctly across clicks, but this callback's
+        href-only Input never fired again afterward, so url-params-store
+        stayed on its initial route forever and every later toggle click
+        recomputed its flip from that same stale baseline instead of the
+        route actually just set. mnid-route-store is written atomically by
+        that same click, so reacting to it directly is both more reliable
+        and (unlike Input('url', 'search')) doesn't create a dependency
+        cycle back through active-button-store -> sync_dashboard_id_to_url.
+
+        On a route-store-triggered fire, that just-written route is used
+        directly, since it's the freshest, most authoritative signal
+        available. On an href-triggered fire (real navigation/page load),
+        the URL's own explicit ?route=... still wins when present (shared/
+        bookmarked links), falling back to the persisted route only when
+        the URL doesn't specify one at all.
         """
-        query = search if search else (urllib.parse.urlparse(href).query if href else None)
-        if not query:
+        if not href:
             return {}
-        params = urllib.parse.parse_qs(query.lstrip('?'))  # {'uuid': ['...'], ...}
+
+        parsed = urllib.parse.urlparse(href)
+        params = urllib.parse.parse_qs(parsed.query)  # {'uuid': ['...'], ...}
 
         requested_uuid = (params.get("uuid") or [None])[0]
 
@@ -144,19 +154,11 @@ def register_navigation_callbacks(app, pathname_prefix):
         if not requested_uuid:
             return {}
 
-        # A shared/bookmarked link's own ?route=... always wins. Otherwise
-        # every downstream urlparams.get('route', ['default'])[0]  read
-        # (update_dashboard, sync_picker_with_logic, etc.) would silently
-        # fall back to MAHIS whenever a navigation doesn't carry that param
-        # forward -- fall back to the last route the toggle actually set
-        # instead, so the data source only ever changes via that toggle.
-        if "route" not in params and persisted_route:
+        if ctx.triggered_id == "mnid-route-store" and persisted_route:
+            params["route"] = [persisted_route]
+        elif "route" not in params and persisted_route:
             params["route"] = [persisted_route]
 
-        import logging as _dbg_logging
-        _dbg_logging.getLogger(__name__).warning(
-            'STORE_URL_PARAMS DEBUG: href=%r search=%r -> route=%r', href, search, params.get('route'),
-        )
         # uuid present → store and let home.py handle authorization
         return params
 
