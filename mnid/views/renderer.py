@@ -764,10 +764,26 @@ def _render_mnid_executive_tab(active_tab, executive_token):
     views    = _MNID_EXECUTIVE_DISK_CACHE.get(f'ec:{executive_token}') or {}
     selected = active_tab or 'country-profile'
     state    = _MNID_EXECUTIVE_DISK_CACHE.get(f'ed:{executive_token}') or {}
+    _already_cached = selected in views
 
     try:
-        result = _build_executive_tab_view(selected, views, state)
-        _MNID_EXECUTIVE_DISK_CACHE.set(f'ec:{executive_token}', views, expire=_MNID_UI_CACHE_TTL_SECONDS)
+        # store_in_views=False + a merge-under-transaction write below,
+        # instead of mutating this `views` snapshot and writing the whole
+        # thing back: with 4 worker processes all capable of computing the
+        # same content-derived executive_token, two of these can run
+        # concurrently against the same 'ec:{token}' blob (this callback
+        # firing on one worker while the background preload thread or
+        # another tab click runs on another) -- each holds its own local
+        # `views` copy, so a blind overwrite of the whole dict loses
+        # whichever tab the OTHER one just added, not just this one's own
+        # update. Only write back when this tab wasn't already cached --
+        # otherwise nothing changed and there's nothing to merge.
+        result = _build_executive_tab_view(selected, views, state, store_in_views=False)
+        if not _already_cached:
+            with _MNID_EXECUTIVE_DISK_CACHE.transact():
+                fresh_views = _MNID_EXECUTIVE_DISK_CACHE.get(f'ec:{executive_token}') or {}
+                fresh_views[selected] = result
+                _MNID_EXECUTIVE_DISK_CACHE.set(f'ec:{executive_token}', fresh_views, expire=_MNID_UI_CACHE_TTL_SECONDS)
         return result
     except Exception as _exc:
         _LOGGER.exception('Failed to render executive tab %s: %s', selected, _exc)
@@ -902,6 +918,18 @@ def _preload_mnid_executive_tabs(_tick, executive_token, active_tab):
     _LOGGER.info('MNID background preload firing: ndf_available=%s', _ndf_available)
 
     def _do_preload():
+        # Built into a local dict, not mutated straight into `views`, and
+        # merged into the CURRENT disk-cache state at the end under a
+        # transaction rather than blindly overwriting it with this
+        # snapshot -- `views` here can be minutes stale by the time this
+        # background thread finishes (queued behind a slow build, or this
+        # is one of several worker processes racing the same
+        # executive_token), and a real tab click's own read-modify-write
+        # of the same 'ec:{token}' blob landing in between would otherwise
+        # get silently erased by this thread's own stale-snapshot write --
+        # confirmed live as Maternal/Newborn tabs intermittently going
+        # blank under multiple worker processes.
+        newly_built = {}
         for tab_value in ['maternal-dashboard', 'newborn-dashboard']:
             if tab_value == active_tab or tab_value in views:
                 continue
@@ -909,7 +937,9 @@ def _preload_mnid_executive_tabs(_tick, executive_token, active_tab):
                 continue
             try:
                 _LOGGER.info('MNID background preload: building %s', tab_value)
-                _build_executive_tab_view(tab_value, views, state)
+                newly_built[tab_value] = _build_executive_tab_view(
+                    tab_value, views, state, store_in_views=False,
+                )
                 _LOGGER.info('MNID background preload: %s done', tab_value)
             except Exception as exc:
                 _LOGGER.warning('Background preload failed for executive tab %s: %s', tab_value, exc)
@@ -936,7 +966,11 @@ def _preload_mnid_executive_tabs(_tick, executive_token, active_tab):
                 except Exception as exc:
                     _LOGGER.warning('Background preload failed for maternal category %s: %s', category, exc)
 
-        _MNID_EXECUTIVE_DISK_CACHE.set(f'ec:{executive_token}', views, expire=_MNID_UI_CACHE_TTL_SECONDS)
+        if newly_built:
+            with _MNID_EXECUTIVE_DISK_CACHE.transact():
+                fresh_views = _MNID_EXECUTIVE_DISK_CACHE.get(f'ec:{executive_token}') or {}
+                fresh_views.update(newly_built)
+                _MNID_EXECUTIVE_DISK_CACHE.set(f'ec:{executive_token}', fresh_views, expire=_MNID_UI_CACHE_TTL_SECONDS)
 
     threading.Thread(target=_do_preload, daemon=True, name='mnid-preload').start()
     raise PreventUpdate
