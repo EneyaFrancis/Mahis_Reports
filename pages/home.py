@@ -1804,13 +1804,19 @@ def toggle_mnid_route(_n_clicks, current_search):
     the opposite way and the toggle gets stuck reporting a route that never
     actually changes. One flip, one source of truth, both outputs written
     atomically from it."""
+    import logging as _dbg_logging
+    _dbg_log = _dbg_logging.getLogger(__name__)
+    _dbg_log.warning('TOGGLE DEBUG: fired, _n_clicks=%r current_search=%r', _n_clicks, current_search)
     if not any(_n_clicks or []):
+        _dbg_log.warning('TOGGLE DEBUG: PreventUpdate (no truthy n_clicks)')
         raise PreventUpdate
     params = urllib.parse.parse_qs((current_search or "").lstrip('?'))
     current_route = (params.get('route', ['default'])[0] or 'default')
     new_route = 'dhis2' if current_route != 'dhis2' else 'default'
     params['route'] = [new_route]
-    return "?" + urllib.parse.urlencode({k: v[0] for k, v in params.items()}), new_route
+    new_search = "?" + urllib.parse.urlencode({k: v[0] for k, v in params.items()})
+    _dbg_log.warning('TOGGLE DEBUG: returning new_search=%r new_route=%r', new_search, new_route)
+    return new_search, new_route
 
 
 def _resolve_filter_cascade(level, districts, moh_level, active_report, urlparams, data_route):
@@ -2072,6 +2078,7 @@ def load_program_filter_options(urlparams):
         State({"type": "crosstab-table", "index": ALL}, "id"),
         State({"type": "crosstab-data-store", "index": ALL}, "data"),
         State({"type": "crosstab-data-store", "index": ALL}, "id"),
+        State('mnid-route-store', 'data'),
     ],
 )
 def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosstab_active_cells, current_active,
@@ -2079,10 +2086,32 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
                      start_date, end_date, level,
                      districts, facilities, overview, category, programs,
                      moh_level, age, period_type, active_mnid_tab,
-                     crosstab_data_list, crosstab_table_ids, crosstab_store_data_list, crosstab_store_ids):
+                     crosstab_data_list, crosstab_table_ids, crosstab_store_data_list, crosstab_store_ids,
+                     mnid_route_store):
     try:
         ctx = callback_context
         triggered_id = ctx.triggered[0]['prop_id'] if ctx.triggered else None
+        # This callback fires twice per toggle click: immediately from the
+        # button's own n_clicks (handled below via route_toggled), and again
+        # once url-params-store catches up through toggle_mnid_route's own
+        # url.search -> store_url_params round trip -- now that that round
+        # trip actually completes (see store_url_params's own history), this
+        # second firing is no longer a no-op. Confirmed live: the redundant
+        # re-render it caused recreated the toggle button (n_clicks resets to
+        # 0 on every render) a second time in quick succession, and that
+        # second recreation could land after the user's next click had
+        # already fired against the first instance, losing it -- "works
+        # once, then the button stops responding." Skip this second render
+        # outright when it's purely an echo of a route we've already shown:
+        # mnid-route-store was written atomically with the original click
+        # (see toggle_mnid_route), so if url-params-store's route already
+        # matches it, there's nothing new to render. (triggered_id being
+        # exactly 'url-params-store.data' already rules out this same
+        # dispatch being the route_toggled click itself.)
+        if triggered_id == 'url-params-store.data':
+            _echoed_route = (urlparams or {}).get('route', [None])[0]
+            if mnid_route_store is not None and _echoed_route == mnid_route_store:
+                raise PreventUpdate
         # ALL-pattern Inputs also fire when a fresh n_clicks=0 button is
         # created by this very callback's own last render (not just on a
         # real click) -- checking the value too, same as the menu-button
@@ -2120,6 +2149,11 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
             # triggered this -- don't wait on url.search's own round trip
             # back through url-params-store to catch up.
             data_route = 'default' if data_route == 'dhis2' else 'dhis2'
+        import logging as _dbg_logging
+        _dbg_logging.getLogger(__name__).warning(
+            'ROUTE DEBUG: triggered_id=%r route_toggled=%s urlparams_route=%r resolved_data_route=%r',
+            triggered_id, route_toggled, (urlparams or {}).get('route'), data_route,
+        )
         dataset_version = _dataset_version_token(data_route)
 
         if not districts:
