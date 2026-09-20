@@ -62,21 +62,21 @@ STATUS_ICONS = {"green": "✓", "amber": "⚠", "red": "✕", "na": "–", "awai
 # strings; they're display-only, so it's safe to word them for the audience
 # rather than the color wheel.
 SIGNAL_DETAIL_LABELS = {
-    "green": f"{STATUS_ICONS['green']} Performed",
-    "red": f"{STATUS_ICONS['red']} Not performed",
-    "na": f"{STATUS_ICONS['na']} Not expected at this level",
-    "unavailable": f"{STATUS_ICONS['na']} Not reported via this data source",
+    "green": "Performed",
+    "red": "Not performed",
+    "na": "Not expected at this level",
+    "unavailable": "Not reported via this data source",
 }
 RATE_LABELS = {
-    "green": f"{STATUS_ICONS['green']} On track",
-    "amber": f"{STATUS_ICONS['amber']} Needs attention",
-    "red": f"{STATUS_ICONS['red']} Below target",
+    "green": "On track",
+    "amber": "Needs attention",
+    "red": "Below target",
 }
-AWAITING_LABEL = f"{STATUS_ICONS['awaiting']} Not yet reported"
+AWAITING_LABEL = "Not yet reported"
 EMONC_LABELS = {
-    "CEmONC": f"{STATUS_ICONS['green']} CEmONC",
-    "BEmONC": f"{STATUS_ICONS['amber']} BEmONC",
-    "Unclassified": f"{STATUS_ICONS['red']} Unclassified",
+    "CEmONC": "CEmONC",
+    "BEmONC": "BEmONC",
+    "Unclassified": "Unclassified",
 }
 EMONC_TONES = {"CEmONC": "green", "BEmONC": "amber", "Unclassified": "red"}
 
@@ -654,7 +654,7 @@ def _matrix_cell(pct: float | int | str | None, detail: str | None = None) -> ht
     hover tooltip via the HTML title attribute."""
     common = {"textAlign": "center", "padding": "9px 10px", "fontSize": "12px"}
     if pct in (None, ""):
-        return html.Td(STATUS_ICONS["awaiting"], title=detail, style={
+        return html.Td("–", title=detail, style={
             **common, "color": MUTED, "background": BACKGROUND, "borderBottom": f"1px solid {BORDER}",
         })
     if isinstance(pct, str) and pct.strip().upper() in ["N/A", "NOT APPLICABLE", "NA", "–", "-"]:
@@ -682,7 +682,7 @@ def _plain_cell(value: str | None, detail: str | None = None) -> html.Td:
     performance judgment the number doesn't carry."""
     common = {"textAlign": "center", "padding": "9px 10px", "fontSize": "12px"}
     if value in (None, ""):
-        return html.Td(STATUS_ICONS["awaiting"], title=detail, style={
+        return html.Td("–", title=detail, style={
             **common, "color": MUTED, "borderBottom": f"1px solid {BORDER}",
         })
     if isinstance(value, str) and value.strip().upper() in ["N/A", "NOT APPLICABLE", "NA", "–", "-"]:

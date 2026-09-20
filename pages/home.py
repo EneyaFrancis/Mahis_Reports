@@ -1804,18 +1804,13 @@ def toggle_mnid_route(_n_clicks, current_search):
     the opposite way and the toggle gets stuck reporting a route that never
     actually changes. One flip, one source of truth, both outputs written
     atomically from it."""
-    import logging as _dbg_logging
-    _dbg_log = _dbg_logging.getLogger(__name__)
-    _dbg_log.warning('TOGGLE DEBUG: fired, _n_clicks=%r current_search=%r', _n_clicks, current_search)
     if not any(_n_clicks or []):
-        _dbg_log.warning('TOGGLE DEBUG: PreventUpdate (no truthy n_clicks)')
         raise PreventUpdate
     params = urllib.parse.parse_qs((current_search or "").lstrip('?'))
     current_route = (params.get('route', ['default'])[0] or 'default')
     new_route = 'dhis2' if current_route != 'dhis2' else 'default'
     params['route'] = [new_route]
     new_search = "?" + urllib.parse.urlencode({k: v[0] for k, v in params.items()})
-    _dbg_log.warning('TOGGLE DEBUG: returning new_search=%r new_route=%r', new_search, new_route)
     return new_search, new_route
 
 
@@ -2149,11 +2144,6 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
             # triggered this -- don't wait on url.search's own round trip
             # back through url-params-store to catch up.
             data_route = 'default' if data_route == 'dhis2' else 'dhis2'
-        import logging as _dbg_logging
-        _dbg_logging.getLogger(__name__).warning(
-            'ROUTE DEBUG: triggered_id=%r route_toggled=%s urlparams_route=%r resolved_data_route=%r',
-            triggered_id, route_toggled, (urlparams or {}).get('route'), data_route,
-        )
         dataset_version = _dataset_version_token(data_route)
 
         if not districts:
