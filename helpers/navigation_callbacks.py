@@ -1,3 +1,4 @@
+import json
 import os
 import urllib.parse
 
@@ -79,9 +80,26 @@ def register_navigation_callbacks(app, pathname_prefix):
             timestamp_path = os.path.join(path, f"data/{data_route}", "TimeStamp.csv")
             os.makedirs(os.path.dirname(timestamp_path), exist_ok=True)
             users_path = os.path.join(path, f"data/{data_route}", "dcc_dropdown_json", "user_properties.json")
-            
+
             os.makedirs(os.path.dirname(users_path), exist_ok=True)
-            last_updated = pd.read_csv(timestamp_path)["saving_time"].to_list()[0]
+            if os.path.exists(timestamp_path):
+                last_updated = pd.read_csv(timestamp_path)["saving_time"].to_list()[0]
+            else:
+                # DHIS2 has no TimeStamp.csv -- that's written by MAHIS's own
+                # data_storage.py refresh job, which DHIS2's separate sync
+                # pipeline (mnid.dhis2.sync) never runs. Its own aggregate's
+                # meta.json already records when it was last built; use that
+                # instead of falling all the way through to "Unknown" below.
+                last_updated = "Unknown"
+                meta_path = os.path.join(path, "data", "mnid_aggregates", data_route, "meta.json")
+                if os.path.exists(meta_path):
+                    try:
+                        with open(meta_path, encoding="utf-8") as f:
+                            generated_at = json.load(f).get("generated_at")
+                        if generated_at:
+                            last_updated = pd.to_datetime(generated_at).strftime("%d/%m/%Y, %H:%M:%S")
+                    except Exception:
+                        pass
 
             if os.path.exists(users_path):
                 with open(users_path, "r") as f:
