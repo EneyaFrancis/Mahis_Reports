@@ -297,6 +297,54 @@ class TestReadinessConversionAndProvider(unittest.TestCase):
         detail_view = _systems_tab(["LL040122"], None, df)
         self.assertIsNotNone(detail_view)
 
+    def test_facility_profile_summation_equals_67(self):
+        from mnid.views.operational_readiness import _facility_profile_rows, _facility_type_by_code
+        df = get_readiness_data()
+        self.assertIsNotNone(df)
+        self.assertEqual(len(df), 67)
+
+        all_codes = list(df["facility_code"].unique())
+        self.assertEqual(len(all_codes), 67)
+
+        emonc = get_facility_emonc_classification()
+        cemonc_group = [c for c in all_codes if emonc.get(c) == "CEmONC"]
+        bemonc_group = [c for c in all_codes if emonc.get(c) == "BEmONC"]
+
+        self.assertEqual(len(cemonc_group), 19)
+        self.assertEqual(len(bemonc_group), 48)
+
+        rows = _facility_profile_rows(all_codes, cemonc_group, bemonc_group)
+        self.assertEqual(len(rows), 4)
+
+        labels = [r["label"] for r in rows]
+        self.assertEqual(labels, ["Central Hospital", "District Hospital", "Hospital", "Health Centre"])
+
+        total_sum = sum(int(r["total"]) for r in rows)
+        cemonc_sum = sum(int(r["cemonc"]) for r in rows)
+        bemonc_sum = sum(int(r["bemonc"]) for r in rows)
+
+        self.assertEqual(total_sum, 67, "Total facilities in Facility Profile must sum to 67")
+        self.assertEqual(cemonc_sum, 19, "CEmONC facilities in Facility Profile must sum to 19")
+        self.assertEqual(bemonc_sum, 48, "BEmONC facilities in Facility Profile must sum to 48")
+
+        # Check individual row counts
+        by_label = {r["label"]: r for r in rows}
+        self.assertEqual(int(by_label["Central Hospital"]["total"]), 3)
+        self.assertEqual(int(by_label["Central Hospital"]["cemonc"]), 3)
+        self.assertEqual(int(by_label["Central Hospital"]["bemonc"]), 0)
+
+        self.assertEqual(int(by_label["District Hospital"]["total"]), 2)
+        self.assertEqual(int(by_label["District Hospital"]["cemonc"]), 2)
+        self.assertEqual(int(by_label["District Hospital"]["bemonc"]), 0)
+
+        self.assertEqual(int(by_label["Hospital"]["total"]), 15)
+        self.assertEqual(int(by_label["Hospital"]["cemonc"]), 11)
+        self.assertEqual(int(by_label["Hospital"]["bemonc"]), 4)
+
+        self.assertEqual(int(by_label["Health Centre"]["total"]), 47)
+        self.assertEqual(int(by_label["Health Centre"]["cemonc"]), 3)
+        self.assertEqual(int(by_label["Health Centre"]["bemonc"]), 44)
+
 
 if __name__ == "__main__":
     unittest.main()
