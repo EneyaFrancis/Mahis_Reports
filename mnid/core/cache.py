@@ -106,8 +106,8 @@ _DATA_CACHE_DIR = os.environ.get('MNID_DATA_CACHE_DIR') or os.path.join(
 _MNID_EXECUTIVE_DISK_CACHE = diskcache.Cache(_EXECUTIVE_CACHE_DIR, size_limit=256 * 1024 * 1024)
 _MNID_DATA_DISK_CACHE      = diskcache.Cache(_DATA_CACHE_DIR, size_limit=3 * 1024 * 1024 * 1024)
 _MNID_WARNED_MESSAGES: set = set()
-_COUNTRY_PROFILE_RENDER_VERSION = "country-profile-v52-route-toggle"
-_EXECUTIVE_RENDER_VERSION = "executive-v62-opreadiness-no-icons"
+_COUNTRY_PROFILE_RENDER_VERSION = "country-profile-v53-agg-overlap-fix"
+_EXECUTIVE_RENDER_VERSION = "executive-v63-agg-overlap-fix"
 
 
 _network_df_cache: dict = {}
