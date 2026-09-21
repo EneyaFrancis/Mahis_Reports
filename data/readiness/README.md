@@ -26,6 +26,14 @@ data/readiness/
   - **`BEmONC`**: Facilities marked `BEmONC` in `sd_del_emonc2` (48 facilities).
 - In the Overview tab's **Facility readiness comparison** table and sub-tabs, facilities are classified based on `sd_del_emonc2` (with fallback to referral tiers for facilities outside the survey).
 
+### Facility Profile Breakdown in Overview:
+- Under the Overview sub-tab's **Facility Profile** section, facilities are classified across their operational categories:
+  - **Central Hospital** (3 facilities: Kamuzu Central, Mzuzu Central, Queen Elizabeth Central; all 3 CEmONC).
+  - **District Hospital** (2 facilities: Bwaila Hospital, Mzimba District Hospital; all 2 CEmONC).
+  - **Hospital** (15 facilities: Community, Mission, and Rural Hospitals; 11 CEmONC, 4 BEmONC).
+  - **Health Centre** (47 facilities: Health Centres and Clinics; 3 CEmONC, 44 BEmONC).
+- The total across all four facility types sums to exactly **67** facilities (19 CEmONC, 48 BEmONC).
+
 ### Indicator Deactivation (No Data for CeMoC and BeMoC):
 - When an indicator or variable has no reported observations across both CeMoC and BeMoC facilities in scope, it is deactivated and suppressed from rendering in comparison tables and detail views rather than displaying empty or confusing rows.
 
