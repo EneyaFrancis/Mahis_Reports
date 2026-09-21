@@ -399,25 +399,44 @@ _FACILITY_TYPE_BY_CODE: dict[str, str] | None = None
 
 
 def _facility_type_by_code() -> dict[str, str]:
-    """Load data/geo/facilities_levels.json once into {Facility_CODE: TYPE}
-    (Central Hospital / District Hospital / Health Centre) - the same
-    reference file mnid.core.data_utils.resolve_facility_level() reads,
-    just keyed to the clinically-recognizable referral-level label instead
-    of the Primary/Secondary/Tertiary tier derived from it."""
+    """Load facility types for all facilities in scope:
+    Maps each facility code to its clinically-standard category:
+    'Central Hospital', 'District Hospital', 'Hospital', or 'Health Centre'
+    (with Clinic categorized under Health Centre).
+    Consults data/geo/facilities_dhis2.json and facilities_levels.json."""
     global _FACILITY_TYPE_BY_CODE
     if _FACILITY_TYPE_BY_CODE is not None:
         return _FACILITY_TYPE_BY_CODE
+    mapping: dict[str, str] = {}
+    try:
+        from mnid.core.dhis2_facilities import dhis2_facility_records
+        for r in dhis2_facility_records():
+            code = r.get("CODE")
+            raw_type = r.get("TYPE")
+            if code and raw_type:
+                raw_type_str = str(raw_type).strip()
+                if raw_type_str.lower() == "clinic":
+                    mapping[code] = "Health Centre"
+                else:
+                    mapping[code] = raw_type_str
+    except Exception:
+        pass
     import json
     import os
     path = os.path.join(os.getcwd(), "data", "geo", "facilities_levels.json")
     try:
         with open(path, encoding="utf-8") as f:
             records = json.load(f)
-        _FACILITY_TYPE_BY_CODE = {
-            str(r.get("CODE")): r.get("TYPE") for r in records if r.get("CODE") and r.get("TYPE")
-        }
+        for r in records:
+            code = str(r.get("CODE"))
+            t = r.get("TYPE")
+            if code and t:
+                t_str = str(t).strip()
+                if code not in mapping or mapping[code] == "Hospital":
+                    mapping[code] = t_str
     except Exception:
-        _FACILITY_TYPE_BY_CODE = {}
+        pass
+    _FACILITY_TYPE_BY_CODE = mapping
     return _FACILITY_TYPE_BY_CODE
 
 
@@ -942,7 +961,7 @@ def _build_signal_functions_tab(facility_codes: list[str], df: pd.DataFrame,
 # Overview
 # ---------------------------------------------------------------------------
 
-_FACILITY_TYPE_ORDER = ["Central Hospital", "District Hospital", "Health Centre"]
+_FACILITY_TYPE_ORDER = ["Central Hospital", "District Hospital", "Hospital", "Health Centre"]
 
 
 _PROFILE_STATS_COLUMNS = [
@@ -951,14 +970,10 @@ _PROFILE_STATS_COLUMNS = [
 
 
 def _facility_profile_rows(all_codes: list[str], cemonc_group: list[str], bemonc_group: list[str]) -> list[dict]:
-    """Central/District Hospital vs Health Centre facility counts, Total and
-    per EmONC group - re-expresses the same referral-level tier that already
-    drives Primary/Secondary/Tertiary EmONC eligibility, under the
-    clinically-recognizable label the source workbook uses, rather than new
-    data. Total is every facility in scope, not just cemonc_group +
-    bemonc_group - CEmONC/BEmONC only cover facilities that qualify for one
-    of those tiers, so Total is what still accounts for Unclassified
-    facilities without breaking them out on their own."""
+    """Central Hospital, District Hospital, Hospital, and Health Centre facility counts,
+    Total and per EmONC group. Total covers every facility in scope, summing to the exact
+    facility count (e.g., 67 nationally: 3 Central Hospitals, 2 District Hospitals,
+    15 Hospitals, 47 Health Centres/Clinics; 19 CEmONC and 48 BEmONC)."""
     type_by_code = _facility_type_by_code()
 
     def _count_and_detail(group: list[str], kind: str, group_label: str) -> tuple[str, str | None]:
