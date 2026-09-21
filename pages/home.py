@@ -2086,6 +2086,11 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
     try:
         ctx = callback_context
         triggered_id = ctx.triggered[0]['prop_id'] if ctx.triggered else None
+        import logging as _dbg_logging
+        _dbg_logging.getLogger(__name__).warning(
+            'PERIOD DEBUG: triggered_id=%r period_type=%r start_date=%r end_date=%r',
+            triggered_id, period_type, start_date, end_date,
+        )
         # This callback fires twice per toggle click: immediately from the
         # button's own n_clicks (handled below via route_toggled), and again
         # once url-params-store catches up through toggle_mnid_route's own
@@ -2416,6 +2421,10 @@ def update_dashboard(gen, menu_clicks, pathname, urlparams, clear_clicks, crosst
 def sync_picker_with_logic(period_type, n, current_active, _route_toggle_clicks, urlparams):
     ctx = callback_context
     triggered_id = ctx.triggered_id
+    import logging as _dbg_logging
+    _dbg_logging.getLogger(__name__).warning(
+        'SYNC_PICKER DEBUG: fired, triggered_id=%r incoming period_type=%r', triggered_id, period_type,
+    )
     data_route = (urlparams or {}).get('route', ["default"])[0]
     # See update_dashboard's own route_toggled check: an ALL-pattern Input
     # also fires on a freshly re-created n_clicks=0 button, not just a real
@@ -2464,7 +2473,12 @@ def sync_picker_with_logic(period_type, n, current_active, _route_toggle_clicks,
     if period_type:
         s, e = get_relative_date_range(period_type, current_date=anchor)
         if s and e:
+            _dbg_logging.getLogger(__name__).warning('SYNC_PICKER DEBUG: returning computed s=%r e=%r period_type=%r', s, e, period_type)
             return s, e, period_type
+    _dbg_logging.getLogger(__name__).warning(
+        'SYNC_PICKER DEBUG: falling through to default_start=%r default_end=%r period_type=%r',
+        default_start, default_end, (period_type or DEFAULT_RELATIVE_PERIOD),
+    )
     return default_start, default_end, (period_type or DEFAULT_RELATIVE_PERIOD)
 
 @callback(
