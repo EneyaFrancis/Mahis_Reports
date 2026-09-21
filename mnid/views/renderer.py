@@ -483,10 +483,21 @@ def render_mnid_dashboard(filtered, data_opd, data_path, config,
                     'MNID raw load skipped: %s-%s window has no overlap with available data %s-%s (route=%s)',
                     start_date, end_date, _agg_start.date(), _agg_end.date(), route,
                 )
-            elif _agg_start <= pd.Timestamp(start_date) and pd.Timestamp(end_date) <= _agg_end:
+            else:
+                # ANY overlap, full or partial, prefers the aggregate -- not
+                # just full containment. A window extending past the
+                # aggregate's own end (e.g. a "This Year" selection running
+                # past the last aggregate rebuild) used to fall through here
+                # and attempt a raw scan instead, but the live raw-parquet
+                # files on disk are routinely narrower than what's already in
+                # the aggregate (confirmed live: aggregate covers Jan-Aug,
+                # only June/July raw files remained on disk after rotation) --
+                # so that "more complete" raw scan was actually returning
+                # much less data than the aggregate already had, showing
+                # near-zero numbers for a period the aggregate answers fine.
                 _skip_raw_load = True
                 _LOGGER.info(
-                    'MNID raw load skipped: %s-%s window fully covered by aggregate %s-%s (route=%s)',
+                    'MNID raw load skipped: %s-%s overlaps available aggregate data %s-%s (route=%s) -- preferring aggregate',
                     start_date, end_date, _agg_start.date(), _agg_end.date(), route,
                 )
 
