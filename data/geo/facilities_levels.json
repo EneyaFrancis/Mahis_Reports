@@ -11,7 +11,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Tertiary",
         "REFERRAL FACILITY": "None",
-        "HIGHEST LEVEL NEWBORN CARE": "level 4"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 3 (Advanced neonatal intensive care)"
     },
     {
         "CODE": "MZ161098",
@@ -25,7 +25,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Tertiary",
         "REFERRAL FACILITY": "None",
-        "HIGHEST LEVEL NEWBORN CARE": "level 4"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 3 (Advanced neonatal intensive care)"
     },
     {
         "CODE": "BT241293",
@@ -39,7 +39,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Tertiary",
         "REFERRAL FACILITY": "None",
-        "HIGHEST LEVEL NEWBORN CARE": "level 4"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 3 (Advanced neonatal intensive care)"
     },
     {
         "CODE": "ZA231509",
@@ -53,7 +53,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Tertiary",
         "REFERRAL FACILITY": "None",
-        "HIGHEST LEVEL NEWBORN CARE": "level 4"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 3 (Advanced neonatal intensive care)"
     },
     {
         "CODE": "BK170053",
@@ -67,7 +67,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "CP060293",
@@ -81,7 +81,7 @@
         "DATE OPENED": "Apr 1st 74",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "DE030334",
@@ -95,7 +95,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "DA020350",
@@ -109,7 +109,7 @@
         "DATE OPENED": "Dec 31st 31",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "KA150570",
@@ -123,7 +123,7 @@
         "DATE OPENED": "Jan 1st 31",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "KU070588",
@@ -137,7 +137,7 @@
         "DATE OPENED": "Jan 1st 69",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "MC190752",
@@ -151,7 +151,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "MC010898",
@@ -165,7 +165,7 @@
         "DATE OPENED": "Dec 9th 89",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "MW281081",
@@ -179,7 +179,7 @@
         "DATE OPENED": "Jan 1st 81",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "MZ161095",
@@ -193,7 +193,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "NE291160",
@@ -207,7 +207,7 @@
         "DATE OPENED": "Feb 10th 07",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "KB051193",
@@ -221,7 +221,7 @@
         "DATE OPENED": "May 13th 15",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "NK101202",
@@ -235,7 +235,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "NT121225",
@@ -249,7 +249,7 @@
         "DATE OPENED": "Aug 28th 83",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "NT081226",
@@ -263,7 +263,7 @@
         "DATE OPENED": "Oct 8th 89",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "RU141302",
@@ -277,7 +277,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "SA091312",
@@ -291,7 +291,7 @@
         "DATE OPENED": "Jan 1st 84",
         "FACILITY LEVEL": "Secondary",
         "REFERRAL FACILITY": "Central Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 3"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 2+ (SSNC with CPAP)"
     },
     {
         "CODE": "LL040033",
@@ -305,7 +305,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL040037",
@@ -319,7 +319,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT240059",
@@ -333,7 +333,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NK100073",
@@ -347,7 +347,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT120080",
@@ -361,7 +361,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT120081",
@@ -375,7 +375,7 @@
         "DATE OPENED": "Oct 1st 95",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "ZA230083",
@@ -389,7 +389,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DA020111",
@@ -403,7 +403,7 @@
         "DATE OPENED": "Dec 31st 85",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KU070113",
@@ -417,7 +417,7 @@
         "DATE OPENED": "Jan 1st 84",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NK100114",
@@ -431,7 +431,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KB050115",
@@ -445,7 +445,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160116",
@@ -459,7 +459,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "TH310121",
@@ -473,7 +473,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT120123",
@@ -487,7 +487,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160124",
@@ -501,7 +501,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "SA090139",
@@ -515,7 +515,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DA020140",
@@ -529,7 +529,7 @@
         "DATE OPENED": "Dec 31st 85",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "ZA230144",
@@ -543,7 +543,7 @@
         "DATE OPENED": "Jan 1st 79",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT120147",
@@ -557,7 +557,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KU070148",
@@ -571,7 +571,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CK270150",
@@ -585,7 +585,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "ZA230151",
@@ -599,7 +599,7 @@
         "DATE OPENED": "Mar 15th 05",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "TH310152",
@@ -613,7 +613,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DA020153",
@@ -627,7 +627,7 @@
         "DATE OPENED": "Jan 1st 82",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CK270157",
@@ -641,7 +641,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KB050164",
@@ -655,7 +655,7 @@
         "DATE OPENED": "May 12th 87",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BK170173",
@@ -669,7 +669,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NE290176",
@@ -683,7 +683,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160184",
@@ -697,7 +697,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT240187",
@@ -711,7 +711,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL040188",
@@ -725,7 +725,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE030191",
@@ -739,7 +739,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC190194",
@@ -753,7 +753,7 @@
         "DATE OPENED": "Dec 30th 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KB050195",
@@ -767,7 +767,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT240202",
@@ -781,7 +781,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL040203",
@@ -795,7 +795,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT240207",
@@ -809,7 +809,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT240216",
@@ -823,7 +823,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KA150220",
@@ -837,7 +837,7 @@
         "DATE OPENED": "Jun 1st 01",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "TH310222",
@@ -851,7 +851,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL040225",
@@ -865,7 +865,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT240227",
@@ -879,7 +879,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE030228",
@@ -893,7 +893,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "TH310230",
@@ -907,7 +907,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "ZA230238",
@@ -921,7 +921,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT080239",
@@ -935,7 +935,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "SA090240",
@@ -949,7 +949,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DA020243",
@@ -963,7 +963,7 @@
         "DATE OPENED": "Dec 31st 80",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC010251",
@@ -977,7 +977,7 @@
         "DATE OPENED": "Mar 6th 86",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "SA090255",
@@ -991,7 +991,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC010259",
@@ -1005,7 +1005,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DA020269",
@@ -1019,7 +1019,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "ZA230270",
@@ -1033,7 +1033,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "TH310274",
@@ -1047,7 +1047,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL040282",
@@ -1061,7 +1061,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "PH220283",
@@ -1075,7 +1075,7 @@
         "DATE OPENED": "Dec 29th 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CR260286",
@@ -1089,7 +1089,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KB050290",
@@ -1103,7 +1103,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CK270291",
@@ -1117,7 +1117,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE030294",
@@ -1131,7 +1131,7 @@
         "DATE OPENED": "Dec 29th 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL040298",
@@ -1145,7 +1145,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DA020306",
@@ -1159,7 +1159,7 @@
         "DATE OPENED": "Jan 1st 04",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160309",
@@ -1173,7 +1173,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KU070314",
@@ -1187,7 +1187,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NE290328",
@@ -1201,7 +1201,7 @@
         "DATE OPENED": "Apr 25th 16",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL040339",
@@ -1215,7 +1215,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT240342",
@@ -1229,7 +1229,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT120344",
@@ -1243,7 +1243,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CK270345",
@@ -1257,7 +1257,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DA020366",
@@ -1271,7 +1271,7 @@
         "DATE OPENED": "Jan 1st 50",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MU210367",
@@ -1285,7 +1285,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "TH310369",
@@ -1299,7 +1299,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE030371",
@@ -1313,7 +1313,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT240373",
@@ -1327,7 +1327,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DA020375",
@@ -1341,7 +1341,7 @@
         "DATE OPENED": "Jan 1st 82",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT120376",
@@ -1355,7 +1355,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160389",
@@ -1369,7 +1369,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160390",
@@ -1383,7 +1383,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160391",
@@ -1397,7 +1397,7 @@
         "DATE OPENED": "Jul 21st 86",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160392",
@@ -1411,7 +1411,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160393",
@@ -1425,7 +1425,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KA150413",
@@ -1439,7 +1439,7 @@
         "DATE OPENED": "May 2nd 92",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CK270414",
@@ -1453,7 +1453,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CK270429",
@@ -1467,7 +1467,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE030430",
@@ -1481,7 +1481,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "TH310431",
@@ -1495,7 +1495,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160452",
@@ -1509,7 +1509,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CP060461",
@@ -1523,7 +1523,7 @@
         "DATE OPENED": "Jul 9th 78",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KA150465",
@@ -1537,7 +1537,7 @@
         "DATE OPENED": "Dec 31st 80",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160471",
@@ -1551,7 +1551,7 @@
         "DATE OPENED": "Jan 1st 35",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160480",
@@ -1565,7 +1565,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160481",
@@ -1579,7 +1579,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KB050484",
@@ -1593,7 +1593,7 @@
         "DATE OPENED": "Jan 1st 79",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT240490",
@@ -1607,7 +1607,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE030491",
@@ -1621,7 +1621,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160493",
@@ -1635,7 +1635,7 @@
         "DATE OPENED": "Jan 1st 91",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC010494",
@@ -1649,7 +1649,7 @@
         "DATE OPENED": "Jan 1st 84",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CK270495",
@@ -1663,7 +1663,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "PH220502",
@@ -1677,7 +1677,7 @@
         "DATE OPENED": "Jul 15th 87",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE030507",
@@ -1691,7 +1691,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KU070518",
@@ -1705,7 +1705,7 @@
         "DATE OPENED": "Jan 1st 86",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CP060519",
@@ -1719,7 +1719,7 @@
         "DATE OPENED": "Dec 1st 78",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160526",
@@ -1733,7 +1733,7 @@
         "DATE OPENED": "Feb 5th 84",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160530",
@@ -1747,7 +1747,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KB050533",
@@ -1761,7 +1761,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT120534",
@@ -1775,7 +1775,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL040536",
@@ -1789,7 +1789,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT080537",
@@ -1803,7 +1803,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE030546",
@@ -1817,7 +1817,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC010551",
@@ -1831,7 +1831,7 @@
         "DATE OPENED": "Jan 1st 92",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KU070553",
@@ -1845,7 +1845,7 @@
         "DATE OPENED": "Jan 1st 78",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CP060554",
@@ -1859,7 +1859,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE030560",
@@ -1873,7 +1873,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT120581",
@@ -1887,7 +1887,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KA150585",
@@ -1901,7 +1901,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL040593",
@@ -1915,7 +1915,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NK100597",
@@ -1929,7 +1929,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT120601",
@@ -1943,7 +1943,7 @@
         "DATE OPENED": "Jan 1st 85",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL040610",
@@ -1957,7 +1957,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DA020616",
@@ -1971,7 +1971,7 @@
         "DATE OPENED": "Jan 1st 85",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "SA090626",
@@ -1985,7 +1985,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL040629",
@@ -1999,7 +1999,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "TH310631",
@@ -2013,7 +2013,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160632",
@@ -2027,7 +2027,7 @@
         "DATE OPENED": "Jul 15th 89",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MW280646",
@@ -2041,7 +2041,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "ZA230653",
@@ -2055,7 +2055,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL040655",
@@ -2069,7 +2069,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "SA090663",
@@ -2083,7 +2083,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "ZA230667",
@@ -2097,7 +2097,7 @@
         "DATE OPENED": "Jun 21st 93",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT240698",
@@ -2111,7 +2111,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KB050701",
@@ -2125,7 +2125,7 @@
         "DATE OPENED": "Jan 1st 84",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT120707",
@@ -2139,7 +2139,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE030708",
@@ -2153,7 +2153,7 @@
         "DATE OPENED": "Dec 30th 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL040719",
@@ -2167,7 +2167,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT240723",
@@ -2181,7 +2181,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MG200726",
@@ -2195,7 +2195,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KA150730",
@@ -2209,7 +2209,7 @@
         "DATE OPENED": "Jan 1st 87",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NE290738",
@@ -2223,7 +2223,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160741",
@@ -2237,7 +2237,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160743",
@@ -2251,7 +2251,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KB050744",
@@ -2265,7 +2265,7 @@
         "DATE OPENED": "Jan 1st 39",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KA150745",
@@ -2279,7 +2279,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC190753",
@@ -2293,7 +2293,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160765",
@@ -2307,7 +2307,7 @@
         "DATE OPENED": "Jan 11th 76",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT240770",
@@ -2321,7 +2321,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "ZA230771",
@@ -2335,7 +2335,7 @@
         "DATE OPENED": "Sep 30th 15",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "SA090773",
@@ -2349,7 +2349,7 @@
         "DATE OPENED": "Dec 30th 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NE290776",
@@ -2363,7 +2363,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "SA090778",
@@ -2377,7 +2377,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "TH310780",
@@ -2391,7 +2391,7 @@
         "DATE OPENED": "Dec 30th 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CP060781",
@@ -2405,7 +2405,7 @@
         "DATE OPENED": "Sep 23rd 17",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CK270784",
@@ -2419,7 +2419,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MG200786",
@@ -2433,7 +2433,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT240788",
@@ -2447,7 +2447,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT240790",
@@ -2461,7 +2461,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CK270791",
@@ -2475,7 +2475,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "SA090792",
@@ -2489,7 +2489,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "TH310794",
@@ -2503,7 +2503,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "ZA230795",
@@ -2517,7 +2517,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL040809",
@@ -2531,7 +2531,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160812",
@@ -2545,7 +2545,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NK100819",
@@ -2559,7 +2559,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CK270830",
@@ -2573,7 +2573,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160834",
@@ -2587,7 +2587,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE030836",
@@ -2601,7 +2601,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "ZA230856",
@@ -2615,7 +2615,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160863",
@@ -2629,7 +2629,7 @@
         "DATE OPENED": "Feb 1st 11",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KB050865",
@@ -2643,7 +2643,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CR260867",
@@ -2657,7 +2657,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE030869",
@@ -2671,7 +2671,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160873",
@@ -2685,7 +2685,7 @@
         "DATE OPENED": "Sep 2nd 80",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DA020885",
@@ -2699,7 +2699,7 @@
         "DATE OPENED": "Dec 31st 83",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MU210886",
@@ -2713,7 +2713,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "SA090899",
@@ -2727,7 +2727,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT240900",
@@ -2741,7 +2741,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE030910",
@@ -2755,7 +2755,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "PH220920",
@@ -2769,7 +2769,7 @@
         "DATE OPENED": "Dec 31st 84",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC010925",
@@ -2783,7 +2783,7 @@
         "DATE OPENED": "Jan 1st 86",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CR260929",
@@ -2797,7 +2797,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL040932",
@@ -2811,7 +2811,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CP060941",
@@ -2825,7 +2825,7 @@
         "DATE OPENED": "Feb 10th 78",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE030946",
@@ -2839,7 +2839,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC010947",
@@ -2853,7 +2853,7 @@
         "DATE OPENED": "Jan 1st 94",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KU070950",
@@ -2867,7 +2867,7 @@
         "DATE OPENED": "Oct 1st 83",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT080951",
@@ -2881,7 +2881,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "PH220952",
@@ -2895,7 +2895,7 @@
         "DATE OPENED": "Dec 6th 88",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ160954",
@@ -2909,7 +2909,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC190959",
@@ -2923,7 +2923,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE030964",
@@ -2937,7 +2937,7 @@
         "DATE OPENED": "Apr 19th 95",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KA150966",
@@ -2951,7 +2951,7 @@
         "DATE OPENED": "May 1st 08",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NK100991",
@@ -2965,7 +2965,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KB050992",
@@ -2979,7 +2979,7 @@
         "DATE OPENED": "Jan 1st 82",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "PH220993",
@@ -2993,7 +2993,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KU070994",
@@ -3007,7 +3007,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KA150995",
@@ -3021,7 +3021,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE031001",
@@ -3035,7 +3035,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ161004",
@@ -3049,7 +3049,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "RU141007",
@@ -3063,7 +3063,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT241009",
@@ -3077,7 +3077,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DA021015",
@@ -3091,7 +3091,7 @@
         "DATE OPENED": "Jan 1st 91",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ161019",
@@ -3105,7 +3105,7 @@
         "DATE OPENED": "Jul 15th 84",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE031023",
@@ -3119,7 +3119,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ161029",
@@ -3133,7 +3133,7 @@
         "DATE OPENED": "Jul 15th 89",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL041034",
@@ -3147,7 +3147,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NK101038",
@@ -3161,7 +3161,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ161040",
@@ -3175,7 +3175,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MU211049",
@@ -3189,7 +3189,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "ZA231073",
@@ -3203,7 +3203,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NK101077",
@@ -3217,7 +3217,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "RU141087",
@@ -3231,7 +3231,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ161090",
@@ -3245,7 +3245,7 @@
         "DATE OPENED": "Jul 15th 81",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT081093",
@@ -3259,7 +3259,7 @@
         "DATE OPENED": "Oct 7th 92",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KB051094",
@@ -3273,7 +3273,7 @@
         "DATE OPENED": "Jan 31st 72",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ161100",
@@ -3287,7 +3287,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CR261110",
@@ -3301,7 +3301,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC191116",
@@ -3315,7 +3315,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "ZA231119",
@@ -3329,7 +3329,7 @@
         "DATE OPENED": "Feb 12th 80",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "PH221120",
@@ -3343,7 +3343,7 @@
         "DATE OPENED": "Dec 31st 73",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BK171125",
@@ -3357,7 +3357,7 @@
         "DATE OPENED": "Jan 10th 11",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT241127",
@@ -3371,7 +3371,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MG201138",
@@ -3385,7 +3385,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "ZA231140",
@@ -3399,7 +3399,7 @@
         "DATE OPENED": "Jan 1st 56",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL041146",
@@ -3413,7 +3413,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC191148",
@@ -3427,7 +3427,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC191149",
@@ -3441,7 +3441,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "PH221150",
@@ -3455,7 +3455,7 @@
         "DATE OPENED": "Dec 31st 01",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL041155",
@@ -3469,7 +3469,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT241158",
@@ -3483,7 +3483,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CR261159",
@@ -3497,7 +3497,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NK101169",
@@ -3511,7 +3511,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KA151171",
@@ -3525,7 +3525,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC191177",
@@ -3539,7 +3539,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL041179",
@@ -3553,7 +3553,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ161187",
@@ -3567,7 +3567,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CR261188",
@@ -3581,7 +3581,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "PH221203",
@@ -3595,7 +3595,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NK101204",
@@ -3609,7 +3609,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ161205",
@@ -3623,7 +3623,7 @@
         "DATE OPENED": "May 1st 03",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC011206",
@@ -3637,7 +3637,7 @@
         "DATE OPENED": "Feb 9th 80",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CK271207",
@@ -3651,7 +3651,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL041213",
@@ -3665,7 +3665,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT121219",
@@ -3679,7 +3679,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC191222",
@@ -3693,7 +3693,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DE031223",
@@ -3707,7 +3707,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CP061228",
@@ -3721,7 +3721,7 @@
         "DATE OPENED": "Jan 1st 84",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "NT081231",
@@ -3735,7 +3735,7 @@
         "DATE OPENED": "Jan 1st 82",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL041232",
@@ -3749,7 +3749,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC191238",
@@ -3763,7 +3763,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KA151246",
@@ -3777,7 +3777,7 @@
         "DATE OPENED": "Dec 30th 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT241260",
@@ -3791,7 +3791,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "PH221263",
@@ -3805,7 +3805,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BK171269",
@@ -3819,7 +3819,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "ZA231305",
@@ -3833,7 +3833,7 @@
         "DATE OPENED": "Aug 1st 12",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KU071320",
@@ -3847,7 +3847,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KU071332",
@@ -3861,7 +3861,7 @@
         "DATE OPENED": "Feb 21st 67",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT241336",
@@ -3875,7 +3875,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "BT241347",
@@ -3889,7 +3889,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LK181355",
@@ -3903,7 +3903,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC011397",
@@ -3917,7 +3917,7 @@
         "DATE OPENED": "Jan 1st 26",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MW281401",
@@ -3931,7 +3931,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "DA021418",
@@ -3945,7 +3945,7 @@
         "DATE OPENED": "Jan 1st 84",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CR261424",
@@ -3959,7 +3959,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MZ161425",
@@ -3973,7 +3973,7 @@
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MW281448",
@@ -3987,7 +3987,7 @@
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KB051466",
@@ -4001,7 +4001,7 @@
         "DATE OPENED": "Aug 1st 62",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CP061485",
@@ -4015,7 +4015,7 @@
         "DATE OPENED": "Sep 8th 78",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KA151489",
@@ -4029,7 +4029,7 @@
         "DATE OPENED": "Jan 1st 83",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC011950",
@@ -4043,7 +4043,7 @@
         "DATE OPENED": "May 9th 21",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LK181960",
@@ -4057,7 +4057,7 @@
         "DATE OPENED": "May 16th 19",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "KU071962",
@@ -4071,7 +4071,7 @@
         "DATE OPENED": "Feb 19th 19",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "MC012002",
@@ -4085,7 +4085,7 @@
         "DATE OPENED": "Sep 26th 20",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL042110",
@@ -4099,7 +4099,7 @@
         "DATE OPENED": "Jul 1st 92",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "LL042130",
@@ -4113,7 +4113,7 @@
         "DATE OPENED": "Jun 18th 24",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     },
     {
         "CODE": "CP062131",
@@ -4127,6 +4127,6 @@
         "DATE OPENED": "Oct 7th 15",
         "FACILITY LEVEL": "Primary",
         "REFERRAL FACILITY": "Community Hospital",
-        "HIGHEST LEVEL NEWBORN CARE": "level 1"
+        "HIGHEST LEVEL NEWBORN CARE": "Level 1 (Essential Newborn Care)"
     }
 ]
