@@ -10,7 +10,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Tertiary",
-        "REFERRAL FACILITY": "None"
+        "REFERRAL FACILITY": "None",
+        "HIGHEST LEVEL NEWBORN CARE": "level 4"
     },
     {
         "CODE": "MZ161098",
@@ -23,7 +24,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Tertiary",
-        "REFERRAL FACILITY": "None"
+        "REFERRAL FACILITY": "None",
+        "HIGHEST LEVEL NEWBORN CARE": "level 4"
     },
     {
         "CODE": "BT241293",
@@ -36,7 +38,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Tertiary",
-        "REFERRAL FACILITY": "None"
+        "REFERRAL FACILITY": "None",
+        "HIGHEST LEVEL NEWBORN CARE": "level 4"
     },
     {
         "CODE": "ZA231509",
@@ -49,7 +52,8 @@
         "DISTRICT": "Zomba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Tertiary",
-        "REFERRAL FACILITY": "None"
+        "REFERRAL FACILITY": "None",
+        "HIGHEST LEVEL NEWBORN CARE": "level 4"
     },
     {
         "CODE": "BK170053",
@@ -62,7 +66,8 @@
         "DISTRICT": "Balaka",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "CP060293",
@@ -75,7 +80,8 @@
         "DISTRICT": "Chitipa",
         "DATE OPENED": "Apr 1st 74",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "DE030334",
@@ -88,7 +94,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "DA020350",
@@ -101,7 +108,8 @@
         "DISTRICT": "Dowa",
         "DATE OPENED": "Dec 31st 31",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "KA150570",
@@ -114,7 +122,8 @@
         "DISTRICT": "Karonga",
         "DATE OPENED": "Jan 1st 31",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "KU070588",
@@ -127,7 +136,8 @@
         "DISTRICT": "Kasungu",
         "DATE OPENED": "Jan 1st 69",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "MC190752",
@@ -140,7 +150,8 @@
         "DISTRICT": "Machinga",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "MC010898",
@@ -153,7 +164,8 @@
         "DISTRICT": "Mchinji",
         "DATE OPENED": "Dec 9th 89",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "MW281081",
@@ -166,7 +178,8 @@
         "DISTRICT": "Mwanza",
         "DATE OPENED": "Jan 1st 81",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "MZ161095",
@@ -179,7 +192,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "NE291160",
@@ -192,7 +206,8 @@
         "DISTRICT": "Neno",
         "DATE OPENED": "Feb 10th 07",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "KB051193",
@@ -205,7 +220,8 @@
         "DISTRICT": "Nkhata Bay",
         "DATE OPENED": "May 13th 15",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "NK101202",
@@ -218,7 +234,8 @@
         "DISTRICT": "Nkhotakota",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "NT121225",
@@ -231,7 +248,8 @@
         "DISTRICT": "Ntcheu",
         "DATE OPENED": "Aug 28th 83",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "NT081226",
@@ -244,7 +262,8 @@
         "DISTRICT": "Ntchisi",
         "DATE OPENED": "Oct 8th 89",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "RU141302",
@@ -257,7 +276,8 @@
         "DISTRICT": "Rumphi",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "SA091312",
@@ -270,7 +290,8 @@
         "DISTRICT": "Salima",
         "DATE OPENED": "Jan 1st 84",
         "FACILITY LEVEL": "Secondary",
-        "REFERRAL FACILITY": "Central Hospital"
+        "REFERRAL FACILITY": "Central Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 3"
     },
     {
         "CODE": "LL040033",
@@ -283,7 +304,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL040037",
@@ -296,7 +318,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT240059",
@@ -309,7 +332,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NK100073",
@@ -322,7 +346,8 @@
         "DISTRICT": "Nkhotakota",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT120080",
@@ -335,7 +360,8 @@
         "DISTRICT": "Ntcheu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT120081",
@@ -348,7 +374,8 @@
         "DISTRICT": "Ntcheu",
         "DATE OPENED": "Oct 1st 95",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "ZA230083",
@@ -361,7 +388,8 @@
         "DISTRICT": "Zomba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DA020111",
@@ -374,7 +402,8 @@
         "DISTRICT": "Dowa",
         "DATE OPENED": "Dec 31st 85",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KU070113",
@@ -387,7 +416,8 @@
         "DISTRICT": "Kasungu",
         "DATE OPENED": "Jan 1st 84",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NK100114",
@@ -400,7 +430,8 @@
         "DISTRICT": "Nkhotakota",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KB050115",
@@ -413,7 +444,8 @@
         "DISTRICT": "Nkhata Bay",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160116",
@@ -426,7 +458,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "TH310121",
@@ -439,7 +472,8 @@
         "DISTRICT": "Thyolo",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT120123",
@@ -452,7 +486,8 @@
         "DISTRICT": "Ntcheu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160124",
@@ -465,7 +500,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "SA090139",
@@ -478,7 +514,8 @@
         "DISTRICT": "Salima",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DA020140",
@@ -491,7 +528,8 @@
         "DISTRICT": "Dowa",
         "DATE OPENED": "Dec 31st 85",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "ZA230144",
@@ -504,7 +542,8 @@
         "DISTRICT": "Zomba",
         "DATE OPENED": "Jan 1st 79",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT120147",
@@ -517,7 +556,8 @@
         "DISTRICT": "Ntcheu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KU070148",
@@ -530,7 +570,8 @@
         "DISTRICT": "Kasungu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CK270150",
@@ -543,7 +584,8 @@
         "DISTRICT": "Chikwawa",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "ZA230151",
@@ -556,7 +598,8 @@
         "DISTRICT": "Zomba",
         "DATE OPENED": "Mar 15th 05",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "TH310152",
@@ -569,7 +612,8 @@
         "DISTRICT": "Thyolo",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DA020153",
@@ -582,7 +626,8 @@
         "DISTRICT": "Dowa",
         "DATE OPENED": "Jan 1st 82",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CK270157",
@@ -595,7 +640,8 @@
         "DISTRICT": "Chikwawa",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KB050164",
@@ -608,7 +654,8 @@
         "DISTRICT": "Nkhata Bay",
         "DATE OPENED": "May 12th 87",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BK170173",
@@ -621,7 +668,8 @@
         "DISTRICT": "Balaka",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NE290176",
@@ -634,7 +682,8 @@
         "DISTRICT": "Neno",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160184",
@@ -647,7 +696,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT240187",
@@ -660,7 +710,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL040188",
@@ -673,7 +724,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE030191",
@@ -686,7 +738,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC190194",
@@ -699,7 +752,8 @@
         "DISTRICT": "Machinga",
         "DATE OPENED": "Dec 30th 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KB050195",
@@ -712,7 +766,8 @@
         "DISTRICT": "Nkhata Bay",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT240202",
@@ -725,7 +780,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL040203",
@@ -738,7 +794,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT240207",
@@ -751,7 +808,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT240216",
@@ -764,7 +822,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KA150220",
@@ -777,7 +836,8 @@
         "DISTRICT": "Karonga",
         "DATE OPENED": "Jun 1st 01",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "TH310222",
@@ -790,7 +850,8 @@
         "DISTRICT": "Thyolo",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL040225",
@@ -803,7 +864,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT240227",
@@ -816,7 +878,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE030228",
@@ -829,7 +892,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "TH310230",
@@ -842,7 +906,8 @@
         "DISTRICT": "Thyolo",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "ZA230238",
@@ -855,7 +920,8 @@
         "DISTRICT": "Zomba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT080239",
@@ -868,7 +934,8 @@
         "DISTRICT": "Ntchisi",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "SA090240",
@@ -881,7 +948,8 @@
         "DISTRICT": "Salima",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DA020243",
@@ -894,7 +962,8 @@
         "DISTRICT": "Dowa",
         "DATE OPENED": "Dec 31st 80",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC010251",
@@ -907,7 +976,8 @@
         "DISTRICT": "Mchinji",
         "DATE OPENED": "Mar 6th 86",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "SA090255",
@@ -920,7 +990,8 @@
         "DISTRICT": "Salima",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC010259",
@@ -933,7 +1004,8 @@
         "DISTRICT": "Mchinji",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DA020269",
@@ -946,7 +1018,8 @@
         "DISTRICT": "Dowa",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "ZA230270",
@@ -959,7 +1032,8 @@
         "DISTRICT": "Zomba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "TH310274",
@@ -972,7 +1046,8 @@
         "DISTRICT": "Thyolo",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL040282",
@@ -985,7 +1060,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "PH220283",
@@ -998,7 +1074,8 @@
         "DISTRICT": "Phalombe",
         "DATE OPENED": "Dec 29th 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CR260286",
@@ -1011,7 +1088,8 @@
         "DISTRICT": "Chiradzulu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KB050290",
@@ -1024,7 +1102,8 @@
         "DISTRICT": "Nkhata Bay",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CK270291",
@@ -1037,7 +1116,8 @@
         "DISTRICT": "Chikwawa",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE030294",
@@ -1050,7 +1130,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 29th 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL040298",
@@ -1063,7 +1144,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DA020306",
@@ -1076,7 +1158,8 @@
         "DISTRICT": "Dowa",
         "DATE OPENED": "Jan 1st 04",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160309",
@@ -1089,7 +1172,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KU070314",
@@ -1102,7 +1186,8 @@
         "DISTRICT": "Kasungu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NE290328",
@@ -1115,7 +1200,8 @@
         "DISTRICT": "Neno",
         "DATE OPENED": "Apr 25th 16",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL040339",
@@ -1128,7 +1214,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT240342",
@@ -1141,7 +1228,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT120344",
@@ -1154,7 +1242,8 @@
         "DISTRICT": "Ntcheu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CK270345",
@@ -1167,7 +1256,8 @@
         "DISTRICT": "Chikwawa",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DA020366",
@@ -1180,7 +1270,8 @@
         "DISTRICT": "Dowa",
         "DATE OPENED": "Jan 1st 50",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MU210367",
@@ -1193,7 +1284,8 @@
         "DISTRICT": "Mulanje",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "TH310369",
@@ -1206,7 +1298,8 @@
         "DISTRICT": "Thyolo",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE030371",
@@ -1219,7 +1312,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT240373",
@@ -1232,7 +1326,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DA020375",
@@ -1245,7 +1340,8 @@
         "DISTRICT": "Dowa",
         "DATE OPENED": "Jan 1st 82",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT120376",
@@ -1258,7 +1354,8 @@
         "DISTRICT": "Ntcheu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160389",
@@ -1271,7 +1368,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160390",
@@ -1284,7 +1382,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160391",
@@ -1297,7 +1396,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jul 21st 86",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160392",
@@ -1310,7 +1410,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160393",
@@ -1323,7 +1424,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KA150413",
@@ -1336,7 +1438,8 @@
         "DISTRICT": "Karonga",
         "DATE OPENED": "May 2nd 92",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CK270414",
@@ -1349,7 +1452,8 @@
         "DISTRICT": "Chikwawa",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CK270429",
@@ -1362,7 +1466,8 @@
         "DISTRICT": "Chikwawa",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE030430",
@@ -1375,7 +1480,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "TH310431",
@@ -1388,7 +1494,8 @@
         "DISTRICT": "Thyolo",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160452",
@@ -1401,7 +1508,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CP060461",
@@ -1414,7 +1522,8 @@
         "DISTRICT": "Chitipa",
         "DATE OPENED": "Jul 9th 78",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KA150465",
@@ -1427,7 +1536,8 @@
         "DISTRICT": "Karonga",
         "DATE OPENED": "Dec 31st 80",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160471",
@@ -1440,7 +1550,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 35",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160480",
@@ -1453,7 +1564,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160481",
@@ -1466,7 +1578,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KB050484",
@@ -1479,7 +1592,8 @@
         "DISTRICT": "Nkhata Bay",
         "DATE OPENED": "Jan 1st 79",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT240490",
@@ -1492,7 +1606,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE030491",
@@ -1505,7 +1620,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160493",
@@ -1518,7 +1634,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 91",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC010494",
@@ -1531,7 +1648,8 @@
         "DISTRICT": "Mchinji",
         "DATE OPENED": "Jan 1st 84",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CK270495",
@@ -1544,7 +1662,8 @@
         "DISTRICT": "Chikwawa",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "PH220502",
@@ -1557,7 +1676,8 @@
         "DISTRICT": "Phalombe",
         "DATE OPENED": "Jul 15th 87",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE030507",
@@ -1570,7 +1690,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KU070518",
@@ -1583,7 +1704,8 @@
         "DISTRICT": "Kasungu",
         "DATE OPENED": "Jan 1st 86",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CP060519",
@@ -1596,7 +1718,8 @@
         "DISTRICT": "Chitipa",
         "DATE OPENED": "Dec 1st 78",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160526",
@@ -1609,7 +1732,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Feb 5th 84",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160530",
@@ -1622,7 +1746,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KB050533",
@@ -1635,7 +1760,8 @@
         "DISTRICT": "Nkhata Bay",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT120534",
@@ -1648,7 +1774,8 @@
         "DISTRICT": "Ntcheu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL040536",
@@ -1661,7 +1788,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT080537",
@@ -1674,7 +1802,8 @@
         "DISTRICT": "Ntchisi",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE030546",
@@ -1687,7 +1816,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC010551",
@@ -1700,7 +1830,8 @@
         "DISTRICT": "Mchinji",
         "DATE OPENED": "Jan 1st 92",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KU070553",
@@ -1713,7 +1844,8 @@
         "DISTRICT": "Kasungu",
         "DATE OPENED": "Jan 1st 78",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CP060554",
@@ -1726,7 +1858,8 @@
         "DISTRICT": "Chitipa",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE030560",
@@ -1739,7 +1872,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT120581",
@@ -1752,7 +1886,8 @@
         "DISTRICT": "Ntcheu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KA150585",
@@ -1765,7 +1900,8 @@
         "DISTRICT": "Karonga",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL040593",
@@ -1778,7 +1914,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NK100597",
@@ -1791,7 +1928,8 @@
         "DISTRICT": "Nkhotakota",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT120601",
@@ -1804,7 +1942,8 @@
         "DISTRICT": "Ntcheu",
         "DATE OPENED": "Jan 1st 85",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL040610",
@@ -1817,7 +1956,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DA020616",
@@ -1830,7 +1970,8 @@
         "DISTRICT": "Dowa",
         "DATE OPENED": "Jan 1st 85",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "SA090626",
@@ -1843,7 +1984,8 @@
         "DISTRICT": "Salima",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL040629",
@@ -1856,7 +1998,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "TH310631",
@@ -1869,7 +2012,8 @@
         "DISTRICT": "Thyolo",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160632",
@@ -1882,7 +2026,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jul 15th 89",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MW280646",
@@ -1895,7 +2040,8 @@
         "DISTRICT": "Mwanza",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "ZA230653",
@@ -1908,7 +2054,8 @@
         "DISTRICT": "Zomba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL040655",
@@ -1921,7 +2068,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "SA090663",
@@ -1934,7 +2082,8 @@
         "DISTRICT": "Salima",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "ZA230667",
@@ -1947,7 +2096,8 @@
         "DISTRICT": "Zomba",
         "DATE OPENED": "Jun 21st 93",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT240698",
@@ -1960,7 +2110,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KB050701",
@@ -1973,7 +2124,8 @@
         "DISTRICT": "Nkhata Bay",
         "DATE OPENED": "Jan 1st 84",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT120707",
@@ -1986,7 +2138,8 @@
         "DISTRICT": "Ntcheu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE030708",
@@ -1999,7 +2152,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 30th 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL040719",
@@ -2012,7 +2166,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT240723",
@@ -2025,7 +2180,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MG200726",
@@ -2038,7 +2194,8 @@
         "DISTRICT": "Mangochi",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KA150730",
@@ -2051,7 +2208,8 @@
         "DISTRICT": "Karonga",
         "DATE OPENED": "Jan 1st 87",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NE290738",
@@ -2064,7 +2222,8 @@
         "DISTRICT": "Neno",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160741",
@@ -2077,7 +2236,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160743",
@@ -2090,7 +2250,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KB050744",
@@ -2103,7 +2264,8 @@
         "DISTRICT": "Nkhata Bay",
         "DATE OPENED": "Jan 1st 39",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KA150745",
@@ -2116,7 +2278,8 @@
         "DISTRICT": "Karonga",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC190753",
@@ -2129,7 +2292,8 @@
         "DISTRICT": "Machinga",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160765",
@@ -2142,7 +2306,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 11th 76",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT240770",
@@ -2155,7 +2320,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "ZA230771",
@@ -2168,7 +2334,8 @@
         "DISTRICT": "Zomba",
         "DATE OPENED": "Sep 30th 15",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "SA090773",
@@ -2181,7 +2348,8 @@
         "DISTRICT": "Salima",
         "DATE OPENED": "Dec 30th 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NE290776",
@@ -2194,7 +2362,8 @@
         "DISTRICT": "Neno",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "SA090778",
@@ -2207,7 +2376,8 @@
         "DISTRICT": "Salima",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "TH310780",
@@ -2220,7 +2390,8 @@
         "DISTRICT": "Thyolo",
         "DATE OPENED": "Dec 30th 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CP060781",
@@ -2233,7 +2404,8 @@
         "DISTRICT": "Chitipa",
         "DATE OPENED": "Sep 23rd 17",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CK270784",
@@ -2246,7 +2418,8 @@
         "DISTRICT": "Chikwawa",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MG200786",
@@ -2259,7 +2432,8 @@
         "DISTRICT": "Mangochi",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT240788",
@@ -2272,7 +2446,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT240790",
@@ -2285,7 +2460,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CK270791",
@@ -2298,7 +2474,8 @@
         "DISTRICT": "Chikwawa",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "SA090792",
@@ -2311,7 +2488,8 @@
         "DISTRICT": "Salima",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "TH310794",
@@ -2324,7 +2502,8 @@
         "DISTRICT": "Thyolo",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "ZA230795",
@@ -2337,7 +2516,8 @@
         "DISTRICT": "Zomba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL040809",
@@ -2350,7 +2530,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160812",
@@ -2363,7 +2544,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NK100819",
@@ -2376,7 +2558,8 @@
         "DISTRICT": "Nkhotakota",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CK270830",
@@ -2389,7 +2572,8 @@
         "DISTRICT": "Chikwawa",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160834",
@@ -2402,7 +2586,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE030836",
@@ -2415,7 +2600,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "ZA230856",
@@ -2428,7 +2614,8 @@
         "DISTRICT": "Zomba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160863",
@@ -2441,7 +2628,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Feb 1st 11",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KB050865",
@@ -2454,7 +2642,8 @@
         "DISTRICT": "Nkhata Bay",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CR260867",
@@ -2467,7 +2656,8 @@
         "DISTRICT": "Chiradzulu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE030869",
@@ -2480,7 +2670,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160873",
@@ -2493,7 +2684,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Sep 2nd 80",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DA020885",
@@ -2506,7 +2698,8 @@
         "DISTRICT": "Dowa",
         "DATE OPENED": "Dec 31st 83",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MU210886",
@@ -2519,7 +2712,8 @@
         "DISTRICT": "Mulanje",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "SA090899",
@@ -2532,7 +2726,8 @@
         "DISTRICT": "Salima",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT240900",
@@ -2545,7 +2740,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE030910",
@@ -2558,7 +2754,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "PH220920",
@@ -2571,7 +2768,8 @@
         "DISTRICT": "Phalombe",
         "DATE OPENED": "Dec 31st 84",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC010925",
@@ -2584,7 +2782,8 @@
         "DISTRICT": "Mchinji",
         "DATE OPENED": "Jan 1st 86",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CR260929",
@@ -2597,7 +2796,8 @@
         "DISTRICT": "Chiradzulu",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL040932",
@@ -2610,7 +2810,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CP060941",
@@ -2623,7 +2824,8 @@
         "DISTRICT": "Chitipa",
         "DATE OPENED": "Feb 10th 78",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE030946",
@@ -2636,7 +2838,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC010947",
@@ -2649,7 +2852,8 @@
         "DISTRICT": "Mchinji",
         "DATE OPENED": "Jan 1st 94",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KU070950",
@@ -2662,7 +2866,8 @@
         "DISTRICT": "Kasungu",
         "DATE OPENED": "Oct 1st 83",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT080951",
@@ -2675,7 +2880,8 @@
         "DISTRICT": "Ntchisi",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "PH220952",
@@ -2688,7 +2894,8 @@
         "DISTRICT": "Phalombe",
         "DATE OPENED": "Dec 6th 88",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ160954",
@@ -2701,7 +2908,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC190959",
@@ -2714,7 +2922,8 @@
         "DISTRICT": "Machinga",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE030964",
@@ -2727,7 +2936,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Apr 19th 95",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KA150966",
@@ -2740,7 +2950,8 @@
         "DISTRICT": "Karonga",
         "DATE OPENED": "May 1st 08",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NK100991",
@@ -2753,7 +2964,8 @@
         "DISTRICT": "Nkhotakota",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KB050992",
@@ -2766,7 +2978,8 @@
         "DISTRICT": "Nkhata Bay",
         "DATE OPENED": "Jan 1st 82",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "PH220993",
@@ -2779,7 +2992,8 @@
         "DISTRICT": "Phalombe",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KU070994",
@@ -2792,7 +3006,8 @@
         "DISTRICT": "Kasungu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KA150995",
@@ -2805,7 +3020,8 @@
         "DISTRICT": "Karonga",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE031001",
@@ -2818,7 +3034,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ161004",
@@ -2831,7 +3048,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "RU141007",
@@ -2844,7 +3062,8 @@
         "DISTRICT": "Rumphi",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT241009",
@@ -2857,7 +3076,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DA021015",
@@ -2870,7 +3090,8 @@
         "DISTRICT": "Dowa",
         "DATE OPENED": "Jan 1st 91",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ161019",
@@ -2883,7 +3104,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jul 15th 84",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE031023",
@@ -2896,7 +3118,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ161029",
@@ -2909,7 +3132,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jul 15th 89",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL041034",
@@ -2922,7 +3146,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NK101038",
@@ -2935,7 +3160,8 @@
         "DISTRICT": "Nkhotakota",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ161040",
@@ -2948,7 +3174,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MU211049",
@@ -2961,7 +3188,8 @@
         "DISTRICT": "Mulanje",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "ZA231073",
@@ -2974,7 +3202,8 @@
         "DISTRICT": "Zomba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NK101077",
@@ -2987,7 +3216,8 @@
         "DISTRICT": "Nkhotakota",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "RU141087",
@@ -3000,7 +3230,8 @@
         "DISTRICT": "Rumphi",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ161090",
@@ -3013,7 +3244,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jul 15th 81",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT081093",
@@ -3026,7 +3258,8 @@
         "DISTRICT": "Ntchisi",
         "DATE OPENED": "Oct 7th 92",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KB051094",
@@ -3039,7 +3272,8 @@
         "DISTRICT": "Nkhata Bay",
         "DATE OPENED": "Jan 31st 72",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ161100",
@@ -3052,7 +3286,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CR261110",
@@ -3065,7 +3300,8 @@
         "DISTRICT": "Chiradzulu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC191116",
@@ -3078,7 +3314,8 @@
         "DISTRICT": "Machinga",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "ZA231119",
@@ -3091,7 +3328,8 @@
         "DISTRICT": "Zomba",
         "DATE OPENED": "Feb 12th 80",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "PH221120",
@@ -3104,7 +3342,8 @@
         "DISTRICT": "Phalombe",
         "DATE OPENED": "Dec 31st 73",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BK171125",
@@ -3117,7 +3356,8 @@
         "DISTRICT": "Balaka",
         "DATE OPENED": "Jan 10th 11",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT241127",
@@ -3130,7 +3370,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MG201138",
@@ -3143,7 +3384,8 @@
         "DISTRICT": "Mangochi",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "ZA231140",
@@ -3156,7 +3398,8 @@
         "DISTRICT": "Zomba",
         "DATE OPENED": "Jan 1st 56",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL041146",
@@ -3169,7 +3412,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC191148",
@@ -3182,7 +3426,8 @@
         "DISTRICT": "Machinga",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC191149",
@@ -3195,7 +3440,8 @@
         "DISTRICT": "Machinga",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "PH221150",
@@ -3208,7 +3454,8 @@
         "DISTRICT": "Phalombe",
         "DATE OPENED": "Dec 31st 01",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL041155",
@@ -3221,7 +3468,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT241158",
@@ -3234,7 +3482,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CR261159",
@@ -3247,7 +3496,8 @@
         "DISTRICT": "Chiradzulu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NK101169",
@@ -3260,7 +3510,8 @@
         "DISTRICT": "Nkhotakota",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KA151171",
@@ -3273,7 +3524,8 @@
         "DISTRICT": "Karonga",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC191177",
@@ -3286,7 +3538,8 @@
         "DISTRICT": "Machinga",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL041179",
@@ -3299,7 +3552,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ161187",
@@ -3312,7 +3566,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CR261188",
@@ -3325,7 +3580,8 @@
         "DISTRICT": "Chiradzulu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "PH221203",
@@ -3338,7 +3594,8 @@
         "DISTRICT": "Phalombe",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NK101204",
@@ -3351,7 +3608,8 @@
         "DISTRICT": "Nkhotakota",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ161205",
@@ -3364,7 +3622,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "May 1st 03",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC011206",
@@ -3377,7 +3636,8 @@
         "DISTRICT": "Mchinji",
         "DATE OPENED": "Feb 9th 80",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CK271207",
@@ -3390,7 +3650,8 @@
         "DISTRICT": "Chikwawa",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL041213",
@@ -3403,7 +3664,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT121219",
@@ -3416,7 +3678,8 @@
         "DISTRICT": "Ntcheu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC191222",
@@ -3429,7 +3692,8 @@
         "DISTRICT": "Machinga",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DE031223",
@@ -3442,7 +3706,8 @@
         "DISTRICT": "Dedza",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CP061228",
@@ -3455,7 +3720,8 @@
         "DISTRICT": "Chitipa",
         "DATE OPENED": "Jan 1st 84",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "NT081231",
@@ -3468,7 +3734,8 @@
         "DISTRICT": "Ntchisi",
         "DATE OPENED": "Jan 1st 82",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL041232",
@@ -3481,7 +3748,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC191238",
@@ -3494,7 +3762,8 @@
         "DISTRICT": "Machinga",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KA151246",
@@ -3507,7 +3776,8 @@
         "DISTRICT": "Karonga",
         "DATE OPENED": "Dec 30th 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT241260",
@@ -3520,7 +3790,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "PH221263",
@@ -3533,7 +3804,8 @@
         "DISTRICT": "Phalombe",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BK171269",
@@ -3546,7 +3818,8 @@
         "DISTRICT": "Balaka",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "ZA231305",
@@ -3559,7 +3832,8 @@
         "DISTRICT": "Zomba",
         "DATE OPENED": "Aug 1st 12",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KU071320",
@@ -3572,7 +3846,8 @@
         "DISTRICT": "Kasungu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KU071332",
@@ -3585,7 +3860,8 @@
         "DISTRICT": "Kasungu",
         "DATE OPENED": "Feb 21st 67",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT241336",
@@ -3598,7 +3874,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "BT241347",
@@ -3611,7 +3888,8 @@
         "DISTRICT": "Blantyre",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LK181355",
@@ -3624,7 +3902,8 @@
         "DISTRICT": "Likoma",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC011397",
@@ -3637,7 +3916,8 @@
         "DISTRICT": "Mchinji",
         "DATE OPENED": "Jan 1st 26",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MW281401",
@@ -3650,7 +3930,8 @@
         "DISTRICT": "Mwanza",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "DA021418",
@@ -3663,7 +3944,8 @@
         "DISTRICT": "Dowa",
         "DATE OPENED": "Jan 1st 84",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CR261424",
@@ -3676,7 +3958,8 @@
         "DISTRICT": "Chiradzulu",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MZ161425",
@@ -3689,7 +3972,8 @@
         "DISTRICT": "Mzimba",
         "DATE OPENED": "Dec 31st 74",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MW281448",
@@ -3702,7 +3986,8 @@
         "DISTRICT": "Mwanza",
         "DATE OPENED": "Jan 1st 75",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KB051466",
@@ -3715,7 +4000,8 @@
         "DISTRICT": "Nkhata Bay",
         "DATE OPENED": "Aug 1st 62",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CP061485",
@@ -3728,7 +4014,8 @@
         "DISTRICT": "Chitipa",
         "DATE OPENED": "Sep 8th 78",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KA151489",
@@ -3741,7 +4028,8 @@
         "DISTRICT": "Karonga",
         "DATE OPENED": "Jan 1st 83",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC011950",
@@ -3754,7 +4042,8 @@
         "DISTRICT": "Mchinji",
         "DATE OPENED": "May 9th 21",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LK181960",
@@ -3767,7 +4056,8 @@
         "DISTRICT": "Likoma",
         "DATE OPENED": "May 16th 19",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "KU071962",
@@ -3780,7 +4070,8 @@
         "DISTRICT": "Kasungu",
         "DATE OPENED": "Feb 19th 19",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "MC012002",
@@ -3793,7 +4084,8 @@
         "DISTRICT": "Mchinji",
         "DATE OPENED": "Sep 26th 20",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL042110",
@@ -3806,7 +4098,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jul 1st 92",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "LL042130",
@@ -3819,7 +4112,8 @@
         "DISTRICT": "Lilongwe",
         "DATE OPENED": "Jun 18th 24",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     },
     {
         "CODE": "CP062131",
@@ -3832,6 +4126,7 @@
         "DISTRICT": "Chitipa",
         "DATE OPENED": "Oct 7th 15",
         "FACILITY LEVEL": "Primary",
-        "REFERRAL FACILITY": "Community Hospital"
+        "REFERRAL FACILITY": "Community Hospital",
+        "HIGHEST LEVEL NEWBORN CARE": "level 1"
     }
 ]
