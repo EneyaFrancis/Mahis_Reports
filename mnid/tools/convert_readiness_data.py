@@ -98,8 +98,8 @@ def build_facility_crosswalk(dhis2_crosswalk_path: Path, levels_path: Path) -> t
             "facility_code": code,
             "facility_name": rec.get("NAME") or rec.get("COMMON NAME") or level_info.get("NAME") or code,
             "district": dist,
-            "facility_type": level_info.get("TYPE") or rec.get("FACILITY LEVEL") or "Health Centre",
-            "facility_level": level_info.get("FACILITY LEVEL") or ("Tertiary" if "Central" in str(level_info.get("TYPE", "")) else ("Secondary" if "Hospital" in str(level_info.get("TYPE", "")) else "Primary")),
+            "facility_type": level_info.get("TYPE") or rec.get("TYPE") or "Health Centre",
+            "facility_level": level_info.get("FACILITY LEVEL") or rec.get("FACILITY LEVEL") or ("Tertiary" if "Central" in str(level_info.get("TYPE", "") or rec.get("TYPE", "")) else ("Secondary" if "District" in str(level_info.get("TYPE", "") or rec.get("TYPE", "")) else "Primary")),
             "dhis2_id": rec.get("DHIS2 ID") or "",
         }
 

@@ -234,6 +234,7 @@ def compute_readiness_matrix(
         if cemonc_val is None and (bemonc_val is None or (cem_only and bemonc_val == "N/A")):
             continue
 
+        is_occ = bool(ind.get("flag_over100") or "occupancy" in ind.get("label", "").lower() or var in ("sd_del_cap_num_lddel_occ", "nu_cap_cot"))
         rows.append({
             "label": ind["label"],
             "category": ind.get("section_header") or None,
@@ -243,6 +244,8 @@ def compute_readiness_matrix(
             "bemonc_detail": bemonc_detail,
             "statistic": ind.get("statistic", "n_percent"),
             "cemonc_only": cem_only,
+            "flag_over100": ind.get("flag_over100", False),
+            "is_occupancy": is_occ,
         })
 
     return rows
@@ -290,7 +293,21 @@ def compute_readiness_detail(sheet_name: str, facility_code: str) -> list[dict]:
             display_val = "Not reported"
         else:
             raw_val = fac_row[var]
-            if stat == "n_percent":
+            is_occ = bool(ind.get("flag_over100") or "occupancy" in ind.get("label", "").lower() or var in ("sd_del_cap_num_lddel_occ", "nu_cap_cot"))
+            if is_occ:
+                try:
+                    numeric_v = float(raw_val)
+                    if numeric_v < 80.0:
+                        status = "green"
+                    elif 80.0 <= numeric_v < 100.0:
+                        status = "amber"
+                    else:
+                        status = "red"
+                    display_val = f"{int(round(numeric_v))}%" if numeric_v.is_integer() else f"{numeric_v:.1f}%"
+                except (ValueError, TypeError):
+                    status = "plain"
+                    display_val = str(raw_val)
+            elif stat == "n_percent":
                 target = str(resp).strip().lower() if resp is not None else "yes"
                 actual = str(raw_val).strip().lower()
                 if actual == target:
@@ -315,8 +332,12 @@ def compute_readiness_detail(sheet_name: str, facility_code: str) -> list[dict]:
                     status = "amber"
                     display_val = str(raw_val)
             elif stat == "median_iqr":
+                try:
+                    numeric_v = float(raw_val)
+                    display_val = f"{int(numeric_v)}" if numeric_v.is_integer() else f"{numeric_v:.1f}"
+                except (ValueError, TypeError):
+                    display_val = str(raw_val)
                 status = "plain"
-                display_val = str(raw_val)
             else:
                 status = "plain"
                 display_val = str(raw_val)
@@ -329,6 +350,8 @@ def compute_readiness_detail(sheet_name: str, facility_code: str) -> list[dict]:
             "raw_value": fac_row.get(var),
             "statistic": stat,
             "cemonc_only": cem_only,
+            "flag_over100": ind.get("flag_over100", False),
+            "is_occupancy": is_occ,
         })
 
     return detail_rows

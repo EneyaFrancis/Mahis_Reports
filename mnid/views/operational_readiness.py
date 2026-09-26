@@ -420,25 +420,42 @@ _FACILITY_TYPE_BY_CODE: dict[str, str] | None = None
 
 
 def _facility_type_by_code() -> dict[str, str]:
-    """Load data/geo/facilities_levels.json once into {Facility_CODE: TYPE}
-    (Central Hospital / District Hospital / Health Centre) - the same
-    reference file mnid.core.data_utils.resolve_facility_level() reads,
-    just keyed to the clinically-recognizable referral-level label instead
-    of the Primary/Secondary/Tertiary tier derived from it."""
+    """Load facility types for all facilities in scope: maps each facility
+    code to its clinically-standard category ('Central Hospital', 'District
+    Hospital', 'Hospital', or 'Health Centre', with 'Clinic' folded into
+    'Health Centre'). Consults the DHIS2 crosswalk first (broader coverage),
+    then data/geo/facilities_levels.json to fill in/override anything the
+    crosswalk only had as the generic 'Hospital' fallback."""
     global _FACILITY_TYPE_BY_CODE
     if _FACILITY_TYPE_BY_CODE is not None:
         return _FACILITY_TYPE_BY_CODE
+    mapping: dict[str, str] = {}
+    try:
+        from mnid.core.dhis2_facilities import dhis2_facility_records
+        for r in dhis2_facility_records():
+            code = r.get("CODE")
+            raw_type = r.get("TYPE")
+            if code and raw_type:
+                raw_type_str = str(raw_type).strip()
+                mapping[code] = "Health Centre" if raw_type_str.lower() == "clinic" else raw_type_str
+    except Exception:
+        pass
     import json
     import os
     path = os.path.join(os.getcwd(), "data", "geo", "facilities_levels.json")
     try:
         with open(path, encoding="utf-8") as f:
             records = json.load(f)
-        _FACILITY_TYPE_BY_CODE = {
-            str(r.get("CODE")): r.get("TYPE") for r in records if r.get("CODE") and r.get("TYPE")
-        }
+        for r in records:
+            code = str(r.get("CODE"))
+            t = r.get("TYPE")
+            if code and t:
+                t_str = str(t).strip()
+                if code not in mapping or mapping[code] == "Hospital":
+                    mapping[code] = t_str
     except Exception:
-        _FACILITY_TYPE_BY_CODE = {}
+        pass
+    _FACILITY_TYPE_BY_CODE = mapping
     return _FACILITY_TYPE_BY_CODE
 
 
@@ -647,11 +664,14 @@ def _matrix_tone(pct: float | None) -> str:
     return "green" if pct >= 80 else "amber" if pct >= 50 else "red"
 
 
-def _matrix_cell(pct: float | int | str | None, detail: str | None = None) -> html.Td:
+def _matrix_cell(pct: float | int | str | None, detail: str | None = None, is_occupancy: bool = False, **_kwargs) -> html.Td:
     """One traffic-light cell: a solid tone fill with white text for percentages,
     or a grey background with 'N/A' for CEmONC-only / not applicable items,
-    or a plain tabular cell for median-IQR metrics. `detail` becomes the native
-    hover tooltip via the HTML title attribute."""
+    or a flagged tone cell for occupancy rates (<80% green, 80-100% amber,
+    >=100% red - over capacity is worse than under, not the same "high is
+    good" scale as a coverage percentage), or a plain tabular cell for
+    median-IQR metrics. `detail` becomes the native hover tooltip via the
+    HTML title attribute."""
     common = {"textAlign": "center", "padding": "9px 10px", "fontSize": "12px"}
     if pct in (None, ""):
         return html.Td("–", title=detail, style={
@@ -662,6 +682,28 @@ def _matrix_cell(pct: float | int | str | None, detail: str | None = None) -> ht
             **common, "color": MUTED, "background": "#F1F5F9", "borderBottom": f"1px solid {BORDER}",
             "fontWeight": "600", "fontSize": "11px",
         })
+    if is_occupancy:
+        val = None
+        if isinstance(pct, (int, float)):
+            val = float(pct)
+        elif isinstance(pct, str):
+            import re
+            m = re.match(r"^(\d+(?:\.\d+)?)\s*%", pct.strip())
+            if m:
+                val = float(m.group(1))
+        if val is not None:
+            tone = "green" if val < 80.0 else "amber" if val < 100.0 else "red"
+            color, bg = STATUS_COLORS[tone]
+            if isinstance(pct, (int, float)):
+                return html.Td(f"{val:.0f}%", title=detail or f"Occupancy standard: <80% (Current: {val:.0f}%)", style={
+                    **common, "fontWeight": "700",
+                    "color": "#FFFFFF", "background": color, "borderBottom": f"1px solid {SURFACE}",
+                })
+            return html.Td(pct, title=detail or f"Occupancy standard: <80% (Current: {pct})", style={
+                **common, "fontWeight": "700",
+                "color": color, "background": bg, "borderBottom": f"1px solid {BORDER}",
+                "fontVariantNumeric": "tabular-nums",
+            })
     if isinstance(pct, (int, float)):
         tone = _matrix_tone(float(pct))
         color, _ = STATUS_COLORS[tone]
@@ -675,7 +717,7 @@ def _matrix_cell(pct: float | int | str | None, detail: str | None = None) -> ht
     })
 
 
-def _plain_cell(value: str | None, detail: str | None = None) -> html.Td:
+def _plain_cell(value: str | None, detail: str | None = None, is_occupancy: bool = False, **_kwargs) -> html.Td:
     """A plain, uncolored cell for figures with no target to traffic-light
     against - facility counts and median [IQR] service-volume statistics.
     Coloring "928 [546-2260] deliveries" green/amber/red would imply a
@@ -750,11 +792,12 @@ def _matrix_table(rows: list[dict], columns: list[tuple[str, str]] | None = None
                 "background": BACKGROUND, "borderBottom": f"1px solid {BORDER}", "borderTop": f"1px solid {BORDER}",
             })]))
         last_category = category
+        is_occ = bool(row.get("is_occupancy") or row.get("flag_over100") or "occupancy" in row.get("label", "").lower())
         body.append(html.Tr([
             html.Td(row["label"], style={
                 "padding": "9px 10px", "fontSize": "12px", "color": TEXT, "borderBottom": f"1px solid {BORDER}",
             }),
-            *[cell_fn(row.get(key), row.get(f"{key}_detail")) for _, key in columns],
+            *[cell_fn(row.get(key), row.get(f"{key}_detail"), is_occupancy=is_occ) for _, key in columns],
         ]))
     return html.Div(html.Table([html.Thead(header), html.Tbody(body)], style={
         "width": "100%", "borderCollapse": "collapse", "background": SURFACE, "tableLayout": "fixed",
@@ -779,9 +822,29 @@ def _signal_functions_newborn_detail(code: str) -> html.Div:
     return html.Div("No newborn signal function data currently available for this facility.", style={"fontSize": "12px", "color": MUTED, "padding": "8px 0"})
 
 
-def _signal_functions_detail(code: str, numerators_by_sig: dict, df: pd.DataFrame,
-                              unavailable_ids: frozenset[str] = frozenset()) -> html.Div:
-    level = resolve_facility_level(code, _facility_label(code))
+def _signal_functions_maternal_detail(code: str, numerators_by_sig: dict, level: str,
+                                       unavailable_ids: frozenset[str] = frozenset()) -> html.Div:
+    """Prefer the HFA survey's own maternal signal-function detail when
+    available, same as _signal_functions_newborn_detail already did -- the
+    raw numerator-based fallback below only reflects what THIS route's
+    aggregate has been mapped to report, which for several signal functions
+    is nothing at all (see SIGNAL_FUNCTIONS' own dhis2_alias_id comments),
+    showing 0%/Not performed for functions the facility may well be
+    performing. The HFA survey is a direct, route-independent assessment."""
+    if is_readiness_data_available():
+        hfa_sf = compute_readiness_detail("SF", code)
+        mat_hfa = [r for r in hfa_sf if r.get("category") == "Maternal signal functions"]
+        if mat_hfa:
+            rows = []
+            for r in mat_hfa:
+                st = r["status"]
+                disp = r["display_value"]
+                lbl = "N/A" if st == "na" else (SIGNAL_DETAIL_LABELS.get(st, disp) if st in SIGNAL_DETAIL_LABELS else disp)
+                rows.append(html.Div([
+                    html.Span(r["label"], style={"fontSize": "12px", "color": TEXT, "flex": "1"}),
+                    _tone_pill(st, lbl),
+                ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "padding": "8px 0", "borderBottom": f"1px solid {BORDER}"}))
+            return html.Div(rows)
     rows = []
     for sf in SIGNAL_FUNCTIONS:
         status = _facility_status(sf, numerators_by_sig[sf["id"]], code, level, unavailable_ids)
@@ -795,6 +858,12 @@ def _signal_functions_detail(code: str, numerators_by_sig: dict, df: pd.DataFram
                 html.Span(sf["label"], style={"fontSize": "12px", "color": TEXT, "flex": "1"}),
                 _tone_pill(status, SIGNAL_DETAIL_LABELS[status]),
             ], style={"display": "flex", "justifyContent": "space-between", "alignItems": "center", "padding": "8px 0", "borderBottom": f"1px solid {BORDER}"}))
+    return html.Div(rows)
+
+
+def _signal_functions_detail(code: str, numerators_by_sig: dict, df: pd.DataFrame,
+                              unavailable_ids: frozenset[str] = frozenset()) -> html.Div:
+    level = resolve_facility_level(code, _facility_label(code))
     classification, missing, note = _get_facility_classification(code, numerators_by_sig, level, unavailable_ids)
     classification_line = [
         html.Span(f"{_facility_district(code)} · {level} · ", style={"fontSize": "11px", "color": MUTED}),
@@ -812,7 +881,7 @@ def _signal_functions_detail(code: str, numerators_by_sig: dict, df: pd.DataFram
         _card([
             html.Div(header_children, style={"marginBottom": "12px"}),
             _section_title("Maternal Signal Functions"),
-            html.Div(rows),
+            _signal_functions_maternal_detail(code, numerators_by_sig, level, unavailable_ids),
         ]),
         _card([
             _section_title("Newborn Signal Functions"),
@@ -843,36 +912,54 @@ def _signal_functions_comparison(facility_codes: list[str], numerators_by_sig: d
         pct = round(performing / len(group) * 100, 1)
         return pct, f"{performing} of {len(group)} {group_label}-classified facilities performing"
 
-    maternal_rows = []
-    for sf in SIGNAL_FUNCTIONS:
-        cemonc_pct, cemonc_detail = _group_pct(sf, cemonc_group, "CEmONC")
-        if sf.get("comprehensive_only"):
-            bemonc_pct = "N/A"
-            bemonc_detail = "Not applicable for BEmONC facilities (CEmONC-only indicator)"
-        else:
-            bemonc_pct, bemonc_detail = _group_pct(sf, bemonc_group, "BEmONC")
-        # Deactivate / remove variable if there is no data for both CEmONC and BEmONC
-        if cemonc_pct is None and (bemonc_pct is None or (sf.get("comprehensive_only") and bemonc_pct == "N/A")):
-            continue
-        maternal_rows.append({
-            "label": sf["label"],
-            "cemonc": cemonc_pct, "cemonc_detail": cemonc_detail,
-            "bemonc": bemonc_pct, "bemonc_detail": bemonc_detail,
-        })
+    # Prefer the HFA survey's own signal-function matrix for BOTH service
+    # areas when available -- the raw numerator-based fallback below only
+    # reflects what THIS route's aggregate maps to (several signal functions
+    # have no mapping at all under DHIS2, see SIGNAL_FUNCTIONS' own
+    # dhis2_alias_id comments), which was silently showing 0% for Maternal
+    # Signal Functions specifically since Newborn already had its own
+    # HFA-backed path here but Maternal never did.
     if is_readiness_data_available():
-        nb_matrix = compute_readiness_matrix("SF", facility_codes, cemonc_codes=cemonc_group, bemonc_codes=bemonc_group)
-        newborn_rows = [r for r in nb_matrix if r.get("category") == "Newborn signal functions"]
+        sf_matrix = compute_readiness_matrix("SF", facility_codes, cemonc_codes=cemonc_group, bemonc_codes=bemonc_group)
+        maternal_rows = [r for r in sf_matrix if r.get("category") == "Maternal signal functions"]
+        newborn_rows = [r for r in sf_matrix if r.get("category") == "Newborn signal functions"]
     else:
+        maternal_rows = []
+        for sf in SIGNAL_FUNCTIONS:
+            cemonc_pct, cemonc_detail = _group_pct(sf, cemonc_group, "CEmONC")
+            if sf.get("comprehensive_only"):
+                bemonc_pct = "N/A"
+                bemonc_detail = "Not applicable for BEmONC facilities (CEmONC-only indicator)"
+            else:
+                bemonc_pct, bemonc_detail = _group_pct(sf, bemonc_group, "BEmONC")
+            # Deactivate / remove variable if there is no data for both CEmONC and BEmONC
+            if cemonc_pct is None and (bemonc_pct is None or (sf.get("comprehensive_only") and bemonc_pct == "N/A")):
+                continue
+            maternal_rows.append({
+                "label": sf["label"],
+                "cemonc": cemonc_pct, "cemonc_detail": cemonc_detail,
+                "bemonc": bemonc_pct, "bemonc_detail": bemonc_detail,
+            })
         newborn_rows = []
 
     note_children = [
         f"Share of {len(cemonc_group)} CEmONC- and {len(bemonc_group)} BEmONC-classified facilities in scope "
         "performing each function in the reporting period.",
     ]
-    if unavailable_ids:
+    if not is_readiness_data_available() and unavailable_ids:
         excluded_labels = [sf["label"] for sf in SIGNAL_FUNCTIONS if sf["id"] in unavailable_ids]
         note_children.append(html.Br())
         note_children.append(f"{', '.join(excluded_labels)}: not reported via this data source.")
+
+    maternal_card_content = [_section_title("Maternal Signal Functions")]
+    if maternal_rows:
+        maternal_card_content.append(_matrix_table(maternal_rows, label_column="Signal Function"))
+        maternal_card_content.append(html.Div(note_children, style={"fontSize": "10px", "color": MUTED, "marginTop": "8px"}))
+    else:
+        maternal_card_content.append(html.Div(
+            "No maternal signal function data currently available for facilities in scope.",
+            style={"fontSize": "12px", "color": MUTED, "padding": "8px 0"},
+        ))
 
     newborn_card_content = [
         _section_title("Newborn Signal Functions"),
@@ -886,11 +973,7 @@ def _signal_functions_comparison(facility_codes: list[str], numerators_by_sig: d
         ))
 
     return html.Div([
-        _card([
-            _section_title("Maternal Signal Functions"),
-            _matrix_table(maternal_rows, label_column="Signal Function"),
-            html.Div(note_children, style={"fontSize": "10px", "color": MUTED, "marginTop": "8px"}),
-        ]),
+        _card(maternal_card_content),
         _card(newborn_card_content),
     ])
 
@@ -910,7 +993,7 @@ def _build_signal_functions_tab(facility_codes: list[str], df: pd.DataFrame,
 # Overview
 # ---------------------------------------------------------------------------
 
-_FACILITY_TYPE_ORDER = ["Central Hospital", "District Hospital", "Health Centre"]
+_FACILITY_TYPE_ORDER = ["Central Hospital", "District Hospital", "Hospital", "Health Centre"]
 
 
 _PROFILE_STATS_COLUMNS = [
@@ -1194,8 +1277,13 @@ def _real_indicator_rows(indicators: list[dict], df: pd.DataFrame, agg_df: pd.Da
                           start_date, end_date, facility_codes: list[str]) -> tuple[list[list], list[str], list[dict]]:
     rows, tones, tooltips = [], [], []
     for ind in indicators:
+        if not isinstance(ind, dict) or "id" not in ind:
+            continue
         label = ind.get("name") or ind.get("label", ind["id"])
-        num, den, rate = _cov(df, ind["id"], facility_codes)
+        try:
+            num, den, rate = _cov(df, ind["id"], facility_codes)
+        except Exception:
+            num, den, rate = 0, 0, None
         if rate is not None:
             pct = round(rate * 100, 1)
             tone = "green" if pct >= 80 else "amber" if pct >= 50 else "red"
