@@ -387,30 +387,112 @@ def _facility_district(code: str) -> str:
     return dhis2_code_to_district().get(code, "")
 
 
-_FACILITY_TYPE_BY_CODE: dict[str, str] | None = None
+_FACILITY_METADATA_BY_CODE: dict[str, dict] | None = None
+_FACILITY_METADATA_BY_NAME: dict[str, dict] | None = None
 
 
-def _facility_type_by_code() -> dict[str, str]:
-    """Load data/geo/facilities_levels.json once into {Facility_CODE: TYPE}
-    (Central Hospital / District Hospital / Health Centre) - the same
-    reference file mnid.core.data_utils.resolve_facility_level() reads,
-    just keyed to the clinically-recognizable referral-level label instead
-    of the Primary/Secondary/Tertiary tier derived from it."""
-    global _FACILITY_TYPE_BY_CODE
-    if _FACILITY_TYPE_BY_CODE is not None:
-        return _FACILITY_TYPE_BY_CODE
+def _facility_metadata_lookups() -> tuple[dict[str, dict], dict[str, dict]]:
+    """Load metadata (referral facility, ownership, highest level newborn care, type)
+    from data/geo/facilities_dhis2.json and data/geo/facilities_levels.json.
+    Returns (meta_by_code, meta_by_name).
+    """
+    global _FACILITY_METADATA_BY_CODE, _FACILITY_METADATA_BY_NAME
+    if _FACILITY_METADATA_BY_CODE is not None and _FACILITY_METADATA_BY_NAME is not None:
+        return _FACILITY_METADATA_BY_CODE, _FACILITY_METADATA_BY_NAME
+
     import json
     import os
+
+    meta_by_code: dict[str, dict] = {}
+    meta_by_name: dict[str, dict] = {}
+
+    try:
+        from mnid.core.dhis2_facilities import dhis2_facility_records
+        for r in dhis2_facility_records():
+            entry = {
+                "referral_facility": r.get("REFERRAL FACILITY") or "None",
+                "ownership": r.get("OWNERSHIP") or "",
+                "highest_level_newborn_care": r.get("HIGHEST LEVEL NEWBORN CARE") or "",
+                "type": r.get("TYPE") or "",
+            }
+            code = str(r.get("CODE") or "").strip()
+            if code:
+                meta_by_code[code] = entry
+            dhis2_id = str(r.get("DHIS2 ID") or "").strip()
+            if dhis2_id:
+                meta_by_code[dhis2_id] = entry
+            name = str(r.get("NAME") or "").strip()
+            if name:
+                meta_by_name[name.lower()] = entry
+    except Exception:
+        pass
+
     path = os.path.join(os.getcwd(), "data", "geo", "facilities_levels.json")
     try:
         with open(path, encoding="utf-8") as f:
             records = json.load(f)
-        _FACILITY_TYPE_BY_CODE = {
-            str(r.get("CODE")): r.get("TYPE") for r in records if r.get("CODE") and r.get("TYPE")
-        }
+        for r in records:
+            entry = {
+                "referral_facility": r.get("REFERRAL FACILITY") or "None",
+                "ownership": r.get("OWNERSHIP") or "",
+                "highest_level_newborn_care": r.get("HIGHEST LEVEL NEWBORN CARE") or "",
+                "type": r.get("TYPE") or "",
+            }
+            code = str(r.get("CODE") or "").strip()
+            if code:
+                meta_by_code[code] = entry
+            name = str(r.get("NAME") or "").strip()
+            if name:
+                meta_by_name[name.lower()] = entry
     except Exception:
-        _FACILITY_TYPE_BY_CODE = {}
-    return _FACILITY_TYPE_BY_CODE
+        pass
+
+    _FACILITY_METADATA_BY_CODE = meta_by_code
+    _FACILITY_METADATA_BY_NAME = meta_by_name
+    return _FACILITY_METADATA_BY_CODE, _FACILITY_METADATA_BY_NAME
+
+
+def _resolve_facility_metadata(code: str, name: str | None = None) -> dict:
+    meta_by_code, meta_by_name = _facility_metadata_lookups()
+    if code and str(code).strip() in meta_by_code:
+        return meta_by_code[str(code).strip()]
+    if name and str(name).strip().lower() in meta_by_name:
+        return meta_by_name[str(name).strip().lower()]
+    lvl = resolve_facility_level(code, name)
+    name_upper = str(name or "").upper()
+    if lvl == "Tertiary" or "CENTRAL HOSPITAL" in name_upper:
+        return {
+            "referral_facility": "None",
+            "ownership": "",
+            "highest_level_newborn_care": "Level 3 (Advanced neonatal intensive care)",
+            "type": "Central Hospital",
+        }
+    if lvl == "Secondary" or "DISTRICT HOSPITAL" in name_upper:
+        return {
+            "referral_facility": "Central Hospital",
+            "ownership": "",
+            "highest_level_newborn_care": "Level 2+ (SSNC with CPAP)",
+            "type": "District Hospital",
+        }
+    if "COMMUNITY HOSPITAL" in name_upper or "RURAL HOSPITAL" in name_upper or "MISSION HOSPITAL" in name_upper:
+        return {
+            "referral_facility": "District Hospital",
+            "ownership": "",
+            "highest_level_newborn_care": "Level 2 (Special Newborn Care)",
+            "type": "Community Hospital",
+        }
+    return {
+        "referral_facility": "Community Hospital",
+        "ownership": "",
+        "highest_level_newborn_care": "Level 1 (Essential Newborn Care)",
+        "type": "Health Centre",
+    }
+
+
+def _facility_type_by_code() -> dict[str, str]:
+    """Load facility TYPE from metadata lookup."""
+    meta_by_code, _ = _facility_metadata_lookups()
+    return {code: meta.get("type", "") for code, meta in meta_by_code.items() if meta.get("type")}
 
 
 def _median_iqr(values: list[float], pct: bool = False) -> str | None:
@@ -959,27 +1041,38 @@ def _facility_comparison_records(facility_codes: list[str], classifications: dic
     District is deliberately not a column here - the facility name is
     already unique, and the district filter/scope band above already says
     what's in scope, so repeating it on every row added nothing."""
-    return [
-        {
-            "facility": _facility_label(code),
-            "level": resolve_facility_level(code, _facility_label(code)),
+    records = []
+    for code in facility_codes:
+        fname = _facility_label(code)
+        fmeta = _resolve_facility_metadata(code, fname)
+        records.append({
+            "facility": fname,
+            "level": resolve_facility_level(code, fname),
             "classification": classifications[code],
+            "referral_facility": fmeta.get("referral_facility", ""),
+            "ownership": fmeta.get("ownership", ""),
+            "highest_level_newborn_care": fmeta.get("highest_level_newborn_care", ""),
             "deliveries": births_by_facility.get(code, 0),
             "caesareans": caesareans_by_facility.get(code, 0),
             "admissions": admissions_by_facility.get(code, 0) if admissions_available else None,
-        }
-        for code in facility_codes
-    ]
+        })
+    return records
 
 
 def _facility_comparison_table(records: list[dict]) -> dash_table.DataTable:
     """Facility Readiness Comparison rows plus a bold Total row summing
     whatever's currently shown, so a classification-filtered view still
-    answers "how much, in total" without switching to a different table."""
+    answers \"how much, in total\" without switching to a different table."""
     rows = [
         [
-            r["facility"], r["level"], EMONC_LABELS[r["classification"]],
-            r["deliveries"], r["caesareans"],
+            r["facility"],
+            r["level"],
+            EMONC_LABELS[r["classification"]],
+            r.get("referral_facility", ""),
+            r.get("ownership", ""),
+            r.get("highest_level_newborn_care", ""),
+            r["deliveries"],
+            r["caesareans"],
             r["admissions"] if r["admissions"] is not None else AWAITING_LABEL,
         ]
         for r in records
@@ -987,14 +1080,28 @@ def _facility_comparison_table(records: list[dict]) -> dash_table.DataTable:
     if records:
         any_admissions = any(r["admissions"] is not None for r in records)
         rows.append([
-            f"Total · {len(records)} facilities", "", "",
+            f"Total · {len(records)} facilities",
+            "",
+            "",
+            "",
+            "",
+            "",
             sum(r["deliveries"] for r in records),
             sum(r["caesareans"] for r in records),
             sum(r["admissions"] for r in records if r["admissions"] is not None) if any_admissions else AWAITING_LABEL,
         ])
     return _data_table(
-        ["Facility", "Facility level", "EmONC classification",
-         "Total deliveries", "Caesarean deliveries", "Neonatal unit admissions"],
+        [
+            "Facility",
+            "Facility level",
+            "EmONC classification",
+            "Referral facility",
+            "Ownership",
+            "Highest level newborn care",
+            "Total deliveries",
+            "Caesarean deliveries",
+            "Neonatal unit admissions",
+        ],
         rows,
         classification_column="EmONC classification",
         filterable=False,
