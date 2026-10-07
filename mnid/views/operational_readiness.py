@@ -416,47 +416,111 @@ def _facility_district(code: str) -> str:
     return dhis2_code_to_district().get(code, "")
 
 
-_FACILITY_TYPE_BY_CODE: dict[str, str] | None = None
+_FACILITY_METADATA_BY_CODE: dict[str, dict] | None = None
+_FACILITY_METADATA_BY_NAME: dict[str, dict] | None = None
 
 
-def _facility_type_by_code() -> dict[str, str]:
-    """Load facility types for all facilities in scope: maps each facility
-    code to its clinically-standard category ('Central Hospital', 'District
-    Hospital', 'Hospital', or 'Health Centre', with 'Clinic' folded into
-    'Health Centre'). Consults the DHIS2 crosswalk first (broader coverage),
-    then data/geo/facilities_levels.json to fill in/override anything the
-    crosswalk only had as the generic 'Hospital' fallback."""
-    global _FACILITY_TYPE_BY_CODE
-    if _FACILITY_TYPE_BY_CODE is not None:
-        return _FACILITY_TYPE_BY_CODE
-    mapping: dict[str, str] = {}
+def _facility_metadata_lookups() -> tuple[dict[str, dict], dict[str, dict]]:
+    """Load metadata (referral facility, ownership, highest level newborn
+    care, type) from data/geo/facilities_dhis2.json and
+    data/geo/facilities_levels.json. Returns (meta_by_code, meta_by_name)."""
+    global _FACILITY_METADATA_BY_CODE, _FACILITY_METADATA_BY_NAME
+    if _FACILITY_METADATA_BY_CODE is not None and _FACILITY_METADATA_BY_NAME is not None:
+        return _FACILITY_METADATA_BY_CODE, _FACILITY_METADATA_BY_NAME
+
+    import json
+    import os
+
+    meta_by_code: dict[str, dict] = {}
+    meta_by_name: dict[str, dict] = {}
+
     try:
         from mnid.core.dhis2_facilities import dhis2_facility_records
         for r in dhis2_facility_records():
-            code = r.get("CODE")
-            raw_type = r.get("TYPE")
-            if code and raw_type:
-                raw_type_str = str(raw_type).strip()
-                mapping[code] = "Health Centre" if raw_type_str.lower() == "clinic" else raw_type_str
+            entry = {
+                "referral_facility": r.get("REFERRAL FACILITY") or "None",
+                "ownership": r.get("OWNERSHIP") or "",
+                "highest_level_newborn_care": r.get("HIGHEST LEVEL NEWBORN CARE") or "",
+                "type": r.get("TYPE") or "",
+            }
+            code = str(r.get("CODE") or "").strip()
+            if code:
+                meta_by_code[code] = entry
+            dhis2_id = str(r.get("DHIS2 ID") or "").strip()
+            if dhis2_id:
+                meta_by_code[dhis2_id] = entry
+            name = str(r.get("NAME") or "").strip()
+            if name:
+                meta_by_name[name.lower()] = entry
     except Exception:
         pass
-    import json
-    import os
+
     path = os.path.join(os.getcwd(), "data", "geo", "facilities_levels.json")
     try:
         with open(path, encoding="utf-8") as f:
             records = json.load(f)
         for r in records:
-            code = str(r.get("CODE"))
-            t = r.get("TYPE")
-            if code and t:
-                t_str = str(t).strip()
-                if code not in mapping or mapping[code] == "Hospital":
-                    mapping[code] = t_str
+            entry = {
+                "referral_facility": r.get("REFERRAL FACILITY") or "None",
+                "ownership": r.get("OWNERSHIP") or "",
+                "highest_level_newborn_care": r.get("HIGHEST LEVEL NEWBORN CARE") or "",
+                "type": r.get("TYPE") or "",
+            }
+            code = str(r.get("CODE") or "").strip()
+            if code:
+                meta_by_code[code] = entry
+            name = str(r.get("NAME") or "").strip()
+            if name:
+                meta_by_name[name.lower()] = entry
     except Exception:
         pass
-    _FACILITY_TYPE_BY_CODE = mapping
-    return _FACILITY_TYPE_BY_CODE
+
+    _FACILITY_METADATA_BY_CODE = meta_by_code
+    _FACILITY_METADATA_BY_NAME = meta_by_name
+    return _FACILITY_METADATA_BY_CODE, _FACILITY_METADATA_BY_NAME
+
+
+def _resolve_facility_metadata(code: str, name: str | None = None) -> dict:
+    meta_by_code, meta_by_name = _facility_metadata_lookups()
+    if code and str(code).strip() in meta_by_code:
+        return meta_by_code[str(code).strip()]
+    if name and str(name).strip().lower() in meta_by_name:
+        return meta_by_name[str(name).strip().lower()]
+    lvl = resolve_facility_level(code, name)
+    name_upper = str(name or "").upper()
+    if lvl == "Tertiary" or "CENTRAL HOSPITAL" in name_upper:
+        return {
+            "referral_facility": "None",
+            "ownership": "",
+            "highest_level_newborn_care": "Level 3 (Advanced neonatal intensive care)",
+            "type": "Central Hospital",
+        }
+    if lvl == "Secondary" or "DISTRICT HOSPITAL" in name_upper:
+        return {
+            "referral_facility": "Central Hospital",
+            "ownership": "",
+            "highest_level_newborn_care": "Level 2+ (SSNC with CPAP)",
+            "type": "District Hospital",
+        }
+    if "COMMUNITY HOSPITAL" in name_upper or "RURAL HOSPITAL" in name_upper or "MISSION HOSPITAL" in name_upper:
+        return {
+            "referral_facility": "District Hospital",
+            "ownership": "",
+            "highest_level_newborn_care": "Level 2 (Special Newborn Care)",
+            "type": "Community Hospital",
+        }
+    return {
+        "referral_facility": "Community Hospital",
+        "ownership": "",
+        "highest_level_newborn_care": "Level 1 (Essential Newborn Care)",
+        "type": "Health Centre",
+    }
+
+
+def _facility_type_by_code() -> dict[str, str]:
+    """Load facility TYPE from the metadata lookup."""
+    meta_by_code, _ = _facility_metadata_lookups()
+    return {code: meta.get("type", "") for code, meta in meta_by_code.items() if meta.get("type")}
 
 
 def _median_iqr(values: list[float], pct: bool = False) -> str | None:
@@ -1086,17 +1150,22 @@ def _facility_comparison_records(facility_codes: list[str], classifications: dic
     District is deliberately not a column here - the facility name is
     already unique, and the district filter/scope band above already says
     what's in scope, so repeating it on every row added nothing."""
-    return [
-        {
-            "facility": _facility_label(code),
-            "level": resolve_facility_level(code, _facility_label(code)),
+    records = []
+    for code in facility_codes:
+        fname = _facility_label(code)
+        fmeta = _resolve_facility_metadata(code, fname)
+        records.append({
+            "facility": fname,
+            "level": resolve_facility_level(code, fname),
             "classification": classifications[code],
+            "referral_facility": fmeta.get("referral_facility", ""),
+            "ownership": fmeta.get("ownership", ""),
+            "highest_level_newborn_care": fmeta.get("highest_level_newborn_care", ""),
             "deliveries": births_by_facility.get(code, 0),
             "caesareans": caesareans_by_facility.get(code, 0),
             "admissions": admissions_by_facility.get(code, 0) if admissions_available else None,
-        }
-        for code in facility_codes
-    ]
+        })
+    return records
 
 
 def _facility_comparison_table(records: list[dict]) -> dash_table.DataTable:
@@ -1105,8 +1174,14 @@ def _facility_comparison_table(records: list[dict]) -> dash_table.DataTable:
     answers "how much, in total" without switching to a different table."""
     rows = [
         [
-            r["facility"], r["level"], EMONC_LABELS[r["classification"]],
-            r["deliveries"], r["caesareans"],
+            r["facility"],
+            r["level"],
+            EMONC_LABELS[r["classification"]],
+            r.get("referral_facility", ""),
+            r.get("ownership", ""),
+            r.get("highest_level_newborn_care", ""),
+            r["deliveries"],
+            r["caesareans"],
             r["admissions"] if r["admissions"] is not None else AWAITING_LABEL,
         ]
         for r in records
@@ -1114,14 +1189,28 @@ def _facility_comparison_table(records: list[dict]) -> dash_table.DataTable:
     if records:
         any_admissions = any(r["admissions"] is not None for r in records)
         rows.append([
-            f"Total · {len(records)} facilities", "", "",
+            f"Total · {len(records)} facilities",
+            "",
+            "",
+            "",
+            "",
+            "",
             sum(r["deliveries"] for r in records),
             sum(r["caesareans"] for r in records),
             sum(r["admissions"] for r in records if r["admissions"] is not None) if any_admissions else AWAITING_LABEL,
         ])
     return _data_table(
-        ["Facility", "Facility level", "EmONC classification",
-         "Total deliveries", "Caesarean deliveries", "Neonatal unit admissions"],
+        [
+            "Facility",
+            "Facility level",
+            "EmONC classification",
+            "Referral facility",
+            "Ownership",
+            "Highest level newborn care",
+            "Total deliveries",
+            "Caesarean deliveries",
+            "Neonatal unit admissions",
+        ],
         rows,
         classification_column="EmONC classification",
         filterable=False,
@@ -1253,35 +1342,47 @@ def _build_overview_tab(facility_codes: list[str], df: pd.DataFrame,
 # People / Products / Systems
 # ---------------------------------------------------------------------------
 
+def _awaiting_detail_table(items: list[str], label_column: str = "Indicator") -> dash_table.DataTable:
+    rows = [[label, AWAITING_LABEL] for label in items]
+    tones = ["awaiting"] * len(items)
+    return _data_table([label_column, "Result"], rows, tone_column="Result", tones=tones)
+
+
+def _awaiting_domain_detail_table(domain_items: list[tuple[str, str]], label_column: str = "Indicator") -> dash_table.DataTable:
+    rows = [[d, i, AWAITING_LABEL] for d, i in domain_items]
+    tones = ["awaiting"] * len(domain_items)
+    return _data_table(["Domain", label_column, "Result"], rows, tone_column="Result", tones=tones)
+
+
 def _awaiting_matrix_rows(items: list) -> list[dict]:
-    """CEmONC/BEmONC matrix rows with no real per-item data yet - every cell
-    renders as 'awaiting'."""
+    """Convert a flat item list or a list of (category, item) tuples into
+    CEmONC/BEmONC matrix rows with no real per-item data yet - every cell
+    renders as "awaiting" until People/Products/Systems get a real data
+    source, at which point only this function's output changes, not the
+    table it feeds."""
     if items and isinstance(items[0], tuple):
         return [{"label": label, "category": category, "cemonc": None, "bemonc": None} for category, label in items]
     return [{"label": label, "cemonc": None, "bemonc": None} for label in items]
 
 
-def _awaiting_detail_table(items: list[str], label_column: str = "Cadre") -> dash_table.DataTable:
-    rows = [[cadre, AWAITING_LABEL] for cadre in items]
-    tones = ["awaiting"] * len(rows)
-    return _data_table([label_column, "Status"], rows, tone_column="Status", tones=tones)
-
-
-def _awaiting_domain_detail_table(items: list[tuple[str, str]], label_column: str = "Commodity") -> dash_table.DataTable:
-    rows = [[cat, label, AWAITING_LABEL] for cat, label in items]
-    tones = ["awaiting"] * len(rows)
-    return _data_table(["Category", label_column, "Status"], rows, tone_column="Status", tones=tones)
-
-
 def _real_indicator_rows(indicators: list[dict], df: pd.DataFrame, agg_df: pd.DataFrame | None,
                           start_date, end_date, facility_codes: list[str]) -> tuple[list[list], list[str], list[dict]]:
+    """Render already-real indicators (supply/workforce/data-quality) the
+    same row shape as the awaiting-data tables, so real and placeholder rows
+    sit together in one table without the UI needing to know which is
+    which. _cov's real signature is (df, numerator_filters, denominator_
+    filters) -- a prior version of this called it with (df, indicator_id,
+    facility_codes), which doesn't match any indicator config shape used
+    elsewhere in this codebase (coverage.py/kpi_engine.py always pass the
+    filter dicts); never actually hit because the only caller here always
+    passes indicators=[]."""
     rows, tones, tooltips = [], [], []
     for ind in indicators:
-        if not isinstance(ind, dict) or "id" not in ind:
+        if not isinstance(ind, dict):
             continue
-        label = ind.get("name") or ind.get("label", ind["id"])
+        label = ind.get("label", "Indicator")
         try:
-            num, den, rate = _cov(df, ind["id"], facility_codes)
+            num, den, rate = _cov(df, ind.get("numerator_filters", {}), ind.get("denominator_filters", {}))
         except Exception:
             num, den, rate = 0, 0, None
         if rate is not None:
@@ -1338,11 +1439,18 @@ def _people_tab(facility_codes: list[str], wf_inds: list[dict] | None, df: pd.Da
         _data_table(["Indicator", "Assessed, n", "Result"], real, tone_column="Result", tones=tones, tooltips=tooltips) if real else html.Div(
             "No workforce competency indicators configured for this report.", style={"fontSize": "12px", "color": MUTED}),
     ])
-    staffing_card = _card([
-        _section_title("Facility Staffing Cadres"),
-        html.Div("Staffing cadre indicators are not currently reported across CeMoC and BEmONC facilities.", style={"fontSize": "12px", "color": MUTED, "padding": "4px 0"}),
-    ])
-    return html.Div([real_card, staffing_card])
+    body = _scope_view(
+        facility_codes,
+        detail_fn=lambda code: html.Div([
+            _card([_section_title(f"Neonatal Care Unit Staffing · {_facility_label(code)}"), _awaiting_detail_table(CADRES_NEONATAL, label_column="Cadre")]),
+            _card([_section_title(f"Maternity Staffing · {_facility_label(code)}"), _awaiting_detail_table(CADRES_MATERNITY, label_column="Cadre")]),
+        ]),
+        comparison_fn=lambda codes: html.Div([
+            _card([_section_title("Neonatal Care Unit Staffing"), _matrix_table(_awaiting_matrix_rows(CADRES_NEONATAL), label_column="Cadre")]),
+            _card([_section_title("Maternity Staffing"), _matrix_table(_awaiting_matrix_rows(CADRES_MATERNITY), label_column="Cadre")]),
+        ]),
+    )
+    return html.Div([real_card, body])
 
 
 def _products_tab(facility_codes: list[str], supply_inds: list[dict] | None, df: pd.DataFrame) -> html.Div:
@@ -1377,10 +1485,19 @@ def _products_tab(facility_codes: list[str], supply_inds: list[dict] | None, df:
             ]),
         )
     else:
-        body = _card([
-            _section_title("Operational Readiness Survey Data"),
-            html.Div("Operational readiness survey data is not currently available for the selected facilities.", style={"fontSize": "12px", "color": MUTED, "padding": "4px 0"}),
-        ])
+        body = _scope_view(
+            facility_codes,
+            detail_fn=lambda code: html.Div([
+                _card([_section_title(f"Maternity Equipment · {_facility_label(code)}"), _awaiting_domain_detail_table(EQUIPMENT_MATERNITY, label_column="Commodity")]),
+                _card([_section_title(f"Maternity Essential Medicines · {_facility_label(code)}"), _awaiting_domain_detail_table(TRACER_MEDICINES_MATERNITY, label_column="Commodity")]),
+                _card([_section_title(f"Newborn Equipment · {_facility_label(code)}"), _awaiting_domain_detail_table(EQUIPMENT_NEWBORN, label_column="Commodity")]),
+                _card([_section_title(f"Newborn Tracer Medicines · {_facility_label(code)}"), _awaiting_domain_detail_table(TRACER_MEDICINES_NEWBORN, label_column="Commodity")]),
+            ]),
+            comparison_fn=lambda codes: html.Div([
+                _card([_section_title("Maternity Equipment & Medicines"), _matrix_table(_awaiting_matrix_rows(EQUIPMENT_MATERNITY + TRACER_MEDICINES_MATERNITY), label_column="Commodity")]),
+                _card([_section_title("Newborn Equipment & Medicines"), _matrix_table(_awaiting_matrix_rows(EQUIPMENT_NEWBORN + TRACER_MEDICINES_NEWBORN), label_column="Commodity")]),
+            ]),
+        )
     return html.Div([real_card, body])
 
 
@@ -1406,10 +1523,20 @@ def _systems_tab(facility_codes: list[str], dq_inds: list[dict] | None, df: pd.D
             ]),
         )
     else:
-        body = _card([
-            _section_title("Operational Readiness Infrastructure & Systems"),
-            html.Div("Operational readiness survey data is not currently available for the selected facilities.", style={"fontSize": "12px", "color": MUTED, "padding": "4px 0"}),
-        ])
+        body = _scope_view(
+            facility_codes,
+            detail_fn=lambda code: html.Div([
+                _card([_section_title(f"Maternity Unit Infrastructure · {_facility_label(code)}"), _awaiting_domain_detail_table(INFRASTRUCTURE_MATERNITY, label_column="Infrastructure Indicator")]),
+                _card([_section_title(f"Neonatal Care Unit Infrastructure · {_facility_label(code)}"), _awaiting_domain_detail_table(INFRASTRUCTURE_NEONATAL, label_column="Infrastructure Indicator")]),
+                _card([_section_title(f"Referral and Transport · {_facility_label(code)}"), _awaiting_detail_table(REFERRAL_TRANSPORT)]),
+                _card([_section_title(f"Data and Quality-Improvement Systems · {_facility_label(code)}"), _awaiting_detail_table(DATA_QI_SYSTEMS)]),
+            ]),
+            comparison_fn=lambda codes: html.Div([
+                _card([_section_title("Maternity Infrastructure"), _matrix_table(_awaiting_matrix_rows(INFRASTRUCTURE_MATERNITY), label_column="Infrastructure Indicator")]),
+                _card([_section_title("Neonatal Care Unit Infrastructure"), _matrix_table(_awaiting_matrix_rows(INFRASTRUCTURE_NEONATAL), label_column="Infrastructure Indicator")]),
+                _card([_section_title("Referral, Transport & QI Systems"), _matrix_table(_awaiting_matrix_rows(REFERRAL_TRANSPORT + DATA_QI_SYSTEMS), label_column="Indicator")]),
+            ]),
+        )
     return html.Div([real_card, body])
 
 
