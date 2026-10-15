@@ -367,8 +367,15 @@ def run_aggregation(
         'Home_district', 'TA', 'Village', 'Age', 'Age_Group', 'Gender',
         'Source_Program',
     ])
+    # prepare_mnid_dataframe below drops every non-MCH-program row anyway
+    from mnid.core.data_utils import _MCH_PROGRAMS as _mch_programs
+    _mch_list = ', '.join(f"'{p}'" for p in _mch_programs)
+    _mch_where = (
+        f"WHERE UPPER(COALESCE(Program, '')) IN ({_mch_list}) "
+        f"OR UPPER(COALESCE(Reporting_Program, '')) IN ({_mch_list})"
+    )
     try:
-        raw_df = DataStorage.query_duckdb(f"SELECT {_mnid_cols} FROM '{data_source}'")
+        raw_df = DataStorage.query_duckdb(f"SELECT {_mnid_cols} FROM '{data_source}' {_mch_where}")
         raw_df['Date'] = pd.to_datetime(raw_df['Date'], errors='coerce')
     except Exception as exc:
         _LOG.error('Failed to load data from %s: %s', data_source, exc)
