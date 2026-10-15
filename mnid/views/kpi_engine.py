@@ -607,6 +607,44 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
             continue
         by_cat.setdefault(ind.get('category', 'Other'), []).append(ind)
 
+    if dashboard_theme == 'newborn':
+        # Merge in the Nest360/NEST-IT indicators that aren't already covered
+        # by an existing Beginnings/Newborn card under a different label --
+        # most of the Nest360 catalog (pulse oximeter, CPAP by weight band,
+        # jaundice, sepsis, birth weight, asphyxia, hypothermia-at-admission/
+        # anytime, ...) duplicates one already shown above, just re-labeled.
+        # Only the genuinely new ones (unbanded CPAP coverage, the two KMC
+        # weight bands, and the inborn/outborn hypothermia split) get added.
+        _nest360_duplicate_ids = {
+            'nest360_pulse_oximeter_used_at_admission', 'nest360_weight_taken_at_birth',
+            'nest360_cpap_for_babies_1000_1499g', 'nest360_cpap_1500_1999g_with_symptoms',
+            'nest360_thermal_care_recorded', 'nest360_phototherapy_for_jaundice',
+            'nest360_bilirubin_measurement', 'nest360_neonatal_sepsis_rate',
+            'nest360_antibiotics_for_sepsis', 'nest360_data_completeness',
+            'nest360_birth_weight_recorded', 'nest360_low_birthweight_rate',
+            'nest360_birth_asphyxia_rate', 'nest360_resuscitation_given',
+            'nest360_neonatal_mortality_rate', 'nest360_not_hypothermic_at_admission',
+            'nest360_not_hypothermic_after_admission',
+        }
+        try:
+            import importlib.util as _ilu
+            from pathlib import Path as _P
+            _nest_path = _P(__file__).resolve().parents[1] / 'dashboards' / 'MNH-Nest360' / 'indicators.py'
+            _nest_spec = _ilu.spec_from_file_location('mnid.dashboards.mnh_nest360_indicators', str(_nest_path))
+            _nest_mod = _ilu.module_from_spec(_nest_spec)
+            _nest_spec.loader.exec_module(_nest_mod)
+            for ind in _nest_mod.get_nest360_indicators():
+                if (
+                    ind.get('status') == 'tracked'
+                    and ind.get('id') not in _nest360_duplicate_ids
+                    and ind.get('numerator_filters') and ind.get('denominator_filters')
+                ):
+                    merged = dict(ind)
+                    merged['category'] = 'Newborn'
+                    by_cat.setdefault('Newborn', []).append(merged)
+        except Exception as exc:
+            _LOGGER.warning('Could not merge Nest360 indicators into Newborn display: %s', exc)
+
     _t1 = _time.monotonic()
     coverage_charts = _coverage_charts_section(
         by_cat, facility_df, category_order,

@@ -9,7 +9,7 @@ from typing import Mapping
 from urllib.parse import urlparse
 
 from .exceptions import DHIS2ConfigurationError
-from .periods import DEFAULT_END_PERIOD, DEFAULT_START_PERIOD, monthly_periods
+from .periods import DEFAULT_START_PERIOD, last_completed_period, monthly_periods
 
 _MNID_ROOT = Path(__file__).resolve().parents[1]
 _DATA_ROOT = _MNID_ROOT / "data" / "dhis2"
@@ -78,7 +78,10 @@ class DHIS2Settings:
         env = os.environ if environ is None else environ
         base_url = _url(env.get("MNH_DHIS2_BASE_URL", "https://dhis2.health.gov.mw"))
         start = env.get("MNH_DHIS2_START_PERIOD", DEFAULT_START_PERIOD)
-        end = env.get("MNH_DHIS2_END_PERIOD", DEFAULT_END_PERIOD)
+        # Rolls forward automatically each month (last fully-elapsed month,
+        # not the in-progress one) -- set MNH_DHIS2_END_PERIOD explicitly to
+        # override for a one-off run.
+        end = env.get("MNH_DHIS2_END_PERIOD") or last_completed_period()
         monthly_periods(start, end)
         username = env.get("MNH_DHIS2_USERNAME") or None
         password = env.get("MNH_DHIS2_PASSWORD") or None

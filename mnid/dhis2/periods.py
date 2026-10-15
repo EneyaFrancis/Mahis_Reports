@@ -10,7 +10,23 @@ from .exceptions import DHIS2ConfigurationError
 
 PERIOD_RE = re.compile(r"^(\d{4})(0[1-9]|1[0-2])$")
 DEFAULT_START_PERIOD = "202501"
-DEFAULT_END_PERIOD = "202606"
+DEFAULT_END_PERIOD = "202610"
+
+
+def last_completed_period(today: date | None = None) -> str:
+    """Most recently fully-elapsed calendar month, as YYYYMM.
+
+    Used as the rolling default end_period so a pull/sync run never needs its
+    end date hand-edited month to month -- the month in progress is excluded
+    since DHIS2 reporting for it isn't complete yet.
+    """
+    day = today or date.today()
+    year, month = day.year, day.month
+    month -= 1
+    if month == 0:
+        year -= 1
+        month = 12
+    return f"{year:04d}{month:02d}"
 
 
 def validate_monthly_period(period: str) -> str:

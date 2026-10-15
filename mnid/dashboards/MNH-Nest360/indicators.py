@@ -1,8 +1,11 @@
 """
 Nest360 indicator definitions.
 
-26 original entries carry real numerator/denominator_filters where MAHIS
-has a verified concept for them. The rest were added from the NEST-IT
+22 entries carry real numerator/denominator_filters where MAHIS has a
+verified concept for them (18 original + 4 hypothermia indicators
+upgraded once mnid_newborn_not_hypothermic_admission/_anytime were found
+already built in data_utils.py from the real numeric Temperature concept).
+The rest were added from the NEST-IT
 Clinical & Implementation Indicators Guide (Indicators Guide (1).docx,
 last updated 3 Aug 2026) and are NEST-IT NID/Context Tracker system fields
 (in_glu_adm_doc, tr_eqt_cp_cp_fc, ...), not MAHIS concepts -- they carry no
@@ -185,9 +188,11 @@ def get_nest360_indicators():
          'category': 'Nest360',
          'subcategory': 'Hypothermia',
          'target': 100,
-         'status': 'awaiting_baseline',
-         'note': 'Verified against MAHIS-FRONT (src/apps/Neonatal/config/vitals.ts): neither raw temperature nor a categorical thermal-status concept flows into this extract -- "Thermal status on admission" '
-                 'is not a real MAHIS concept. No real data source for this indicator currently.'},
+         'status': 'tracked',
+         'note': 'Upgraded from awaiting_baseline: "Thermal status on admission" is still not a real categorical MAHIS concept, but the raw numeric Temperature reading is -- see '
+                 'mnid_newborn_not_hypothermic_admission in data_utils.py (first recorded Temperature reading per newborn, WHO threshold >=36.5C).',
+         'numerator_filters': {'unique': 'person_id', 'variable1': 'mnid_newborn_not_hypothermic_admission', 'value1': 'Yes'},
+         'denominator_filters': {'unique': 'person_id', 'variable1': 'mnid_newborn_admission_temp_taken', 'value1': 'Yes'}},
         {'id': 'nest360_thermal_care_recorded',
          'label': 'Thermal care recorded',
          'category': 'Nest360',
@@ -201,25 +206,28 @@ def get_nest360_indicators():
          'category': 'Nest360',
          'subcategory': 'Hypothermia',
          'target': 100,
-         'status': 'awaiting_baseline',
-         'note': 'Babies with body temperature >=36.5C at any time during their stay, EXCLUDING at admission / Babies who had temperature taken at any time during their stay, EXCLUDING at admission. Per '
-                 'NEST-IT Clinical & Implementation Indicators Guide (Indicators Guide (1).docx), last updated 3 Aug 2026.'},
+         'status': 'tracked',
+         'note': 'Upgraded from awaiting_baseline: uses every Temperature reading after each newborn\'s first (admission) reading -- see mnid_newborn_not_hypothermic_excl_admission in data_utils.py.',
+         'numerator_filters': {'unique': 'person_id', 'variable1': 'mnid_newborn_not_hypothermic_excl_admission', 'value1': 'Yes'},
+         'denominator_filters': {'unique': 'person_id', 'variable1': 'mnid_newborn_temp_taken_excl_admission', 'value1': 'Yes'}},
         {'id': 'nest360_not_hypothermic_inborn',
          'label': 'Not hypothermic at admission, inborn',
          'category': 'Nest360',
          'subcategory': 'Hypothermia',
          'target': 100,
-         'status': 'awaiting_baseline',
-         'note': 'Inborn babies with body temperature >=36.5C when admitted to the neonatal unit / Inborn babies admitted who had their temperature taken at admission. Per NEST-IT Clinical & Implementation '
-                 'Indicators Guide (Indicators Guide (1).docx), last updated 3 Aug 2026.'},
+         'status': 'tracked',
+         'note': 'Upgraded from awaiting_baseline: combines the real admission-temperature flag with mnid_newborn_inborn (built from "Place of delivery") to split inborn vs outborn.',
+         'numerator_filters': {'unique': 'person_id', 'variable1': 'mnid_newborn_not_hypothermic_admission', 'value1': 'Yes', 'variable2': 'mnid_newborn_inborn', 'value2': 'Yes'},
+         'denominator_filters': {'unique': 'person_id', 'variable1': 'mnid_newborn_admission_temp_taken', 'value1': 'Yes', 'variable2': 'mnid_newborn_inborn', 'value2': 'Yes'}},
         {'id': 'nest360_not_hypothermic_outborn',
          'label': 'Not hypothermic at admission, outborn',
          'category': 'Nest360',
          'subcategory': 'Hypothermia',
          'target': 100,
-         'status': 'awaiting_baseline',
-         'note': 'Outborn babies with body temperature >=36.5C when admitted to the neonatal unit / Outborn babies admitted who had their temperature taken at admission. Per NEST-IT Clinical & '
-                 'Implementation Indicators Guide (Indicators Guide (1).docx), last updated 3 Aug 2026.'},
+         'status': 'tracked',
+         'note': 'Upgraded from awaiting_baseline: same as the inborn variant, filtered to mnid_newborn_outborn=Yes instead.',
+         'numerator_filters': {'unique': 'person_id', 'variable1': 'mnid_newborn_not_hypothermic_admission', 'value1': 'Yes', 'variable2': 'mnid_newborn_outborn', 'value2': 'Yes'},
+         'denominator_filters': {'unique': 'person_id', 'variable1': 'mnid_newborn_admission_temp_taken', 'value1': 'Yes', 'variable2': 'mnid_newborn_outborn', 'value2': 'Yes'}},
         {'id': 'nest360_thermal_status_distribution',
          'label': 'Thermal status at admission (distribution)',
          'category': 'Nest360',

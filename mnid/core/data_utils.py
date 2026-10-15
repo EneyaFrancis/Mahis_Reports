@@ -467,6 +467,14 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
         'mnid_newborn_outborn',
         labour_like_mask & concept.eq('Place of delivery') & ~combined_lower.isin(['', 'this facility']),
     )
+    # Explicit complement (rather than filtering on outborn='') -- the generic
+    # _mask() filter-config reader treats an empty-string value as "stop
+    # applying conditions", not "match blank", so inborn needs its own
+    # non-empty 'Yes' value to be usable in numerator/denominator_filters.
+    _assign_flag(
+        'mnid_newborn_inborn',
+        labour_like_mask & concept.eq('Place of delivery') & combined_lower.eq('this facility'),
+    )
     _assign_flag(
         'mnid_labour_csection',
         labour_mask & concept.eq('Mode of delivery') & combined_lower.eq('caesarean section'),
@@ -690,7 +698,11 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     # never there. There's no field marking which specific reading is "at
     # admission" -- proxied as each newborn's chronologically first recorded
     # Temperature reading with a value.
-    _temp_concept = concept.eq('Temperature')
+    # Real newborn concept name is "Temperature (c)", not the bare "Temperature"
+    # this used to match -- confirmed against the live extract (0 rows for the
+    # old exact match, 49 Newborn rows for "Temperature (c)" with valid
+    # 34.0-38.6C readings). Matching both guards against either naming.
+    _temp_concept = concept.isin(['Temperature', 'Temperature (c)'])
     _not_hypothermic_reading = value_n.ge(36.5)
     _temp_rows = newborn_mask & _temp_concept & value_n.notna()
     _is_first_temp_reading = pd.Series(False, index=out.index)
@@ -704,6 +716,22 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     _assign_flag(
         'mnid_newborn_not_hypothermic_anytime',
         newborn_mask & _temp_concept & _not_hypothermic_reading,
+    )
+    # Denominator counterparts for the two flags above -- "had a temperature
+    # taken" regardless of the reading, needed so Nest360's hypothermia
+    # indicators don't understate coverage by dividing by all Newborn
+    # admissions (including ones with no temperature recorded at all).
+    _assign_flag(
+        'mnid_newborn_admission_temp_taken',
+        newborn_mask & _temp_concept & _is_first_temp_reading,
+    )
+    _assign_flag(
+        'mnid_newborn_not_hypothermic_excl_admission',
+        newborn_mask & _temp_concept & value_n.notna() & ~_is_first_temp_reading & _not_hypothermic_reading,
+    )
+    _assign_flag(
+        'mnid_newborn_temp_taken_excl_admission',
+        newborn_mask & _temp_concept & value_n.notna() & ~_is_first_temp_reading,
     )
     _assign_flag(
         'mnid_newborn_skin_to_skin',

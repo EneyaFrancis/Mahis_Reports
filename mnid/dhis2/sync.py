@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 import uuid
 from typing import Any
@@ -17,6 +18,20 @@ from .settings import DHIS2Settings
 from .status import load_status, utc_now, write_status
 
 _LOG = logging.getLogger(__name__)
+
+
+def _bridge_credentials_from_config() -> None:
+    """Populate MNH_DHIS2_* env vars from config.py if not already set in the
+    environment -- same bridge mnid_publish.py uses, so `sync` doesn't force
+    re-entering credentials that are already in config.py on every run.
+    """
+    try:
+        import config as cfg
+    except ImportError:
+        return
+    os.environ.setdefault('MNH_DHIS2_BASE_URL', getattr(cfg, 'MNH_DHIS2_BASE_URL', ''))
+    os.environ.setdefault('MNH_DHIS2_USERNAME', getattr(cfg, 'MNH_DHIS2_USERNAME', ''))
+    os.environ.setdefault('MNH_DHIS2_PASSWORD', getattr(cfg, 'MNH_DHIS2_PASSWORD', ''))
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -51,6 +66,7 @@ def _selected_units(units: list[dict[str, Any]], selected: list[str], levels: li
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     logging.basicConfig(level=getattr(logging, args.log_level), format="%(asctime)s %(levelname)s %(name)s %(message)s")
+    _bridge_credentials_from_config()
     try:
         settings = DHIS2Settings.from_env(require_credentials=not (args.dry_run or args.validate_config))
         mapping = load_indicator_mapping()

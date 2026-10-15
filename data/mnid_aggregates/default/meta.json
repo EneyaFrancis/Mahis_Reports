@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-20T13:00:04.303946",
-  "elapsed_sec": 480.9,
-  "rows": 13359,
-  "indicators": 183,
+  "generated_at": "2026-10-15T20:05:48.437323",
+  "elapsed_sec": 1258.8,
+  "rows": 12716,
+  "indicators": 187,
   "grains": [
     "monthly",
     "weekly",
@@ -11,7 +11,7 @@
     "yearly",
     "relative_period"
   ],
-  "data_source": "data/default/parquet",
+  "data_source": "data/default/parquet/*.parquet",
   "use_demo_data": false,
   "last_run_status": "ok"
 }

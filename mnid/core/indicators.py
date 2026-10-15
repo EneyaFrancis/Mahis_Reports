@@ -957,7 +957,7 @@ def _enrich_program_based_mnid_indicators(indicators: list, categories: list[str
             'note': 'Tracked directly from the neonatal thermal-status-on-admission concept.',
         },
         'Babies not hypothermic at any time in the neonatal unit': {
-            'status': 'awaiting_baseline',
+            'status': 'tracked',
             'numerator_filters': {
                 'unique': 'person_id',
                 'variable1': 'mnid_newborn_not_hypothermic_anytime', 'value1': 'Yes',
@@ -966,7 +966,7 @@ def _enrich_program_based_mnid_indicators(indicators: list, categories: list[str
                 'unique': 'person_id',
                 'variable1': 'Service_Area', 'value1': 'Newborn',
             },
-            'note': 'This needs longitudinal neonatal thermal-status observations, which are not yet exposed in the current parquet.',
+            'note': 'Upgraded from awaiting_baseline: tracked directly from the real numeric Temperature concept (mnid_newborn_not_hypothermic_anytime in data_utils.py).',
         },
     }
 
