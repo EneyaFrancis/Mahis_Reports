@@ -702,6 +702,7 @@ def _coverage_charts_section(
     facility_codes=None,
     districts=None,
     grain: str = 'monthly',
+    show_no_data: bool = False,
 ) -> html.Div:
     """2-column grid of per-phase coverage bar charts (replaces accordion cards)."""
     if agg_df is not None:
@@ -743,6 +744,9 @@ def _coverage_charts_section(
         # turned out to just be noise once most of them were confirmed to
         # have no source at all (as opposed to awaiting_baseline, which
         # means "not configured yet" and stays visible as a placeholder).
+        # show_no_data opts back into that placeholder treatment -- asked
+        # for specifically on the Newborn tab, where seeing every indicator
+        # (wired-but-empty included) matters more than avoiding the noise.
         available = [
             (ind, coverage)
             for ind, coverage in zip(tracked, computed)
@@ -753,6 +757,8 @@ def _coverage_charts_section(
             if not _has_coverage_data(coverage)
         ]
         visible_inds = [ind for ind, _ in available] + awaiting
+        if show_no_data:
+            visible_inds = visible_inds + no_data_tracked
         if not visible_inds:
             continue
         visible_phases.append((cat_key, cat_title, available, awaiting, no_data_tracked, visible_inds))

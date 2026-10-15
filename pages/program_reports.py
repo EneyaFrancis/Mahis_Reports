@@ -55,7 +55,7 @@ def _load_user_registry(route) -> pd.DataFrame:
         'uuid': DEMO_UUID,
         'role': 'reports_admin',
         'user_level': 'national',
-        'district': ["Salima"],
+        'district': ["Lilongwe"],
         'facility_name': None,
         'facility_code': DEMO_LOCATION,
         'assigned_facility':'Biwi Health Centre'

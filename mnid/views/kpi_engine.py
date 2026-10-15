@@ -399,6 +399,49 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
         allowed = set(category_order)
         all_inds = [i for i in all_inds if i.get('category') in allowed]
 
+    if category_order == ['Newborn']:
+        # Merge in the Nest360/NEST-IT indicators that aren't already covered
+        # by an existing Beginnings/Newborn card under a different label --
+        # most of the Nest360 catalog (pulse oximeter, CPAP by weight band,
+        # jaundice, sepsis, birth weight, asphyxia, hypothermia-at-admission/
+        # anytime, ...) duplicates one already shown above, just re-labeled.
+        # Only the genuinely new ones (unbanded CPAP coverage, the two KMC
+        # weight bands, and the inborn/outborn hypothermia split) get added.
+        # Done here (before tracked/computed/by_cat are derived) rather than
+        # only inside by_cat, so the "Available Indicators" KPI tile and the
+        # Coverage section's own count agree on the same indicator set.
+        _nest360_duplicate_ids = {
+            'nest360_pulse_oximeter_used_at_admission', 'nest360_weight_taken_at_birth',
+            'nest360_cpap_for_babies_1000_1499g', 'nest360_cpap_1500_1999g_with_symptoms',
+            'nest360_thermal_care_recorded', 'nest360_phototherapy_for_jaundice',
+            'nest360_bilirubin_measurement', 'nest360_neonatal_sepsis_rate',
+            'nest360_antibiotics_for_sepsis', 'nest360_data_completeness',
+            'nest360_birth_weight_recorded', 'nest360_low_birthweight_rate',
+            'nest360_birth_asphyxia_rate', 'nest360_resuscitation_given',
+            'nest360_neonatal_mortality_rate', 'nest360_not_hypothermic_at_admission',
+            'nest360_not_hypothermic_after_admission',
+        }
+        try:
+            import importlib.util as _ilu
+            from pathlib import Path as _P
+            _nest_path = _P(__file__).resolve().parents[1] / 'dashboards' / 'MNH-Nest360' / 'indicators.py'
+            _nest_spec = _ilu.spec_from_file_location('mnid.dashboards.mnh_nest360_indicators', str(_nest_path))
+            _nest_mod = _ilu.module_from_spec(_nest_spec)
+            _nest_spec.loader.exec_module(_nest_mod)
+            _existing_ids = {i.get('id') for i in all_inds}
+            for ind in _nest_mod.get_nest360_indicators():
+                if (
+                    ind.get('status') == 'tracked'
+                    and ind.get('id') not in _nest360_duplicate_ids
+                    and ind.get('id') not in _existing_ids
+                    and ind.get('numerator_filters') and ind.get('denominator_filters')
+                ):
+                    merged = dict(ind)
+                    merged['category'] = 'Newborn'
+                    all_inds.append(merged)
+        except Exception as exc:
+            _LOGGER.warning('Could not merge Nest360 indicators into Newborn display: %s', exc)
+
     overview_inds = [i for i in all_inds if i.get('status') == 'overview_only']
     display_inds  = [i for i in all_inds if i.get('status') != 'overview_only']
 
@@ -541,7 +584,14 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
                 pass
             elif _cur_batch and _kpi_window_safe:
                 num, den, pct = _batch_cov(_cur_batch, _batch_id, _kpi_fallbacks)
-                if den == 0 and ind.get('numerator_filters') and ind.get('denominator_filters'):
+                # facility_df is genuinely empty whenever the raw load was
+                # skipped (selected window has no overlap with the raw
+                # dataset, or the window prefers the aggregate outright --
+                # see renderer.py's _skip_raw_load) -- retrying against zero
+                # columns can't ever find a match, it only guarantees a
+                # "references missing columns" warning per indicator.
+                if (den == 0 and ind.get('numerator_filters') and ind.get('denominator_filters')
+                        and facility_df is not None and not facility_df.empty):
                     num, den, pct = _cov(facility_df, ind['numerator_filters'], ind['denominator_filters'])
             elif _agg is not None and _s is not None and _kpi_window_safe:
                 num, den, pct = _agg_coverage(
@@ -550,7 +600,8 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
                     districts=_dist_filter if not _fac_filter else None,
                     grain=_kpi_grain, indicator_label=ind.get('label'),
                 )
-            elif ind.get('numerator_filters') and ind.get('denominator_filters'):
+            elif (ind.get('numerator_filters') and ind.get('denominator_filters')
+                    and facility_df is not None and not facility_df.empty):
                 num, den, pct = _cov(facility_df, ind['numerator_filters'], ind['denominator_filters'])
             else:
                 num, den, pct = 0, 0, 0.0
@@ -563,7 +614,8 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
             if _prev_batch and prev_start is not None and _prev_kpi_window_safe:
                 _prev_batch_id = _agg_resolve_id(_agg, c['id'], c.get('label')) if _agg is not None else c['id']
                 _, prev_den, prev_pct = _batch_cov(_prev_batch, _prev_batch_id, _kpi_fallbacks)
-                if prev_den == 0 and c.get('numerator_filters') and c.get('denominator_filters'):
+                if (prev_den == 0 and c.get('numerator_filters') and c.get('denominator_filters')
+                        and _prev_df_filtered is not None and not _prev_df_filtered.empty):
                     try:
                         _, _, prev_pct = _cov(_prev_df_filtered, c['numerator_filters'], c['denominator_filters'])
                     except Exception:
@@ -580,7 +632,8 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
                     c['delta_pct'] = round(c['pct'] - prev_pct, 1)
                 except Exception:
                     c['delta_pct'] = None
-            elif prev_start is not None and c.get('numerator_filters') and c.get('denominator_filters'):
+            elif (prev_start is not None and c.get('numerator_filters') and c.get('denominator_filters')
+                    and _prev_df_filtered is not None and not _prev_df_filtered.empty):
                 try:
                     _, _, prev_pct = _cov(_prev_df_filtered, c['numerator_filters'], c['denominator_filters'])
                     c['delta_pct'] = round(c['pct'] - prev_pct, 1)
@@ -607,50 +660,13 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
             continue
         by_cat.setdefault(ind.get('category', 'Other'), []).append(ind)
 
-    if dashboard_theme == 'newborn':
-        # Merge in the Nest360/NEST-IT indicators that aren't already covered
-        # by an existing Beginnings/Newborn card under a different label --
-        # most of the Nest360 catalog (pulse oximeter, CPAP by weight band,
-        # jaundice, sepsis, birth weight, asphyxia, hypothermia-at-admission/
-        # anytime, ...) duplicates one already shown above, just re-labeled.
-        # Only the genuinely new ones (unbanded CPAP coverage, the two KMC
-        # weight bands, and the inborn/outborn hypothermia split) get added.
-        _nest360_duplicate_ids = {
-            'nest360_pulse_oximeter_used_at_admission', 'nest360_weight_taken_at_birth',
-            'nest360_cpap_for_babies_1000_1499g', 'nest360_cpap_1500_1999g_with_symptoms',
-            'nest360_thermal_care_recorded', 'nest360_phototherapy_for_jaundice',
-            'nest360_bilirubin_measurement', 'nest360_neonatal_sepsis_rate',
-            'nest360_antibiotics_for_sepsis', 'nest360_data_completeness',
-            'nest360_birth_weight_recorded', 'nest360_low_birthweight_rate',
-            'nest360_birth_asphyxia_rate', 'nest360_resuscitation_given',
-            'nest360_neonatal_mortality_rate', 'nest360_not_hypothermic_at_admission',
-            'nest360_not_hypothermic_after_admission',
-        }
-        try:
-            import importlib.util as _ilu
-            from pathlib import Path as _P
-            _nest_path = _P(__file__).resolve().parents[1] / 'dashboards' / 'MNH-Nest360' / 'indicators.py'
-            _nest_spec = _ilu.spec_from_file_location('mnid.dashboards.mnh_nest360_indicators', str(_nest_path))
-            _nest_mod = _ilu.module_from_spec(_nest_spec)
-            _nest_spec.loader.exec_module(_nest_mod)
-            for ind in _nest_mod.get_nest360_indicators():
-                if (
-                    ind.get('status') == 'tracked'
-                    and ind.get('id') not in _nest360_duplicate_ids
-                    and ind.get('numerator_filters') and ind.get('denominator_filters')
-                ):
-                    merged = dict(ind)
-                    merged['category'] = 'Newborn'
-                    by_cat.setdefault('Newborn', []).append(merged)
-        except Exception as exc:
-            _LOGGER.warning('Could not merge Nest360 indicators into Newborn display: %s', exc)
-
     _t1 = _time.monotonic()
     coverage_charts = _coverage_charts_section(
         by_cat, facility_df, category_order,
         agg_df=_cov_agg if _cov_agg is not None else _agg,
         start_date=str(_s.date()) if _s is not None else start_date,
         end_date=str(_e.date()) if _e is not None else end_date,
+        show_no_data=(dashboard_theme == 'newborn'),
         facility_codes=list(_fac_filter) if _fac_filter else None,
         districts=list(_dist_filter) if _dist_filter and not _fac_filter else None,
         grain=_coverage_grain,

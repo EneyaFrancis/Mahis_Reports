@@ -465,6 +465,47 @@ def _run_chart_cards(
     return cards
 
 
+def _indicator_ids_with_data(
+    ind_list: list, agg_df, df, scope_meta: dict | None = None,
+    grain: str = 'monthly', start_date=None, end_date=None,
+) -> set:
+    """Which of these (already status=='tracked') indicators have any real
+    coverage data in the current scope/window -- same all-zero-means-nothing
+    test the Coverage & Quality bars use. Lets callers default to, and sort
+    toward, indicators that actually have something to plot instead of
+    whichever happened to come first in the catalog.
+    """
+    scope_meta = scope_meta or {}
+    fac_filter = dist_filter = None
+    try:
+        _, fac_codes, districts = _resolve_scope_filters(df if df is not None else pd.DataFrame(), scope_meta)
+        fac_filter  = fac_codes or None
+        dist_filter = districts or None
+    except Exception:
+        pass
+
+    with_data = set()
+    for ind in ind_list:
+        if not (ind.get('numerator_filters') and ind.get('denominator_filters')):
+            continue
+        try:
+            if agg_df is not None and not agg_df.empty:
+                num, den, _ = _agg_coverage(
+                    agg_df, ind['id'], start_date, end_date,
+                    facility_codes=fac_filter, districts=dist_filter,
+                    grain=grain, indicator_label=ind.get('label'),
+                )
+            elif df is not None and not df.empty:
+                num, den, _ = _cov(df, ind['numerator_filters'], ind['denominator_filters'])
+            else:
+                continue
+        except Exception:
+            continue
+        if (num or 0) > 0 or (den or 0) > 0:
+            with_data.add(ind['id'])
+    return with_data
+
+
 def _trend_switcher(
     df: pd.DataFrame, indicators: list,
     categories: list | None = None,
@@ -479,12 +520,33 @@ def _trend_switcher(
     default_cat = default_cat if default_cat in cat_order else (cat_order[0] if cat_order else 'ANC')
     loc_options = _location_options_for_df(df, scope_meta or {})
 
+    # awaiting_baseline indicators are included in the dropdown (so they're
+    # pickable/visible at all -- see "No data"/"Awaiting" placeholder
+    # handling in _run_chart_cards) but never used for the default
+    # selection below, since there's nothing to plot for them yet.
+    selectable = [i for i in indicators if i.get('status') in ('tracked', 'awaiting_baseline')]
     ind_opts_by_cat = {
-        c: [{'label': i['label'], 'value': i['id']} for i in tracked if i.get('category') == c]
+        c: [{'label': i['label'], 'value': i['id']} for i in selectable if i.get('category') == c]
         for c in cat_order
     }
-    default_ind_opts   = ind_opts_by_cat.get(default_cat, [])
-    default_ind_values = [o['value'] for o in default_ind_opts[:_DEFAULT_TREND_INDICATOR_LIMIT]]
+    default_ind_opts = ind_opts_by_cat.get(default_cat, [])
+    try:
+        _agg_for_default = _get_aggregate(route=(scope_meta or {}).get('route', 'default'))
+    except Exception:
+        _agg_for_default = None
+    _cat_tracked = [i for i in tracked if i.get('category') == default_cat]
+    _with_data = _indicator_ids_with_data(
+        _cat_tracked, _agg_for_default, df, scope_meta,
+        start_date=start_date, end_date=end_date,
+    )
+    # Prefer options with real data for the default selection; indicators
+    # without data fill any remaining slots rather than crowding out ones
+    # that would actually plot something.
+    _ordered_opts = (
+        [o for o in default_ind_opts if o['value'] in _with_data]
+        + [o for o in default_ind_opts if o['value'] not in _with_data]
+    )
+    default_ind_values = [o['value'] for o in _ordered_opts[:_DEFAULT_TREND_INDICATOR_LIMIT]]
 
     try:
         # Prefer the actually-selected window over df's own min/max -- df
@@ -649,15 +711,34 @@ def update_trend_chart(n_clicks_list, selected_inds, grain, measure_clicks,
     else:
         df = _df_full if _df_full is not None else pd.DataFrame()
 
-    default_ind_values = [o['value'] for o in ind_options[:_DEFAULT_TREND_INDICATOR_LIMIT]]
+    _cat_tracked = [i for i in tracked if i.get('category') == cat]
+    _with_data = _indicator_ids_with_data(
+        _cat_tracked, _agg_now, df, scope_meta, grain=grain,
+        start_date=trend_payload.get('date_min'), end_date=trend_payload.get('date_max'),
+    )
+    _ordered_opts = (
+        [o for o in ind_options if o['value'] in _with_data]
+        + [o for o in ind_options if o['value'] not in _with_data]
+    )
+    default_ind_values = [o['value'] for o in _ordered_opts[:_DEFAULT_TREND_INDICATOR_LIMIT]]
     ind_value_out = default_ind_values if cat_changed else no_update
+
+    # Indicators with real data first, no-data/awaiting ones pushed to the
+    # bottom -- matters most when many/all options are selected at once,
+    # so the charts that actually have something to show aren't buried
+    # under empty "No data"/"Awaiting" placeholders.
+    _selection = default_ind_values if cat_changed else (selected_inds or [])
+    _ordered_selection = (
+        [i for i in _selection if i in _with_data]
+        + [i for i in _selection if i not in _with_data]
+    )
 
     cards   = _run_chart_cards(
         # Location filter removed -- Run Charts always show the full scope
         # (whatever the outer Country Profile/District/Facility selection
         # already narrowed network_df to), not a further per-chart pick.
         df, tracked, cat, 'all',
-        default_ind_values if cat_changed else selected_inds,
+        _ordered_selection,
         scope_meta, agg_df=_agg_now, fallback_df=_df_full, grain=grain, measure=measure,
     )
     # Truncate to match the number of buttons actually on the page.
