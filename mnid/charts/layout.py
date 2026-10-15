@@ -843,14 +843,14 @@ def _count_stat_row(stats: list, section_title: str = 'PROGRAMME SNAPSHOT'):
     ])
 
 
-def _kpi_row(computed):
+def _kpi_row(computed, awaiting_count: int = 0):
     n    = len(computed)
     on   = [c for c in computed if _css(c['pct'], c['target'], c) == 'ok']
     mon  = [c for c in computed if _css(c['pct'], c['target'], c) == 'warn']
     crit = [c for c in computed if _css(c['pct'], c['target'], c) == 'danger']
     avg  = round(sum(c.get('attained_pct', _target_attainment_pct(c['pct'], c['target'], c)) for c in computed) / n, 1) if n else 0.0
     avg_color = _cov_color(avg)
-    return html.Div(className='mnid-kpi-row', children=[
+    tiles = [
         _kpi('Available Indicators', str(n), 'live indicators', 'info',
              bottom_bar=_count_bar(n, n, INFO_C)),
         _kpi('On Target', str(len(on)), 'meeting benchmark', 'ok',
@@ -861,7 +861,18 @@ def _kpi_row(computed):
              bottom_bar=_count_bar(len(crit), n, DANGER_C)),
         _kpi('Average Coverage', '', 'across available indicators', 'info',
              ring=_avg_ring(avg, avg_color)),
-    ])
+    ]
+    # Indicators with status=awaiting_baseline (no validated target yet) are
+    # excluded from every other tile above -- they have no pct/target to
+    # bucket into On Target/Watch/Needs Review. Surfacing the count here is
+    # the only place they're visible outside the coverage charts, which
+    # deliberately only show them when they have real data (see coverage.py).
+    if awaiting_count:
+        tiles.append(
+            _kpi('Awaiting Data', str(awaiting_count), 'not yet reporting', 'info',
+                 bottom_bar=_count_bar(awaiting_count, awaiting_count, MUTED))
+        )
+    return html.Div(className='mnid-kpi-row', children=tiles)
 
 
 # MNID section anchor helper

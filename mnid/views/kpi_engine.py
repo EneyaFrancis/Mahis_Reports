@@ -768,7 +768,7 @@ def _build_mnid_indicator_content(network_df: pd.DataFrame, config: dict,
                 ),
                 eyebrow='Overview' if dashboard_theme == 'newborn' else None,
             ),
-            _kpi_row(computed),
+            _kpi_row(computed, awaiting_count=len(awaiting) if dashboard_theme == 'newborn' else 0),
             _hero_donut_row(
                 _activity_stats,
                 preferred_cat='All' if selected_program == 'All' and len(category_order) > 1 else default_cat,
