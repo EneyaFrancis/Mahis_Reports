@@ -294,6 +294,7 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     concept_lower   = _lower_cat(concept)
     combined_lower  = _lower_cat(combined)
     encounter_upper = _upper_cat(encounter)
+    encounter_lower = _lower_cat(encounter)
     encounter_source = _cat_str('Encounter_Source') if 'Encounter_Source' in out.columns else encounter
     encounter_source_lower = _lower_cat(encounter_source)
 
@@ -428,7 +429,14 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     )
     _assign_flag(
         'mnid_anc_visit_documented',
-        anc_mask & encounter_source_lower.eq('anc visit'),
+        # Was checking Encounter_Source (clinical note-section names like
+        # "Counseling"/"Vitals") for the literal "anc visit", which never
+        # appears there -- the real encounter-type label lives in Encounter
+        # instead ("ANC VISIT" on every real ANC row; see _normalize_encounter
+        # above, which sets it explicitly for Service_Area=ANC). Confirmed
+        # the old check returned zero rows against 397,914 real ANC
+        # encounters in the Aug 2026 extract.
+        anc_mask & encounter_lower.eq('anc visit'),
     )
     # Count distinct visit dates per ANC patient — flag persons with ≥4 contacts
     _anc_date_counts = out.loc[anc_mask, ['person_id', 'Date']].groupby('person_id')['Date'].nunique()
@@ -607,7 +615,18 @@ def _derive_person_level_context(out: pd.DataFrame) -> pd.DataFrame:
     )
     _assign_flag(
         'mnid_pnc_visit_documented',
-        pnc_mask & encounter_source_lower.eq('pnc visit'),
+        # Encounter_Source happens to carry a "Pnc visit" note-section on
+        # real PNC rows, so this wasn't broken the way ANC's equivalent was
+        # -- but that's incidental, not a guaranteed encounter-type label.
+        # OR'd with the real Encounter-column value ("POSTNATAL CARE" on
+        # every PNC row) the same way mnid_labour_visit_documented already
+        # falls back past its own Encounter_Source check, so this doesn't
+        # silently break the next time a facility's note-section naming
+        # changes.
+        pnc_mask & (
+            encounter_source_lower.eq('pnc visit')
+            | encounter_lower.eq('postnatal care')
+        ),
     )
     _assign_flag(
         'mnid_pnc_maternal_death',

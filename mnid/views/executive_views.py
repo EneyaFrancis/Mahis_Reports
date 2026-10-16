@@ -811,6 +811,18 @@ def _summary_card(title: str, value: str, subtitle: str, accent: str) -> dmc.Pap
     )
 
 
+# Below this many births, a per-100k/per-1,000 rate swings wildly on one or
+# two events (7 deaths over 55 births reads as an MMR of ~12,700/100k, far
+# past any real-world value) -- flagged instead of presented as a population
+# rate once the underlying sample is this thin.
+_MIN_RATE_SAMPLE = 100
+
+_MORTALITY_INTERPRETATION = {
+    "Maternal Deaths": ("Maternal deaths recorded this period", "No maternal deaths recorded"),
+    "Neonatal Deaths": ("Neonatal deaths recorded this period", "No neonatal deaths recorded"),
+    "Stillbirths": ("Stillbirth burden needs attention", "No stillbirths recorded"),
+}
+
 _MORTALITY_TOKENS = {
     "Maternal Deaths":  {"accent": "#e11d48", "bg": "#fff1f2", "bdr": "#fecdd3", "shadow_rgba": "225,29,72"},
     "Neonatal Deaths":  {"accent": "#d97706", "bg": "#fffbeb", "bdr": "#fde68a", "shadow_rgba": "217,119,6"},
@@ -827,6 +839,7 @@ def _mortality_card(
     color: str,
     background: str,
     breakdown: list[tuple[str, str]] | None = None,
+    sample_size: int = 0,
 ):
     tokens = _MORTALITY_TOKENS.get(title, {"accent": color, "bg": background, "bdr": color, "shadow_rgba": "0,0,0"})
     accent = tokens["accent"]
@@ -901,11 +914,21 @@ def _mortality_card(
                 html.Div([
                     html.Div("Interpretation", style={"fontSize": "10px", "color": "#64748b", "marginBottom": "4px"}),
                     html.Div(
-                        "Stillbirth burden needs attention" if count > 0 else "No stillbirths recorded",
+                        _MORTALITY_INTERPRETATION.get(title, (f"{title} recorded this period", f"No {title.lower()} recorded"))[0 if count > 0 else 1],
                         style={"fontSize": "12px", "fontWeight": "700", "color": "#dc2626" if count > 0 else "#16a34a"},
                     ),
                 ]),
             ], style={"display": "grid", "gridTemplateColumns": "1fr 1fr", "gap": "8px"}),
+            *([
+                html.Div(
+                    f"Based on {sample_size:,} births -- too few for a reliable rate; read the count on the left instead.",
+                    style={
+                        "fontSize": "11px", "color": "#92400e", "background": "#fffbeb",
+                        "border": "1px solid #fde68a", "borderRadius": "8px",
+                        "padding": "6px 10px", "marginTop": "10px",
+                    },
+                )
+            ] if count > 0 and 0 < sample_size < _MIN_RATE_SAMPLE else []),
             *([
                 html.Div([
                     html.Div("Stillbirth breakdown", style={
@@ -1162,8 +1185,8 @@ def render_country_profile(
     ]
 
     mortality_specs = [
-        ("Maternal Deaths", current_metrics["maternal_deaths"], "MMR per 100k live births",   current_metrics["institutional_mmr"],      current_metrics["maternal_deaths"]  - previous_metrics["maternal_deaths"],  MORTALITY_ROSE,   "#FFF1F2", None),
-        ("Neonatal Deaths", current_metrics["neonatal_deaths"], "NMR per 1,000 live births",  current_metrics["neonatal_mortality_rate"], current_metrics["neonatal_deaths"] - previous_metrics["neonatal_deaths"],   NEONATAL_ORANGE, "#FFF8EB", None),
+        ("Maternal Deaths", current_metrics["maternal_deaths"], "MMR per 100k live births",   current_metrics["institutional_mmr"],      current_metrics["maternal_deaths"]  - previous_metrics["maternal_deaths"],  MORTALITY_ROSE,   "#FFF1F2", None, current_metrics["live_births"]),
+        ("Neonatal Deaths", current_metrics["neonatal_deaths"], "NMR per 1,000 live births",  current_metrics["neonatal_mortality_rate"], current_metrics["neonatal_deaths"] - previous_metrics["neonatal_deaths"],   NEONATAL_ORANGE, "#FFF8EB", None, current_metrics["live_births"]),
         (
             "Stillbirths",
             current_metrics["stillbirths"],
@@ -1179,6 +1202,7 @@ def render_country_profile(
                 ("Fresh stillbirths", "Breakdown unavailable"),
                 ("Macerated stillbirths", "Breakdown unavailable"),
             ],
+            current_metrics["total_births"],
         ),
     ]
 
