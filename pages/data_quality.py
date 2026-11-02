@@ -27,6 +27,7 @@ from dq.checks.validity import (
 from dq.checks.users import (
     RULES as USER_RULES, RULE_ORDER as USER_RULE_ORDER, load_user_roster, evaluate_users,
 )
+from dq.tracking import make_key, upsert_findings, query_issues, update_issue, STATUS_OPTIONS
 
 dash.register_page(__name__, path="/data_quality", title="Data Quality")
 
@@ -732,6 +733,15 @@ layout = html.Div(
                                 children=html.Div(id="dq-users-content"),
                             ),
                         ),
+                        dcc.Tab(
+                            id="dq-tab-issues",
+                            label="Issues", value="issues",
+                            style=_TAB_STYLE, selected_style=_TAB_SELECTED_STYLE,
+                            children=html.Div(
+                                className="results-card",
+                                children=html.Div(id="dq-issues-content"),
+                            ),
+                        ),
                     ],
                 ),
             ],
@@ -1357,6 +1367,28 @@ def render_duplicates_tab(urlparams, run_clicks, candidates_page, start_date, en
     critical_groups = sum(
         1 for g in groups if any(DUP_RULES[r]["severity"] == "critical" for r in g["rules"])
     )
+
+    if groups:
+        facility_by_person = roster_df.set_index("person_id")["facility"].to_dict()
+        max_severity_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+        findings = []
+        for g in groups:
+            members_sorted = sorted(g["members"])
+            severity = min(
+                (DUP_RULES[r]["severity"] for r in g["rules"]),
+                key=lambda s: max_severity_rank[s], default="low",
+            )
+            rule_id = g["rules"][0] if g["rules"] else "D4"
+            findings.append({
+                "issue_key": make_key("duplicates", "group", *members_sorted),
+                "tab": "duplicates", "rule_id": rule_id, "severity": severity,
+                "entity_label": f"{len(members_sorted)} records: person_ids {', '.join(str(m) for m in members_sorted)}",
+                "facility": facility_by_person.get(members_sorted[0]), "district": None, "programme": program,
+            })
+        try:
+            upsert_findings(data_route, findings)
+        except Exception:
+            pass
 
     prev_start, prev_end = _previous_period(start_date, end_date)
     prev_duplicate_rate = None
@@ -1994,6 +2026,26 @@ def render_validity_tab(urlparams, run_clicks, start_date, end_date, districts, 
         except Exception:
             sample_df = pd.DataFrame(columns=[c for c, _ in _VALIDITY_SAMPLE_COLUMNS])
 
+        # Tracks the same (up to 20-per-rule) sample already fetched above,
+        # not every defective row -- consistent with that table's own "up
+        # to 20 example rows" framing, and avoids a second heavy query on
+        # every Run DQ click for rules that can match hundreds of thousands
+        # of rows.
+        if not sample_df.empty:
+            findings = []
+            for _, r in sample_df.iterrows():
+                identity = (r.get("Person ID"), r.get("Concept"), r.get("Obs Date"), r.get("Value"))
+                findings.append({
+                    "issue_key": make_key("validity", r["Rule"], *identity),
+                    "tab": "validity", "rule_id": r["Rule"], "severity": r["Severity"],
+                    "entity_label": f"Person {r.get('Person ID')}: {r.get('Concept')} = {r.get('Value')}",
+                    "facility": r.get("Facility"), "district": None, "programme": program,
+                })
+            try:
+                upsert_findings(data_route, findings)
+            except Exception:
+                pass
+
     sample_panel = html.Div(
         [
             html.H4("Sample defective rows", className="dq-panel-title"),
@@ -2120,6 +2172,23 @@ def render_users_tab(urlparams, run_clicks):
         if any(USER_RULES[rid]["severity"] == "critical" for rid in row["issues"])
     )
 
+    if not flagged.empty:
+        findings = []
+        for _, row in flagged.iterrows():
+            identity = row.get("uuid") or row.get("username")
+            for rid in row["issues"]:
+                findings.append({
+                    "issue_key": make_key("users", rid, identity),
+                    "tab": "users", "rule_id": rid, "severity": USER_RULES[rid]["severity"],
+                    "entity_label": f"{row.get('username') or identity}: {USER_RULES[rid]['label']}",
+                    "facility": row.get("facility_name") or row.get("facility_code"),
+                    "district": row.get("district"), "programme": None,
+                })
+        try:
+            upsert_findings(data_route, findings)
+        except Exception:
+            pass
+
     summary_strip = html.Div(
         [
             _kpi_card("Users in roster", f"{total_users:,}"),
@@ -2203,3 +2272,143 @@ def render_users_tab(urlparams, run_clicks):
 
     label, style = _tab_label_and_style("Users", len(flagged))
     return html.Div(panels), label, style
+
+
+@callback(
+    Output("dq-issues-content", "children"),
+    Output("dq-tab-issues", "label"),
+    Output("dq-tab-issues", "style"),
+    Input("url-params-store", "data"),
+    Input("dq-tabs", "value"),
+)
+def render_issues_tab(urlparams, active_tab):
+    """Persistent issue tracker fed automatically by Duplicates/Validity/
+    Users on every Run DQ -- independent of the filter bar and Run DQ
+    itself, since tracked issues accumulate across scans rather than being
+    recomputed from the current scope. Status/Assigned to/Notes are
+    editable directly in the table; handle_issue_edit below persists them.
+    """
+    if active_tab != "issues":
+        raise PreventUpdate
+    urlparams = urlparams or {}
+    data_route = urlparams.get("route", ["default"])[0]
+    location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
+    user_data = _load_user_registry(data_route)
+    user_row, _scope = _resolve_user_scope(urlparams, user_data)
+    if user_row is None or not location:
+        return None, "Issues", _TAB_STYLE
+
+    df = query_issues(data_route)
+    if df.empty:
+        return (
+            _empty_state(
+                "No tracked issues yet",
+                "Run the Duplicates, Validity, or Users checks at least once -- every finding they "
+                "surface gets tracked here automatically.",
+            ),
+            "Issues", _TAB_STYLE,
+        )
+
+    status_counts = df["status"].value_counts().to_dict()
+    summary_strip = html.Div(
+        [_kpi_card(s.replace("_", " ").title(), f"{status_counts.get(s, 0):,}") for s in STATUS_OPTIONS]
+        + [_kpi_card("Total tracked", f"{len(df):,}")],
+        className="dq-kpi-row",
+    )
+
+    display_cols = [
+        "tab", "rule_id", "severity", "entity_label", "facility", "district", "programme",
+        "first_seen", "last_seen", "status", "assigned_to", "notes", "reviewed_by", "reviewed_at",
+    ]
+    display_names = [
+        "Tab", "Rule", "Severity", "Issue", "Facility", "District", "Programme",
+        "First seen", "Last seen", "Status", "Assigned to", "Notes", "Reviewed by", "Reviewed at",
+    ]
+    editable_cols = {"status", "assigned_to", "notes"}
+
+    columns = []
+    for c, n in zip(display_cols, display_names):
+        col = {"name": n, "id": c, "editable": c in editable_cols}
+        if c == "status":
+            col["presentation"] = "dropdown"
+        columns.append(col)
+
+    # issue_key rides along in each row's data (needed by handle_issue_edit
+    # to know which tracked row to update) without being a visible column,
+    # since it's never added to `columns` above.
+    data_records = df[display_cols + ["issue_key"]].to_dict("records")
+
+    table = dash_table.DataTable(
+        id="dq-issues-table",
+        columns=columns,
+        data=data_records,
+        dropdown={
+            "status": {"options": [{"label": s.replace("_", " ").title(), "value": s} for s in STATUS_OPTIONS]},
+        },
+        editable=True,
+        filter_action="native",
+        sort_action="native",
+        export_format="csv",
+        export_headers="display",
+        page_size=20,
+        style_cell={"textAlign": "left", "fontSize": "0.8rem"},
+    )
+
+    content = html.Div([
+        summary_strip,
+        html.Div(
+            "Status, Assigned to, and Notes are editable directly in the table -- click a cell to change "
+            "it. Every finding from Duplicates/Validity/Users is tracked here automatically on each Run "
+            "DQ; re-finding the same issue updates \"Last seen\" without resetting your review progress.",
+            className="dq-panel-note",
+        ),
+        html.Div(id="dq-issue-save-status"),
+        table,
+    ])
+    label, style = _tab_label_and_style("Issues", int(status_counts.get("new", 0)))
+    return content, label, style
+
+
+@callback(
+    Output("dq-issue-save-status", "children"),
+    Input("dq-issues-table", "data"),
+    State("dq-issues-table", "data_previous"),
+    State("url-params-store", "data"),
+    prevent_initial_call=True,
+)
+def handle_issue_edit(data, data_previous, urlparams):
+    """Diffs the DataTable's data against its previous value, cell by cell,
+    and persists only the fields that actually changed for each edited row
+    -- fires on every data change (including the initial populate, where
+    data_previous is None and this is a no-op)."""
+    if not data_previous:
+        raise PreventUpdate
+    urlparams = urlparams or {}
+    data_route = urlparams.get("route", ["default"])[0]
+    reviewer = (urlparams.get("uuid") or [None])[0]
+
+    changed = 0
+    for new_row, old_row in zip(data, data_previous):
+        if new_row == old_row:
+            continue
+        key = new_row.get("issue_key")
+        if not key:
+            continue
+        kwargs = {}
+        if new_row.get("status") != old_row.get("status"):
+            kwargs["status"] = new_row.get("status")
+        if new_row.get("assigned_to") != old_row.get("assigned_to"):
+            kwargs["assigned_to"] = new_row.get("assigned_to")
+        if new_row.get("notes") != old_row.get("notes"):
+            kwargs["notes"] = new_row.get("notes")
+        if kwargs:
+            kwargs["reviewed_by"] = reviewer
+            try:
+                update_issue(data_route, key, **kwargs)
+                changed += 1
+            except Exception:
+                pass
+
+    if changed:
+        return html.Div(f"Saved {changed} change{'s' if changed != 1 else ''}.", className="dq-panel-note")
+    return ""
