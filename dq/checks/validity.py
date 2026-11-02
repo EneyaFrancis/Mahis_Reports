@@ -40,31 +40,37 @@ RULES = {
     "V1": {
         "label": "Birthdate in the future",
         "category": "Accuracy",
+        "severity": "high",
         "description": "Recorded date of birth is after today.",
     },
     "V2": {
         "label": "Implausible age (over 120 years)",
         "category": "Accuracy",
+        "severity": "medium",
         "description": "Birthdate implies an age over 120 years.",
     },
     "V3": {
         "label": "Observation date in the future",
         "category": "Accuracy",
+        "severity": "high",
         "description": "The observation's recorded date/time is after today.",
     },
     "V4": {
         "label": "Vital sign outside plausible range",
         "category": "Accuracy",
+        "severity": "critical",
         "description": "A numeric vital sign (weight, height, temperature, pulse, blood "
                         "pressure, birthweight, etc.) falls outside what's physiologically possible.",
     },
     "V5": {
         "label": "Observation before birth",
         "category": "Consistency",
+        "severity": "high",
         "description": "The observation's date/time falls before the person's own recorded birthdate.",
     },
     "V6": {
         "label": "Gender/programme mismatch",
+        "severity": "medium",
         "category": "Consistency",
         "description": "A patient recorded as Male under a maternal programme (ANC, Labour "
                         "and Delivery, or PNC).",

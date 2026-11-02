@@ -12,26 +12,34 @@ last_encounter.
 """
 import re
 
+# "confidence" is a hand-assigned weight per rule (how specific its matching
+# fields are), not a calibrated probability that two records are the same
+# patient -- the UI labels it "Match score" for that reason. Don't read
+# D3's 0.75 as "75% likely to be the same person."
 RULES = {
     "D1": {
         "label": "Exact identity",
         "fields": "identifier + given name + family name + gender + birthdate + home district + TA + village",
         "confidence": 0.98,
+        "severity": "critical",
     },
     "D2": {
         "label": "Without identifier",
         "fields": "given name + family name + gender + birthdate + home district + TA + village",
         "confidence": 0.90,
+        "severity": "high",
     },
     "D3": {
         "label": "Name without location",
         "fields": "given name + family name + gender + birthdate",
         "confidence": 0.75,
+        "severity": "medium",
     },
     "D4": {
         "label": "Other",
         "fields": "user-selected fields",
         "confidence": 0.50,
+        "severity": "low",
     },
 }
 RULE_ORDER = ["D1", "D2", "D3", "D4"]

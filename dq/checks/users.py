@@ -15,26 +15,32 @@ import pandas as pd
 RULES = {
     "U1": {
         "label": "Orphaned district",
+        "severity": "high",
         "description": "Assigned district doesn't exist anywhere in this route's current data.",
     },
     "U2": {
         "label": "Orphaned facility code",
+        "severity": "high",
         "description": "Assigned facility code doesn't exist anywhere in this route's current data.",
     },
     "U3": {
         "label": "Duplicate uuid",
+        "severity": "critical",
         "description": "This uuid appears more than once in the combined roster.",
     },
     "U4": {
         "label": "Missing role",
+        "severity": "critical",
         "description": "No role is set for this user.",
     },
     "U5": {
         "label": "Invalid user level",
+        "severity": "high",
         "description": "user_level is not one of national, district, or facility.",
     },
     "U6": {
         "label": "Scope not set for level",
+        "severity": "medium",
         "description": "A district- or facility-level user has no district or facility actually assigned.",
     },
 }
@@ -165,9 +171,16 @@ def _enrich_identities(df: pd.DataFrame, route: str) -> pd.DataFrame:
     return df
 
 
-def evaluate_users(roster_df: pd.DataFrame, valid_districts: set, valid_facility_codes: set) -> pd.DataFrame:
+def evaluate_users(roster_df: pd.DataFrame, valid_districts: set | None, valid_facility_codes: set | None) -> pd.DataFrame:
     """Adds one boolean column per RULE_ORDER id, plus an 'issues' column
-    listing which rule ids each row tripped."""
+    listing which rule ids each row tripped.
+
+    valid_districts/valid_facility_codes being None (rather than an empty
+    set) means "no ground truth available" -- e.g. the route's raw extract
+    doesn't exist at all -- and skips U1/U2 entirely instead of flagging
+    every assigned district/facility as orphaned, which an empty set would
+    do (a false-positive storm, not a real finding).
+    """
     df = roster_df.copy()
     if df.empty:
         for rid in RULE_ORDER:
@@ -175,11 +188,17 @@ def evaluate_users(roster_df: pd.DataFrame, valid_districts: set, valid_facility
         df["issues"] = pd.Series(dtype=object)
         return df
 
-    valid_districts = {str(d) for d in valid_districts}
-    valid_facility_codes = {str(f) for f in valid_facility_codes}
+    if valid_districts is None:
+        df["U1"] = False
+    else:
+        valid_districts = {str(d) for d in valid_districts}
+        df["U1"] = df["district"].apply(lambda d: bool(d) and pd.notna(d) and str(d) not in valid_districts)
 
-    df["U1"] = df["district"].apply(lambda d: bool(d) and pd.notna(d) and str(d) not in valid_districts)
-    df["U2"] = df["facility_code"].apply(lambda f: bool(f) and pd.notna(f) and str(f) not in valid_facility_codes)
+    if valid_facility_codes is None:
+        df["U2"] = False
+    else:
+        valid_facility_codes = {str(f) for f in valid_facility_codes}
+        df["U2"] = df["facility_code"].apply(lambda f: bool(f) and pd.notna(f) and str(f) not in valid_facility_codes)
 
     uuid_counts = df["uuid"].value_counts()
     df["U3"] = df["uuid"].apply(lambda u: bool(u) and pd.notna(u) and uuid_counts.get(u, 0) > 1)

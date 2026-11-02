@@ -337,6 +337,35 @@ def _empty_state(title, body):
     )
 
 
+def _data_source_available(data_route: str) -> bool:
+    """Whether data/{route}/parquet exists and actually has a file in it --
+    lets every tab tell "this route has no raw extract at all" apart from
+    "the extract exists but nothing matches the current filters," which a
+    bare empty-dataframe check can't distinguish. DHIS2/HMIS is the route
+    that's normally missing this entirely (analytics-only, no raw rows).
+    """
+    parquet_dir = os.path.join(os.getcwd(), f"data/{data_route}", "parquet")
+    try:
+        return os.path.isdir(parquet_dir) and any(
+            f.endswith(".parquet") for f in os.listdir(parquet_dir)
+        )
+    except OSError:
+        return False
+
+
+def _data_source_health_banner(data_route: str, tab_label: str = "Validity and outliers"):
+    return (
+        html.Div(
+            f"No raw data extract exists for the '{data_route}' route "
+            f"(data/{data_route}/parquet is missing or empty). This is a data-source availability "
+            "problem, not a result of your filters -- every check on this page needs that extract to "
+            "run, and showing zero issues here would misleadingly look like a clean result.",
+            className="dq-status-message",
+        ),
+        tab_label, _TAB_STYLE,
+    )
+
+
 def _evaluate_completeness(data_path, where, mandatory_demographics, mandatory_encounters):
     """Shared by the Overview and Completeness tabs so both report the exact
     same numbers -- one row per person_id with facility/identifier/name
@@ -478,12 +507,19 @@ layout = html.Div(
                                         className="dq-panel",
                                         children=[
                                             html.H4("Matching rules", className="dq-panel-title"),
+                                            html.Div(
+                                                "Match score is a hand-assigned weight per rule (how specific its "
+                                                "matching fields are), not a calibrated probability that two "
+                                                "records are the same patient.",
+                                                className="dq-panel-note",
+                                            ),
                                             dcc.Checklist(
                                                 id="dq-dup-rules",
                                                 options=[
                                                     {
                                                         "label": f"{rid} — {DUP_RULES[rid]['label']} "
-                                                                 f"({DUP_RULES[rid]['confidence']:.2f})",
+                                                                 f"(match score {DUP_RULES[rid]['confidence']:.2f}, "
+                                                                 f"{DUP_RULES[rid]['severity']} severity)",
                                                         "value": rid,
                                                     }
                                                     for rid in DUP_RULE_ORDER
@@ -515,7 +551,7 @@ layout = html.Div(
                                                 ],
                                             ),
                                             html.Label(
-                                                "Minimum confidence to show",
+                                                "Minimum match score to show",
                                                 className="config-label",
                                                 style={"marginTop": "12px", "display": "block"},
                                             ),
@@ -825,6 +861,10 @@ def render_overview_tab(urlparams, run_clicks, start_date, end_date, districts, 
             "Set your filters above, then click Run DQ to compute this tab.",
         )
 
+    if not _data_source_available(data_route):
+        banner, _, _ = _data_source_health_banner(data_route)
+        return banner
+
     if not program:
         return _empty_state(
             "Select a programme",
@@ -1049,7 +1089,7 @@ def _candidate_row(sn, group, roster_df):
     """One 'Candidate groups' table row -- SN, the representative person's
     attributes (most encounters, ties broken by obs_rows), an expandable
     'Similar Records' cell (native <details>/<summary>, same side-by-side
-    comparison as before, just moved out of the summary line), Confidence,
+    comparison as before, just moved out of the summary line), Match score,
     and Rules."""
     members_df = roster_df[roster_df["person_id"].isin(group["members"])].copy()
     best = members_df.sort_values(["encounter_count", "obs_rows"], ascending=False).iloc[0]
@@ -1153,6 +1193,9 @@ def render_duplicates_tab(urlparams, run_clicks, candidates_page, start_date, en
             "Duplicates", _TAB_STYLE,
         )
 
+    if not _data_source_available(data_route):
+        return _data_source_health_banner(data_route, "Duplicates")
+
     if not program:
         return (
             _empty_state(
@@ -1206,10 +1249,15 @@ def render_duplicates_tab(urlparams, run_clicks, candidates_page, start_date, en
     records_involved = sum(len(g["members"]) for g in groups)
     duplicate_rate = (surplus / patient_records * 100) if patient_records else 0.0
 
+    critical_groups = sum(
+        1 for g in groups if any(DUP_RULES[r]["severity"] == "critical" for r in g["rules"])
+    )
+
     summary_strip = html.Div(
         [
             _kpi_card("Patient records", f"{patient_records:,}"),
             _kpi_card("Duplicate Groups", f"{len(groups):,}"),
+            _kpi_card("Critical severity", f"{critical_groups:,}"),
             _kpi_card("Distinct Patients if Merged", f"{distinct_identities:,}"),
             _kpi_card("Records Affected", f"{records_involved:,}"),
             _kpi_card("Duplicate rate", f"{duplicate_rate:.1f}%", "surplus ÷ patient records"),
@@ -1220,7 +1268,7 @@ def render_duplicates_tab(urlparams, run_clicks, candidates_page, start_date, en
     per_rule_table = dash_table.DataTable(
         columns=[
             {"name": "Rule", "id": "rule"}, {"name": "Key", "id": "key"},
-            {"name": "Confidence", "id": "confidence"},
+            {"name": "Match score", "id": "confidence"}, {"name": "Severity", "id": "severity"},
             {"name": "Groups", "id": "groups"}, {"name": "Records", "id": "records"},
         ],
         data=[
@@ -1228,6 +1276,7 @@ def render_duplicates_tab(urlparams, run_clicks, candidates_page, start_date, en
                 "rule": f"{rid} — {DUP_RULES[rid]['label']}",
                 "key": _rule_fields_display(rid, other_fields),
                 "confidence": f"{DUP_RULES[rid]['confidence']:.2f}",
+                "severity": DUP_RULES[rid]["severity"],
                 "groups": per_rule_counts[rid]["groups"],
                 "records": per_rule_counts[rid]["records"],
             }
@@ -1299,8 +1348,8 @@ def render_duplicates_tab(urlparams, run_clicks, candidates_page, start_date, en
         )
     elif not candidate_groups:
         candidates_panel = _empty_state(
-            "No candidate groups at this confidence",
-            "Lower the minimum-confidence slider, or switch on more rules.",
+            "No candidate groups at this match score",
+            "Lower the minimum match score slider, or switch on more rules.",
         )
     else:
         total_pages = math.ceil(len(candidate_groups) / _CANDIDATES_PAGE_SIZE)
@@ -1312,7 +1361,7 @@ def render_duplicates_tab(urlparams, run_clicks, candidates_page, start_date, en
             [
                 html.Thead(html.Tr([
                     html.Th("SN"), html.Th("Person Attributes"), html.Th("Similar Records"),
-                    html.Th("Confidence"), html.Th("Rules"),
+                    html.Th("Match score"), html.Th("Rules"),
                 ])),
                 html.Tbody([
                     _candidate_row(sn, g, roster_df)
@@ -1337,7 +1386,16 @@ def render_duplicates_tab(urlparams, run_clicks, candidates_page, start_date, en
         [
             summary_strip,
             html.Div(
-                [html.H4("Per-rule breakdown", className="dq-panel-title"), per_rule_table],
+                [
+                    html.H4("Per-rule breakdown", className="dq-panel-title"),
+                    html.Div(
+                        "Shows how many groups/records each rule alone would catch. A patient matched by more "
+                        "than one rule is only counted once in Duplicate Groups/Patient records above -- these "
+                        "per-rule counts aren't meant to sum to that total.",
+                        className="dq-panel-note",
+                    ),
+                    per_rule_table,
+                ],
                 className="dq-panel",
             ),
             html.Div(
@@ -1461,6 +1519,9 @@ def render_completeness_tab(urlparams, run_clicks, start_date, end_date, distric
             "Completeness", _TAB_STYLE,
         )
 
+    if not _data_source_available(data_route):
+        return _data_source_health_banner(data_route, "Completeness")
+
     if not program:
         return (
             _empty_state(
@@ -1509,14 +1570,36 @@ def render_completeness_tab(urlparams, run_clicks, start_date, end_date, distric
     incomplete_count = total_patients - complete_count
     completeness_rate = (complete_count / total_patients * 100) if total_patients else 0.0
 
-    metrics_strip = html.Div(
-        [
-            _kpi_card("Patients evaluated", f"{total_patients:,}"),
-            _kpi_card("Complete records", f"{complete_count:,}"),
-            _kpi_card("Incomplete records", f"{incomplete_count:,}"),
-            _kpi_card("Completeness rate", f"{completeness_rate:.1f}%"),
-        ],
-        className="dq-kpi-row",
+    # Reported separately, not just blended into the one combined rate --
+    # a patient missing only a demographic field and one missing only an
+    # encounter are different problems with different fixes, and burying
+    # both inside one "incomplete" number hides which one actually needs
+    # attention. Only shown for the dimension that was actually configured;
+    # the unconfigured side is a no-op True for every patient and would
+    # misleadingly read as "100% complete" otherwise.
+    metrics_cards = [
+        _kpi_card("Patients evaluated", f"{total_patients:,}"),
+        _kpi_card("Complete records", f"{complete_count:,}"),
+        _kpi_card("Incomplete records", f"{incomplete_count:,}"),
+        _kpi_card("Completeness rate", f"{completeness_rate:.1f}%", "Both dimensions combined"),
+    ]
+    if demo_flag_cols:
+        demo_rate = df["demographics_complete"].mean() * 100
+        metrics_cards.append(_kpi_card("Demographic completeness", f"{demo_rate:.1f}%"))
+    if enc_flag_cols:
+        enc_rate = df["encounters_complete"].mean() * 100
+        metrics_cards.append(_kpi_card("Encounter completeness", f"{enc_rate:.1f}%"))
+
+    metrics_strip = html.Div(metrics_cards, className="dq-kpi-row")
+
+    applicability_note = html.Div(
+        "Every selected encounter is currently checked against every patient in scope, regardless of "
+        "whether that encounter clinically applies to them -- e.g. marking an encounter mandatory for a "
+        "whole programme when it's only expected for a subset of patients will overcount incomplete "
+        "records. There's no per-patient applicability rule yet; read a low rate here as a prompt to "
+        "check whether the selected rule genuinely applies to everyone in this scope, not as a confirmed "
+        "defect count.",
+        className="dq-panel-note",
     )
 
     facility_summary = (
@@ -1565,6 +1648,7 @@ def render_completeness_tab(urlparams, run_clicks, start_date, end_date, distric
     content = html.Div(
         [
             metrics_strip,
+            applicability_note,
             html.Div(
                 [html.H4("Completeness by facility", className="dq-panel-title"), facility_table],
                 className="dq-panel",
@@ -1587,7 +1671,7 @@ def render_completeness_tab(urlparams, run_clicks, start_date, end_date, distric
 
 
 _VALIDITY_SAMPLE_COLUMNS = [
-    ("Rule", "Rule"), ("Person ID", "Person ID"), ("Facility", "Facility"),
+    ("Rule", "Rule"), ("Severity", "Severity"), ("Person ID", "Person ID"), ("Facility", "Facility"),
     ("Concept", "Concept"), ("Value", "Value"), ("Obs Date", "Obs Date"),
     ("Birthdate", "Birthdate"), ("Gender", "Gender"), ("Programme", "Programme"),
 ]
@@ -1629,6 +1713,9 @@ def render_validity_tab(urlparams, run_clicks, start_date, end_date, districts, 
             ),
             "Validity and outliers", _TAB_STYLE,
         )
+
+    if not _data_source_available(data_route):
+        return _data_source_health_banner(data_route, "Validity and outliers")
 
     data_path = f"data/{data_route}/parquet"
     level = scope.get("level")
@@ -1679,11 +1766,15 @@ def render_validity_tab(urlparams, run_clicks, start_date, end_date, districts, 
 
     defect_rate = (distinct_defects / total_rows * 100) if total_rows else 0.0
     rules_triggered = sum(1 for r in enabled_rules if per_rule_counts.get(r, 0) > 0)
+    critical_defects = sum(
+        per_rule_counts.get(r, 0) for r in enabled_rules if VAL_RULES[r]["severity"] == "critical"
+    )
 
     summary_strip = html.Div(
         [
             _kpi_card("Rows evaluated", f"{total_rows:,}"),
             _kpi_card("Defective rows", f"{distinct_defects:,}"),
+            _kpi_card("Critical severity", f"{critical_defects:,}"),
             _kpi_card("Defect rate", f"{defect_rate:.2f}%"),
             _kpi_card("Rules triggered", f"{rules_triggered}/{len(enabled_rules)}" if enabled_rules else "—"),
         ],
@@ -1693,12 +1784,14 @@ def render_validity_tab(urlparams, run_clicks, start_date, end_date, districts, 
     per_rule_table = dash_table.DataTable(
         columns=[
             {"name": "Rule", "id": "rule"}, {"name": "Category", "id": "category"},
+            {"name": "Severity", "id": "severity"},
             {"name": "Description", "id": "description"}, {"name": "Defective rows", "id": "count"},
         ],
         data=[
             {
                 "rule": f"{rid} — {VAL_RULES[rid]['label']}",
                 "category": VAL_RULES[rid]["category"],
+                "severity": VAL_RULES[rid]["severity"],
                 "description": VAL_RULES[rid]["description"],
                 "count": per_rule_counts[rid],
             }
@@ -1720,6 +1813,7 @@ def render_validity_tab(urlparams, run_clicks, start_date, end_date, districts, 
             )
         try:
             sample_df = DataStorage.query_duckdb(" UNION ALL ".join(union_parts))
+            sample_df["Severity"] = sample_df["Rule"].map(lambda rid: VAL_RULES[rid]["severity"])
         except Exception:
             sample_df = pd.DataFrame(columns=[c for c, _ in _VALIDITY_SAMPLE_COLUMNS])
 
@@ -1787,21 +1881,37 @@ def render_users_tab(urlparams, run_clicks):
     data_path = f"data/{data_route}/parquet"
     roster_df, users_csv_present = load_user_roster(data_route)
 
-    try:
-        dist_df = DataStorage.query_duckdb(f"SELECT DISTINCT {DISTRICT_} FROM '{data_path}'")
-        valid_districts = set(dist_df[DISTRICT_].dropna().tolist())
-    except Exception:
-        valid_districts = set()
-    try:
-        fac_df = DataStorage.query_duckdb(f"SELECT DISTINCT {FACILITY_CODE_} FROM '{data_path}'")
-        valid_facility_codes = set(fac_df[FACILITY_CODE_].dropna().tolist())
-    except Exception:
-        valid_facility_codes = set()
+    source_available = _data_source_available(data_route)
+    if source_available:
+        try:
+            dist_df = DataStorage.query_duckdb(f"SELECT DISTINCT {DISTRICT_} FROM '{data_path}'")
+            valid_districts = set(dist_df[DISTRICT_].dropna().tolist())
+        except Exception:
+            valid_districts = set()
+        try:
+            fac_df = DataStorage.query_duckdb(f"SELECT DISTINCT {FACILITY_CODE_} FROM '{data_path}'")
+            valid_facility_codes = set(fac_df[FACILITY_CODE_].dropna().tolist())
+        except Exception:
+            valid_facility_codes = set()
+    else:
+        # No raw extract to check scope against -- None (not an empty set)
+        # tells evaluate_users to skip U1/U2 rather than flag every
+        # assigned district/facility as orphaned against nothing.
+        valid_districts = None
+        valid_facility_codes = None
 
     evaluated = evaluate_users(roster_df, valid_districts, valid_facility_codes)
 
     alert = None
-    if not users_csv_present:
+    if not source_available:
+        alert = html.Div(
+            f"data/{data_route}/parquet doesn't exist, so district/facility assignments can't be checked "
+            "against real data on this route -- U1 (Orphaned district) and U2 (Orphaned facility code) are "
+            "skipped below, not clean. Other checks (duplicate uuid, missing role, invalid level, scope not "
+            "set) don't depend on the raw extract and still ran normally.",
+            className="dq-status-message",
+        )
+    elif not users_csv_present:
         alert = html.Div(
             f"data/{data_route}/single_tables/users_data.csv does not exist. Every user not explicitly "
             "listed in user_properties.json is unauthorized on this route -- this is a structural gap, "
@@ -1818,11 +1928,16 @@ def render_users_tab(urlparams, run_clicks):
     total_users = len(evaluated)
     flagged = evaluated[evaluated["issues"].apply(bool)]
     per_rule_counts = {rid: int(evaluated[rid].sum()) for rid in USER_RULE_ORDER}
+    critical_users = sum(
+        1 for _, row in flagged.iterrows()
+        if any(USER_RULES[rid]["severity"] == "critical" for rid in row["issues"])
+    )
 
     summary_strip = html.Div(
         [
             _kpi_card("Users in roster", f"{total_users:,}"),
             _kpi_card("Users with an issue", f"{len(flagged):,}"),
+            _kpi_card("Critical severity", f"{critical_users:,}"),
             _kpi_card("users_data.csv", "Missing" if not users_csv_present else "Present"),
         ],
         className="dq-kpi-row",
@@ -1830,12 +1945,14 @@ def render_users_tab(urlparams, run_clicks):
 
     per_rule_table = dash_table.DataTable(
         columns=[
-            {"name": "Rule", "id": "rule"}, {"name": "Description", "id": "description"},
+            {"name": "Rule", "id": "rule"}, {"name": "Severity", "id": "severity"},
+            {"name": "Description", "id": "description"},
             {"name": "Users flagged", "id": "count"},
         ],
         data=[
             {
                 "rule": f"{rid} — {USER_RULES[rid]['label']}",
+                "severity": USER_RULES[rid]["severity"],
                 "description": USER_RULES[rid]["description"],
                 "count": per_rule_counts[rid],
             }
@@ -1858,8 +1975,12 @@ def render_users_tab(urlparams, run_clicks):
 
     flagged_display["Name"] = flagged_display.apply(_join_name, axis=1)
     flagged_display["Facility"] = flagged_display.apply(_facility_label, axis=1)
-    display_cols = ["Name", "username", "role", "user_level", "district", "Facility", "uuid", "Issues"]
-    display_names = ["Name", "Username", "Role", "Level", "District", "Facility", "UUID", "Issues"]
+    _severity_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    flagged_display["Severity"] = flagged_display["issues"].apply(
+        lambda ids: min((USER_RULES[rid]["severity"] for rid in ids), key=lambda s: _severity_rank[s])
+    )
+    display_cols = ["Name", "username", "role", "user_level", "district", "Facility", "Severity", "uuid", "Issues"]
+    display_names = ["Name", "Username", "Role", "Level", "District", "Facility", "Severity", "UUID", "Issues"]
 
     flagged_table = html.Div([
         dash_table.DataTable(
