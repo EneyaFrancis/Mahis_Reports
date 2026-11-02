@@ -43,8 +43,20 @@ RULES = {
         "severity": "medium",
         "description": "A district- or facility-level user has no district or facility actually assigned.",
     },
+    "U7": {
+        "label": "Facility/district mismatch",
+        "severity": "medium",
+        "description": "The assigned facility code's real district (per the current data) doesn't match "
+                        "the user's own assigned district.",
+    },
+    "U8": {
+        "label": "Conflicting entries across sources",
+        "severity": "high",
+        "description": "This uuid appears in both users_data.csv and user_properties.json with "
+                        "different role/level/district/facility values, not just a plain duplicate.",
+    },
 }
-RULE_ORDER = ["U1", "U2", "U3", "U4", "U5", "U6"]
+RULE_ORDER = ["U1", "U2", "U3", "U4", "U5", "U6", "U7", "U8"]
 
 _VALID_LEVELS = {"national", "district", "facility"}
 
@@ -171,15 +183,21 @@ def _enrich_identities(df: pd.DataFrame, route: str) -> pd.DataFrame:
     return df
 
 
-def evaluate_users(roster_df: pd.DataFrame, valid_districts: set | None, valid_facility_codes: set | None) -> pd.DataFrame:
+def evaluate_users(
+    roster_df: pd.DataFrame,
+    valid_districts: set | None,
+    valid_facility_codes: set | None,
+    facility_district_map: dict | None = None,
+) -> pd.DataFrame:
     """Adds one boolean column per RULE_ORDER id, plus an 'issues' column
     listing which rule ids each row tripped.
 
     valid_districts/valid_facility_codes being None (rather than an empty
     set) means "no ground truth available" -- e.g. the route's raw extract
-    doesn't exist at all -- and skips U1/U2 entirely instead of flagging
-    every assigned district/facility as orphaned, which an empty set would
-    do (a false-positive storm, not a real finding).
+    doesn't exist at all -- and skips U1/U2 (and U7, which also needs real
+    facility/district data) entirely instead of flagging every assigned
+    district/facility as orphaned, which an empty set would do (a
+    false-positive storm, not a real finding).
     """
     df = roster_df.copy()
     if df.empty:
@@ -215,5 +233,35 @@ def evaluate_users(roster_df: pd.DataFrame, valid_districts: set | None, valid_f
         return False
 
     df["U6"] = df.apply(_scope_missing, axis=1)
+
+    if not facility_district_map:
+        df["U7"] = False
+    else:
+        fd_map = {str(k): v for k, v in facility_district_map.items()}
+
+        def _facility_district_mismatch(row):
+            fac, dist = row.get("facility_code"), row.get("district")
+            if not fac or pd.isna(fac) or not dist or pd.isna(dist):
+                return False
+            real_district = fd_map.get(str(fac))
+            return real_district is not None and str(real_district) != str(dist)
+
+        df["U7"] = df.apply(_facility_district_mismatch, axis=1)
+
+    # Conflicting (not just duplicate) entries for the same uuid: the two
+    # sources disagree on role/level/district/facility rather than one
+    # simply repeating the other.
+    conflict_fields = ["role", "user_level", "district", "facility_code"]
+
+    def _has_conflict(group):
+        if len(group) < 2:
+            return False
+        return any(group[f].nunique(dropna=True) > 1 for f in conflict_fields)
+
+    conflicting_uuids = {
+        u for u, g in df[df["uuid"].notna()].groupby("uuid") if _has_conflict(g)
+    }
+    df["U8"] = df["uuid"].apply(lambda u: u in conflicting_uuids)
+
     df["issues"] = df.apply(lambda row: [rid for rid in RULE_ORDER if row.get(rid)], axis=1)
     return df

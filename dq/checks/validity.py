@@ -8,6 +8,18 @@ scope/date/facility WHERE clause and pushes down to DuckDB.
 """
 from config import BIRTHDATE_, OBS_DATETIME_, GENDER_, PROGRAM_, VALUE_NUMERIC_, CONCEPT_NAME_
 
+_DRUG_UNITS_COL = "DrugUnits"
+
+# Units where a single dispensing event above this count is implausible for
+# any regimen -- confirmed against the real extract: "tab(s)" has a median
+# of 90 and a 75th percentile of 93, with one row at 30000 (clearly a
+# mis-entry, not a real dispensing). Scoped to tablet-style units only,
+# where the count is unambiguous -- other DrugUnits values (ml, mg, IU,
+# "unit(s)") don't have a pharmacologically confident bound without a real
+# per-drug dosing reference this system doesn't have locally.
+IMPLAUSIBLE_TABLET_COUNT = 500
+_TABLET_UNITS = ["tab(s)", "tablet", "tabs", "tab (s)"]
+
 # (concept_name, plausible_min, plausible_max) -- a numeric observation for
 # this concept outside its range is flagged as implausible. Bounds are
 # generous physiological limits (not clinical targets), chosen so only
@@ -75,8 +87,16 @@ RULES = {
         "description": "A patient recorded as Male under a maternal programme (ANC, Labour "
                         "and Delivery, or PNC).",
     },
+    "V13": {
+        "label": "Implausible medication dosage",
+        "category": "Accuracy",
+        "severity": "critical",
+        "description": "A tablet-based drug dispensing amount is over "
+                        f"{IMPLAUSIBLE_TABLET_COUNT} tablets in one record -- no regimen "
+                        "plausibly needs that many at once.",
+    },
 }
-RULE_ORDER = ["V1", "V2", "V3", "V4", "V5", "V6"]
+RULE_ORDER = ["V1", "V2", "V3", "V4", "V5", "V6", "V13"]
 
 
 def _quoted(values):
@@ -99,4 +119,8 @@ def rule_predicates() -> dict:
         "V4": vitals_clause,
         "V5": f"{OBS_DATETIME_} IS NOT NULL AND {BIRTHDATE_} IS NOT NULL AND {OBS_DATETIME_} < {BIRTHDATE_}",
         "V6": f"{GENDER_} = 'Male' AND {PROGRAM_} IN ({_quoted(MATERNAL_PROGRAMS)})",
+        "V13": (
+            f"{_DRUG_UNITS_COL} IN ({_quoted(_TABLET_UNITS)}) AND {VALUE_NUMERIC_} IS NOT NULL "
+            f"AND {VALUE_NUMERIC_} > {IMPLAUSIBLE_TABLET_COUNT}"
+        ),
     }

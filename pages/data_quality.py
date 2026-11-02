@@ -12,7 +12,7 @@ from config import (
     PROGRAM_, FACILITY_, DISTRICT_, DATE_, PERSON_ID_, ENCOUNTER_ID_, OBS_DATETIME_,
     CONCEPT_NAME_, ENCOUNTER_,AGE_GROUP_,
     IDENTIFIER_, FIRST_NAME_, LAST_NAME_, GENDER_, HOME_DISTRICT_, TA_, VILLAGE_,
-    BIRTHDATE_, CELL_, DEMO_LOCATION, DEMO_UUID, FACILITY_CODE_, VALUE_NUMERIC_
+    BIRTHDATE_, CELL_, DEMO_LOCATION, DEMO_UUID, FACILITY_CODE_, VALUE_NUMERIC_, DRUG_NAME_
 )
 from mnid.core.constants import BG, BORDER, TEXT
 from dq.theme import BRAND, BRAND_TINT
@@ -1829,7 +1829,7 @@ def render_completeness_tab(urlparams, run_clicks, start_date, end_date, distric
 
 _VALIDITY_SAMPLE_COLUMNS = [
     ("Rule", "Rule"), ("Severity", "Severity"), ("Person ID", "Person ID"), ("Facility", "Facility"),
-    ("Concept", "Concept"), ("Value", "Value"), ("Obs Date", "Obs Date"),
+    ("Concept", "Concept"), ("Drug", "Drug"), ("Units", "Units"), ("Value", "Value"), ("Obs Date", "Obs Date"),
     ("Birthdate", "Birthdate"), ("Gender", "Gender"), ("Programme", "Programme"),
 ]
 
@@ -1982,7 +1982,8 @@ def render_validity_tab(urlparams, run_clicks, start_date, end_date, districts, 
         for rid in enabled_rules:
             union_parts.append(
                 f"(SELECT '{rid}' AS \"Rule\", {PERSON_ID_} AS \"Person ID\", {FACILITY_} AS \"Facility\", "
-                f"{CONCEPT_NAME_} AS \"Concept\", {VALUE_NUMERIC_} AS \"Value\", "
+                f"{CONCEPT_NAME_} AS \"Concept\", {DRUG_NAME_} AS \"Drug\", DrugUnits AS \"Units\", "
+                f"{VALUE_NUMERIC_} AS \"Value\", "
                 f"CAST({OBS_DATETIME_} AS VARCHAR) AS \"Obs Date\", CAST({BIRTHDATE_} AS VARCHAR) AS \"Birthdate\", "
                 f"{GENDER_} AS \"Gender\", {PROGRAM_} AS \"Programme\" "
                 f"FROM '{data_path}' WHERE {where} AND ({predicates[rid]}) LIMIT 20)"
@@ -2069,22 +2070,32 @@ def render_users_tab(urlparams, run_clicks):
             valid_facility_codes = set(fac_df[FACILITY_CODE_].dropna().tolist())
         except Exception:
             valid_facility_codes = set()
+        try:
+            fd_df = DataStorage.query_duckdb(
+                f"SELECT DISTINCT {FACILITY_CODE_}, {DISTRICT_} FROM '{data_path}' "
+                f"WHERE {FACILITY_CODE_} IS NOT NULL AND {DISTRICT_} IS NOT NULL"
+            )
+            facility_district_map = dict(zip(fd_df[FACILITY_CODE_], fd_df[DISTRICT_]))
+        except Exception:
+            facility_district_map = {}
     else:
         # No raw extract to check scope against -- None (not an empty set)
-        # tells evaluate_users to skip U1/U2 rather than flag every
+        # tells evaluate_users to skip U1/U2/U7 rather than flag every
         # assigned district/facility as orphaned against nothing.
         valid_districts = None
         valid_facility_codes = None
+        facility_district_map = None
 
-    evaluated = evaluate_users(roster_df, valid_districts, valid_facility_codes)
+    evaluated = evaluate_users(roster_df, valid_districts, valid_facility_codes, facility_district_map)
 
     alert = None
     if not source_available:
         alert = html.Div(
             f"data/{data_route}/parquet doesn't exist, so district/facility assignments can't be checked "
-            "against real data on this route -- U1 (Orphaned district) and U2 (Orphaned facility code) are "
-            "skipped below, not clean. Other checks (duplicate uuid, missing role, invalid level, scope not "
-            "set) don't depend on the raw extract and still ran normally.",
+            "against real data on this route -- U1 (Orphaned district), U2 (Orphaned facility code) and U7 "
+            "(Facility/district mismatch) are skipped below, not clean. Other checks (duplicate uuid, "
+            "missing role, invalid level, scope not set, conflicting entries) don't depend on the raw "
+            "extract and still ran normally.",
             className="dq-status-message",
         )
     elif not users_csv_present:
