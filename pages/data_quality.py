@@ -320,14 +320,66 @@ def _tab_label_and_style(base_label, count):
     return label, {**_TAB_STYLE, "color": "#DC2626", "fontWeight": 700}
 
 
-def _kpi_card(label, value, sub=None):
+def _kpi_card(label, value, sub=None, rag=None):
+    """rag, when given, is 'red'/'amber'/'green' -- tints the card border
+    and value to flag a rate that's crossed a threshold, independent of
+    (and in addition to) any trend note passed via sub."""
     children = [
         html.Div(label, className="dq-kpi-label"),
         html.Div(value, className="dq-kpi-value"),
     ]
     if sub:
         children.append(html.Div(sub, className="dq-kpi-sub"))
-    return html.Div(children, className="dq-kpi-card")
+    class_name = "dq-kpi-card" + (f" rag-{rag}" if rag else "")
+    return html.Div(children, className=class_name)
+
+
+def _rag_for_rate(pct, good=95.0, warn=85.0, higher_is_better=True):
+    """RAG threshold for a rate-style metric (e.g. completeness %). For a
+    'higher is better' rate (completeness, match quality): green at/above
+    `good`, amber at/above `warn`, red below. Pass higher_is_better=False
+    for a rate where lower is better (e.g. a defect/duplicate rate) and
+    the same two thresholds are read as upper bounds instead."""
+    if pct is None:
+        return None
+    if higher_is_better:
+        if pct >= good:
+            return "green"
+        if pct >= warn:
+            return "amber"
+        return "red"
+    else:
+        if pct <= (100 - good):
+            return "green"
+        if pct <= (100 - warn):
+            return "amber"
+        return "red"
+
+
+def _previous_period(start_date, end_date):
+    """The immediately-preceding window of the same length as
+    [start_date, end_date] -- what a trend delta is computed against.
+    Returns (None, None) when either bound is missing."""
+    if not start_date or not end_date:
+        return None, None
+    start = pd.Timestamp(start_date)
+    end = pd.Timestamp(end_date)
+    length_days = (end - start).days + 1
+    prev_end = start - pd.Timedelta(days=1)
+    prev_start = prev_end - pd.Timedelta(days=length_days - 1)
+    return prev_start.date().isoformat(), prev_end.date().isoformat()
+
+
+def _trend_sub(current_pct, previous_pct):
+    """A KPI card's 'sub' line for a rate's trend vs the prior period --
+    None (not shown) when there's nothing to compare against."""
+    if current_pct is None or previous_pct is None:
+        return "No prior-period data"
+    delta = current_pct - previous_pct
+    if abs(delta) < 0.05:
+        return "No change vs prior period"
+    arrow = "▲" if delta > 0 else "▼"
+    return f"{arrow} {abs(delta):.1f} pts vs prior period"
 
 
 def _empty_state(title, body):
@@ -484,6 +536,13 @@ layout = html.Div(
             ],
         ),
         html.Div(id="dq-alert"),
+        dcc.Store(id="dq-last-run-filters"),
+        html.Div(
+            "Filters changed since the last run — click \"Run DQ\" above to refresh these results.",
+            id="dq-stale-banner",
+            className="dq-stale-banner",
+            style={"display": "none"},
+        ),
         html.Div(
             id="dq-tabs-wrapper",
             children=[
@@ -679,6 +738,51 @@ layout = html.Div(
         ),
     ],
 )
+
+
+@callback(
+    Output("dq-last-run-filters", "data"),
+    Input("dq-run-btn", "n_clicks"),
+    State("dq-date-range", "start_date"),
+    State("dq-date-range", "end_date"),
+    State("dq-scope", "value"),
+    State("dq-facility-filter", "value"),
+    State("dq-program-filter", "value"),
+    prevent_initial_call=True,
+)
+def snapshot_filters_on_run(_n_clicks, start_date, end_date, districts, facilities, program):
+    """Captures the shared filter bar's values at the moment "Run DQ" is
+    clicked -- compared against live filter values below to tell whether
+    what's on screen still reflects the current filters."""
+    return {
+        "start_date": start_date, "end_date": end_date,
+        "districts": districts, "facilities": facilities, "program": program,
+    }
+
+
+@callback(
+    Output("dq-tabs-wrapper", "className"),
+    Output("dq-stale-banner", "style"),
+    Input("dq-date-range", "start_date"),
+    Input("dq-date-range", "end_date"),
+    Input("dq-scope", "value"),
+    Input("dq-facility-filter", "value"),
+    Input("dq-program-filter", "value"),
+    State("dq-last-run-filters", "data"),
+)
+def flag_stale_results(start_date, end_date, districts, facilities, program, last_run):
+    """Dims the results and shows a banner when the shared filter bar no
+    longer matches what was actually used for the results on screen --
+    scoped to the shared bar only (date/scope/facility/programme), not each
+    tab's own extra pickers (rule checklists etc.), to keep this to one
+    mechanism instead of five bespoke ones."""
+    current = {
+        "start_date": start_date, "end_date": end_date,
+        "districts": districts, "facilities": facilities, "program": program,
+    }
+    if last_run is None or current == last_run:
+        return "", {"display": "none"}
+    return "dq-stale", {"display": "block"}
 
 
 @callback(
@@ -939,6 +1043,7 @@ def render_overview_tab(urlparams, run_clicks, start_date, end_date, districts, 
                 "Field completeness %",
                 f"{completeness_rate:.1f}%" if completeness_rate is not None else "—",
                 "Same rule as the Completeness tab" if completeness_rate is not None else "Needs a completeness rule",
+                rag=_rag_for_rate(completeness_rate),
             ),
         ],
         className="dq-kpi-row",
@@ -1253,6 +1358,29 @@ def render_duplicates_tab(urlparams, run_clicks, candidates_page, start_date, en
         1 for g in groups if any(DUP_RULES[r]["severity"] == "critical" for r in g["rules"])
     )
 
+    prev_start, prev_end = _previous_period(start_date, end_date)
+    prev_duplicate_rate = None
+    if prev_start and enabled_rules:
+        prev_where = _selection_where(level, location, user_districts, districts, facilities, program, prev_start, prev_end)
+        try:
+            prev_roster_df = DataStorage.query_duckdb(
+                f"SELECT {PERSON_ID_} AS person_id, "
+                f"MAX({LAST_NAME_}) AS family_name, MAX({FIRST_NAME_}) AS given_name, "
+                f"MAX({GENDER_}) AS gender, MAX({BIRTHDATE_}) AS birthdate, "
+                f"MAX({IDENTIFIER_}) AS identifier, MAX({VILLAGE_}) AS village, "
+                f"MAX({TA_}) AS ta, MAX({HOME_DISTRICT_}) AS home_district, MAX({CELL_}) AS cell, "
+                f"MAX({FACILITY_}) AS facility, COUNT(DISTINCT {ENCOUNTER_ID_}) AS encounter_count, "
+                f"COUNT(DISTINCT ({PERSON_ID_}, {CONCEPT_NAME_})) AS obs_rows, "
+                f"MIN({DATE_}) AS first_encounter, MAX({DATE_}) AS last_encounter "
+                f"FROM '{data_path}' WHERE {prev_where} GROUP BY {PERSON_ID_}"
+            )
+            if not prev_roster_df.empty:
+                prev_groups, _ = match_duplicates(prev_roster_df, enabled_rules, other_fields=other_fields)
+                prev_surplus = sum(len(g["members"]) - 1 for g in prev_groups)
+                prev_duplicate_rate = prev_surplus / len(prev_roster_df) * 100
+        except Exception:
+            prev_duplicate_rate = None
+
     summary_strip = html.Div(
         [
             _kpi_card("Patient records", f"{patient_records:,}"),
@@ -1260,7 +1388,11 @@ def render_duplicates_tab(urlparams, run_clicks, candidates_page, start_date, en
             _kpi_card("Critical severity", f"{critical_groups:,}"),
             _kpi_card("Distinct Patients if Merged", f"{distinct_identities:,}"),
             _kpi_card("Records Affected", f"{records_involved:,}"),
-            _kpi_card("Duplicate rate", f"{duplicate_rate:.1f}%", "surplus ÷ patient records"),
+            _kpi_card(
+                "Duplicate rate", f"{duplicate_rate:.1f}%",
+                sub=_trend_sub(duplicate_rate, prev_duplicate_rate),
+                rag=_rag_for_rate(duplicate_rate, good=2.0, warn=8.0, higher_is_better=False),
+            ),
         ],
         className="dq-kpi-row",
     )
@@ -1569,6 +1701,23 @@ def render_completeness_tab(urlparams, run_clicks, start_date, end_date, distric
     complete_count = int(df["is_complete"].sum())
     incomplete_count = total_patients - complete_count
     completeness_rate = (complete_count / total_patients * 100) if total_patients else 0.0
+    demo_rate = (df["demographics_complete"].mean() * 100) if demo_flag_cols else None
+    enc_rate = (df["encounters_complete"].mean() * 100) if enc_flag_cols else None
+
+    prev_start, prev_end = _previous_period(start_date, end_date)
+    prev_completeness_rate = prev_demo_rate = prev_enc_rate = None
+    if prev_start:
+        prev_where = _selection_where(level, location, user_districts, districts, facilities, program, prev_start, prev_end)
+        try:
+            prev_df, _, _ = _evaluate_completeness(data_path, prev_where, mandatory_demographics, mandatory_encounters)
+            if not prev_df.empty:
+                prev_completeness_rate = prev_df["is_complete"].mean() * 100
+                if demo_flag_cols:
+                    prev_demo_rate = prev_df["demographics_complete"].mean() * 100
+                if enc_flag_cols:
+                    prev_enc_rate = prev_df["encounters_complete"].mean() * 100
+        except Exception:
+            pass
 
     # Reported separately, not just blended into the one combined rate --
     # a patient missing only a demographic field and one missing only an
@@ -1581,14 +1730,22 @@ def render_completeness_tab(urlparams, run_clicks, start_date, end_date, distric
         _kpi_card("Patients evaluated", f"{total_patients:,}"),
         _kpi_card("Complete records", f"{complete_count:,}"),
         _kpi_card("Incomplete records", f"{incomplete_count:,}"),
-        _kpi_card("Completeness rate", f"{completeness_rate:.1f}%", "Both dimensions combined"),
+        _kpi_card(
+            "Completeness rate", f"{completeness_rate:.1f}%",
+            sub=_trend_sub(completeness_rate, prev_completeness_rate),
+            rag=_rag_for_rate(completeness_rate),
+        ),
     ]
     if demo_flag_cols:
-        demo_rate = df["demographics_complete"].mean() * 100
-        metrics_cards.append(_kpi_card("Demographic completeness", f"{demo_rate:.1f}%"))
+        metrics_cards.append(_kpi_card(
+            "Demographic completeness", f"{demo_rate:.1f}%",
+            sub=_trend_sub(demo_rate, prev_demo_rate), rag=_rag_for_rate(demo_rate),
+        ))
     if enc_flag_cols:
-        enc_rate = df["encounters_complete"].mean() * 100
-        metrics_cards.append(_kpi_card("Encounter completeness", f"{enc_rate:.1f}%"))
+        metrics_cards.append(_kpi_card(
+            "Encounter completeness", f"{enc_rate:.1f}%",
+            sub=_trend_sub(enc_rate, prev_enc_rate), rag=_rag_for_rate(enc_rate),
+        ))
 
     metrics_strip = html.Div(metrics_cards, className="dq-kpi-row")
 
@@ -1770,12 +1927,31 @@ def render_validity_tab(urlparams, run_clicks, start_date, end_date, districts, 
         per_rule_counts.get(r, 0) for r in enabled_rules if VAL_RULES[r]["severity"] == "critical"
     )
 
+    prev_start, prev_end = _previous_period(start_date, end_date)
+    prev_defect_rate = None
+    if prev_start and enabled_rules:
+        prev_where = _selection_where(level, location, user_districts, districts, facilities, program, prev_start, prev_end)
+        combined = " OR ".join(f"({predicates[r]})" for r in enabled_rules)
+        try:
+            prev_total = DataStorage.query_duckdb(f"SELECT COUNT(*) AS n FROM '{data_path}' WHERE {prev_where}")["n"][0]
+            if prev_total:
+                prev_defects = DataStorage.query_duckdb(
+                    f"SELECT COUNT(*) AS n FROM '{data_path}' WHERE {prev_where} AND ({combined})"
+                )["n"][0]
+                prev_defect_rate = float(prev_defects) / float(prev_total) * 100
+        except Exception:
+            prev_defect_rate = None
+
     summary_strip = html.Div(
         [
             _kpi_card("Rows evaluated", f"{total_rows:,}"),
             _kpi_card("Defective rows", f"{distinct_defects:,}"),
             _kpi_card("Critical severity", f"{critical_defects:,}"),
-            _kpi_card("Defect rate", f"{defect_rate:.2f}%"),
+            _kpi_card(
+                "Defect rate", f"{defect_rate:.2f}%",
+                sub=_trend_sub(defect_rate, prev_defect_rate),
+                rag=_rag_for_rate(defect_rate, good=1.0, warn=5.0, higher_is_better=False),
+            ),
             _kpi_card("Rules triggered", f"{rules_triggered}/{len(enabled_rules)}" if enabled_rules else "—"),
         ],
         className="dq-kpi-row",
