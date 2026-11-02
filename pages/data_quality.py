@@ -12,7 +12,7 @@ from config import (
     PROGRAM_, FACILITY_, DISTRICT_, DATE_, PERSON_ID_, ENCOUNTER_ID_, OBS_DATETIME_,
     CONCEPT_NAME_, ENCOUNTER_,AGE_GROUP_,
     IDENTIFIER_, FIRST_NAME_, LAST_NAME_, GENDER_, HOME_DISTRICT_, TA_, VILLAGE_,
-    BIRTHDATE_, CELL_, DEMO_LOCATION, DEMO_UUID, FACILITY_CODE_
+    BIRTHDATE_, CELL_, DEMO_LOCATION, DEMO_UUID, FACILITY_CODE_, VALUE_NUMERIC_
 )
 from mnid.core.constants import BG, BORDER, TEXT
 from dq.theme import BRAND, BRAND_TINT
@@ -20,6 +20,12 @@ import dq.theme  # noqa: F401 -- registers the "dq" Plotly template
 from dq.checks.duplicates import (
     RULES as DUP_RULES, RULE_ORDER as DUP_RULE_ORDER, FIELD_OPTIONS as DUP_FIELD_OPTIONS,
     match_duplicates,
+)
+from dq.checks.validity import (
+    RULES as VAL_RULES, RULE_ORDER as VAL_RULE_ORDER, rule_predicates as validity_rule_predicates,
+)
+from dq.checks.users import (
+    RULES as USER_RULES, RULE_ORDER as USER_RULE_ORDER, load_user_roster, evaluate_users,
 )
 
 dash.register_page(__name__, path="/data_quality", title="Data Quality")
@@ -592,9 +598,44 @@ layout = html.Div(
                             ),
                         ),
                         dcc.Tab(
+                            id="dq-tab-validity",
                             label="Validity and outliers", value="validity",
                             style=_TAB_STYLE, selected_style=_TAB_SELECTED_STYLE,
-                            children=html.Div(id="dq-validity-content", className="card-2"),
+                            children=html.Div(
+                                className="results-card",
+                                children=[
+                                    html.Div(
+                                        className="dq-panel",
+                                        children=[
+                                            html.H4("Checks to run", className="dq-panel-title"),
+                                            dcc.Checklist(
+                                                id="dq-val-rules",
+                                                options=[
+                                                    {
+                                                        "label": f"{rid} — {VAL_RULES[rid]['label']} ({VAL_RULES[rid]['category']})",
+                                                        "value": rid,
+                                                    }
+                                                    for rid in VAL_RULE_ORDER
+                                                ],
+                                                value=list(VAL_RULE_ORDER),
+                                                className="dq-checklist-row",
+                                                labelClassName="dq-checklist-label",
+                                                inputStyle={"marginRight": "6px"},
+                                            ),
+                                        ],
+                                    ),
+                                    html.Div(id="dq-validity-content"),
+                                ],
+                            ),
+                        ),
+                        dcc.Tab(
+                            id="dq-tab-users",
+                            label="Users", value="users",
+                            style=_TAB_STYLE, selected_style=_TAB_SELECTED_STYLE,
+                            children=html.Div(
+                                className="results-card",
+                                children=html.Div(id="dq-users-content"),
+                            ),
                         ),
                     ],
                 ),
@@ -1543,3 +1584,314 @@ def render_completeness_tab(urlparams, run_clicks, start_date, end_date, distric
     )
     label, style = _tab_label_and_style("Completeness", incomplete_count)
     return content, label, style
+
+
+_VALIDITY_SAMPLE_COLUMNS = [
+    ("Rule", "Rule"), ("Person ID", "Person ID"), ("Facility", "Facility"),
+    ("Concept", "Concept"), ("Value", "Value"), ("Obs Date", "Obs Date"),
+    ("Birthdate", "Birthdate"), ("Gender", "Gender"), ("Programme", "Programme"),
+]
+
+
+@callback(
+    Output("dq-validity-content", "children"),
+    Output("dq-tab-validity", "label"),
+    Output("dq-tab-validity", "style"),
+    Input("url-params-store", "data"),
+    Input("dq-run-btn", "n_clicks"),
+    State("dq-date-range", "start_date"),
+    State("dq-date-range", "end_date"),
+    State("dq-scope", "value"),
+    State("dq-facility-filter", "value"),
+    State("dq-program-filter", "value"),
+    State("dq-val-rules", "value"),
+)
+def render_validity_tab(urlparams, run_clicks, start_date, end_date, districts, facilities, program, enabled_rules):
+    """Accuracy and consistency checks pushed down as SQL predicates against
+    the raw extract -- unlike Duplicates/Completeness, not gated behind
+    picking one programme, since an implausible birthdate or a vital sign
+    outside a physiological range is a defect regardless of which
+    programme recorded it.
+    """
+    urlparams = urlparams or {}
+    data_route = urlparams.get("route", ["default"])[0]
+    location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
+    user_data = _load_user_registry(data_route)
+    user_row, scope = _resolve_user_scope(urlparams, user_data)
+    if user_row is None or not location:
+        return None, "Validity and outliers", _TAB_STYLE
+
+    if not run_clicks:
+        return (
+            _empty_state(
+                "Click \"Run DQ\" to see results",
+                "Set your filters above, then click Run DQ to compute this tab.",
+            ),
+            "Validity and outliers", _TAB_STYLE,
+        )
+
+    data_path = f"data/{data_route}/parquet"
+    level = scope.get("level")
+    user_districts = scope.get("districts") or []
+    if isinstance(user_districts, str):
+        user_districts = [user_districts]
+
+    where = _selection_where(level, location, user_districts, districts, facilities, program, start_date, end_date)
+    predicates = validity_rule_predicates()
+    enabled_rules = enabled_rules or []
+
+    try:
+        total_df = DataStorage.query_duckdb(f"SELECT COUNT(*) AS n FROM '{data_path}' WHERE {where}")
+        total_rows = int(total_df["n"][0])
+    except Exception:
+        total_rows = 0
+
+    if total_rows == 0:
+        return (
+            _empty_state(
+                "No records match the current filters",
+                "Try widening the date range, clearing the facility filter, or choosing a different programme.",
+            ),
+            "Validity and outliers", _TAB_STYLE,
+        )
+
+    per_rule_counts = {}
+    for rid in VAL_RULE_ORDER:
+        try:
+            df = DataStorage.query_duckdb(
+                f"SELECT COUNT(*) AS n FROM '{data_path}' WHERE {where} AND ({predicates[rid]})"
+            )
+            per_rule_counts[rid] = int(df["n"][0])
+        except Exception:
+            per_rule_counts[rid] = 0
+
+    if enabled_rules:
+        combined = " OR ".join(f"({predicates[r]})" for r in enabled_rules)
+        try:
+            distinct_df = DataStorage.query_duckdb(
+                f"SELECT COUNT(*) AS n FROM '{data_path}' WHERE {where} AND ({combined})"
+            )
+            distinct_defects = int(distinct_df["n"][0])
+        except Exception:
+            distinct_defects = 0
+    else:
+        distinct_defects = 0
+
+    defect_rate = (distinct_defects / total_rows * 100) if total_rows else 0.0
+    rules_triggered = sum(1 for r in enabled_rules if per_rule_counts.get(r, 0) > 0)
+
+    summary_strip = html.Div(
+        [
+            _kpi_card("Rows evaluated", f"{total_rows:,}"),
+            _kpi_card("Defective rows", f"{distinct_defects:,}"),
+            _kpi_card("Defect rate", f"{defect_rate:.2f}%"),
+            _kpi_card("Rules triggered", f"{rules_triggered}/{len(enabled_rules)}" if enabled_rules else "—"),
+        ],
+        className="dq-kpi-row",
+    )
+
+    per_rule_table = dash_table.DataTable(
+        columns=[
+            {"name": "Rule", "id": "rule"}, {"name": "Category", "id": "category"},
+            {"name": "Description", "id": "description"}, {"name": "Defective rows", "id": "count"},
+        ],
+        data=[
+            {
+                "rule": f"{rid} — {VAL_RULES[rid]['label']}",
+                "category": VAL_RULES[rid]["category"],
+                "description": VAL_RULES[rid]["description"],
+                "count": per_rule_counts[rid],
+            }
+            for rid in VAL_RULE_ORDER
+        ],
+        page_size=6,
+    )
+
+    sample_df = pd.DataFrame(columns=[c for c, _ in _VALIDITY_SAMPLE_COLUMNS])
+    if enabled_rules:
+        union_parts = []
+        for rid in enabled_rules:
+            union_parts.append(
+                f"(SELECT '{rid}' AS \"Rule\", {PERSON_ID_} AS \"Person ID\", {FACILITY_} AS \"Facility\", "
+                f"{CONCEPT_NAME_} AS \"Concept\", {VALUE_NUMERIC_} AS \"Value\", "
+                f"CAST({OBS_DATETIME_} AS VARCHAR) AS \"Obs Date\", CAST({BIRTHDATE_} AS VARCHAR) AS \"Birthdate\", "
+                f"{GENDER_} AS \"Gender\", {PROGRAM_} AS \"Programme\" "
+                f"FROM '{data_path}' WHERE {where} AND ({predicates[rid]}) LIMIT 20)"
+            )
+        try:
+            sample_df = DataStorage.query_duckdb(" UNION ALL ".join(union_parts))
+        except Exception:
+            sample_df = pd.DataFrame(columns=[c for c, _ in _VALIDITY_SAMPLE_COLUMNS])
+
+    sample_panel = html.Div(
+        [
+            html.H4("Sample defective rows", className="dq-panel-title"),
+            html.Div(
+                "Up to 20 example rows per enabled rule -- not every defective row, just enough to spot-check.",
+                className="dq-panel-note",
+            ),
+            dash_table.DataTable(
+                columns=[{"name": n, "id": c} for c, n in _VALIDITY_SAMPLE_COLUMNS],
+                data=sample_df.to_dict("records"),
+                page_size=15,
+                sort_action="native",
+            ) if not sample_df.empty else html.Div(
+                "No defective rows for the enabled checks." if enabled_rules else "No checks are switched on above.",
+                className="dq-empty-state",
+            ),
+        ],
+        className="dq-panel",
+    )
+
+    content = html.Div([
+        summary_strip,
+        html.Div([html.H4("Per-rule breakdown", className="dq-panel-title"), per_rule_table], className="dq-panel"),
+        sample_panel,
+    ])
+    label, style = _tab_label_and_style("Validity and outliers", distinct_defects)
+    return content, label, style
+
+
+@callback(
+    Output("dq-users-content", "children"),
+    Output("dq-tab-users", "label"),
+    Output("dq-tab-users", "style"),
+    Input("url-params-store", "data"),
+    Input("dq-run-btn", "n_clicks"),
+)
+def render_users_tab(urlparams, run_clicks):
+    """Audits this route's own user roster (not patient records) --
+    orphaned district/facility scope, duplicate uuids, missing role, bad
+    user_level, and a loud flag when users_data.csv is absent entirely,
+    since that silently degrades every user not in user_properties.json to
+    unauthorized. Independent of the date/scope/facility/programme filter
+    bar above -- none of that applies to a user roster.
+    """
+    urlparams = urlparams or {}
+    data_route = urlparams.get("route", ["default"])[0]
+    location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
+    user_data = _load_user_registry(data_route)
+    user_row, _scope = _resolve_user_scope(urlparams, user_data)
+    if user_row is None or not location:
+        return None, "Users", _TAB_STYLE
+
+    if not run_clicks:
+        return (
+            _empty_state(
+                "Click \"Run DQ\" to see results",
+                "Set your filters above, then click Run DQ to compute this tab.",
+            ),
+            "Users", _TAB_STYLE,
+        )
+
+    data_path = f"data/{data_route}/parquet"
+    roster_df, users_csv_present = load_user_roster(data_route)
+
+    try:
+        dist_df = DataStorage.query_duckdb(f"SELECT DISTINCT {DISTRICT_} FROM '{data_path}'")
+        valid_districts = set(dist_df[DISTRICT_].dropna().tolist())
+    except Exception:
+        valid_districts = set()
+    try:
+        fac_df = DataStorage.query_duckdb(f"SELECT DISTINCT {FACILITY_CODE_} FROM '{data_path}'")
+        valid_facility_codes = set(fac_df[FACILITY_CODE_].dropna().tolist())
+    except Exception:
+        valid_facility_codes = set()
+
+    evaluated = evaluate_users(roster_df, valid_districts, valid_facility_codes)
+
+    alert = None
+    if not users_csv_present:
+        alert = html.Div(
+            f"data/{data_route}/single_tables/users_data.csv does not exist. Every user not explicitly "
+            "listed in user_properties.json is unauthorized on this route -- this is a structural gap, "
+            "not a per-user issue.",
+            className="dq-status-message",
+        )
+
+    if evaluated.empty:
+        return (
+            html.Div([alert] if alert else [html.Div("No users found for this route.", className="dq-empty-state")]),
+            "Users", _TAB_STYLE,
+        )
+
+    total_users = len(evaluated)
+    flagged = evaluated[evaluated["issues"].apply(bool)]
+    per_rule_counts = {rid: int(evaluated[rid].sum()) for rid in USER_RULE_ORDER}
+
+    summary_strip = html.Div(
+        [
+            _kpi_card("Users in roster", f"{total_users:,}"),
+            _kpi_card("Users with an issue", f"{len(flagged):,}"),
+            _kpi_card("users_data.csv", "Missing" if not users_csv_present else "Present"),
+        ],
+        className="dq-kpi-row",
+    )
+
+    per_rule_table = dash_table.DataTable(
+        columns=[
+            {"name": "Rule", "id": "rule"}, {"name": "Description", "id": "description"},
+            {"name": "Users flagged", "id": "count"},
+        ],
+        data=[
+            {
+                "rule": f"{rid} — {USER_RULES[rid]['label']}",
+                "description": USER_RULES[rid]["description"],
+                "count": per_rule_counts[rid],
+            }
+            for rid in USER_RULE_ORDER
+        ],
+        page_size=6,
+    )
+
+    flagged_display = flagged.copy()
+    flagged_display["Issues"] = flagged_display["issues"].apply(lambda ids: ", ".join(ids))
+    def _join_name(r):
+        parts = [str(v) for v in (r.get("given_name"), r.get("family_name")) if pd.notna(v) and str(v).strip()]
+        return " ".join(parts) or "—"
+
+    def _facility_label(r):
+        for v in (r.get("facility_name"), r.get("facility_code")):
+            if pd.notna(v) and str(v).strip():
+                return str(v)
+        return "—"
+
+    flagged_display["Name"] = flagged_display.apply(_join_name, axis=1)
+    flagged_display["Facility"] = flagged_display.apply(_facility_label, axis=1)
+    display_cols = ["Name", "username", "role", "user_level", "district", "Facility", "uuid", "Issues"]
+    display_names = ["Name", "Username", "Role", "Level", "District", "Facility", "UUID", "Issues"]
+
+    flagged_table = html.Div([
+        dash_table.DataTable(
+            columns=[{"name": n, "id": c} for c, n in zip(display_cols, display_names)],
+            data=flagged_display[display_cols].to_dict("records"),
+            page_size=15,
+            sort_action="native",
+        ),
+        html.Div(
+            "Name is resolved from the user's own person_id where users_data.csv provides one; "
+            "Facility is the name configured directly in user_properties.json where set, otherwise "
+            "looked up from locations_data.csv (that file is known to carry stale location codes, so "
+            "treat a looked-up facility name as a lead to verify, not a fact). UUID is kept for exact "
+            "lookup, not as the primary way to identify someone.",
+            className="dq-panel-note",
+        ),
+    ]) if not flagged.empty else html.Div("No flagged users on this route.", className="dq-empty-state")
+
+    panels = []
+    if alert:
+        panels.append(alert)
+    panels.extend([
+        summary_strip,
+        html.Div([html.H4("Per-rule breakdown", className="dq-panel-title"), per_rule_table], className="dq-panel"),
+        html.Div(
+            [
+                html.H4("Flagged users", className="dq-panel-title"),
+                flagged_table,
+            ],
+            className="dq-panel",
+        ),
+    ])
+
+    label, style = _tab_label_and_style("Users", len(flagged))
+    return html.Div(panels), label, style
