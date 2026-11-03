@@ -1870,7 +1870,8 @@ def render_completeness_tab(urlparams, run_clicks, start_date, end_date, distric
 
 
 _VALIDITY_SAMPLE_COLUMNS = [
-    ("Rule", "Rule"), ("Severity", "Severity"), ("Person ID", "Person ID"), ("Facility", "Facility"),
+    ("Rule", "Rule"), ("Severity", "Severity"), ("Person ID", "Person ID"), ("Encounter ID", "Encounter ID"),
+    ("Facility", "Facility"),
     ("Concept", "Concept"), ("Drug", "Drug"), ("Units", "Units"), ("Value", "Value"), ("Obs Date", "Obs Date"),
     ("Birthdate", "Birthdate"), ("Gender", "Gender"), ("Programme", "Programme"),
 ]
@@ -1923,7 +1924,7 @@ def render_validity_tab(urlparams, run_clicks, start_date, end_date, districts, 
         user_districts = [user_districts]
 
     where = _selection_where(level, location, user_districts, districts, facilities, program, start_date, end_date)
-    predicates = validity_rule_predicates()
+    predicates = validity_rule_predicates(data_path)
     enabled_rules = enabled_rules or []
 
     try:
@@ -2023,7 +2024,8 @@ def render_validity_tab(urlparams, run_clicks, start_date, end_date, districts, 
         union_parts = []
         for rid in enabled_rules:
             union_parts.append(
-                f"(SELECT '{rid}' AS \"Rule\", {PERSON_ID_} AS \"Person ID\", {FACILITY_} AS \"Facility\", "
+                f"(SELECT '{rid}' AS \"Rule\", {PERSON_ID_} AS \"Person ID\", "
+                f"CAST({ENCOUNTER_ID_} AS VARCHAR) AS \"Encounter ID\", {FACILITY_} AS \"Facility\", "
                 f"{CONCEPT_NAME_} AS \"Concept\", {DRUG_NAME_} AS \"Drug\", DrugUnits AS \"Units\", "
                 f"{VALUE_NUMERIC_} AS \"Value\", "
                 f"CAST({OBS_DATETIME_} AS VARCHAR) AS \"Obs Date\", CAST({BIRTHDATE_} AS VARCHAR) AS \"Birthdate\", "
@@ -2042,13 +2044,25 @@ def render_validity_tab(urlparams, run_clicks, start_date, end_date, districts, 
         # every Run DQ click for rules that can match hundreds of thousands
         # of rows.
         if not sample_df.empty:
+            # V14-V18 flag an encounter via a cross-concept subquery, so
+            # every raw row belonging to that encounter matches equally --
+            # the sampled row's own Concept/Value is incidental, not what
+            # tripped the rule. Identify and label those by encounter
+            # instead, so the Issues tab doesn't show a misleading
+            # unrelated field as if it were the cause.
+            encounter_level_rules = {"V14", "V15", "V16", "V17", "V18"}
             findings = []
             for _, r in sample_df.iterrows():
-                identity = (r.get("Person ID"), r.get("Concept"), r.get("Obs Date"), r.get("Value"))
+                if r["Rule"] in encounter_level_rules:
+                    identity = (r.get("Encounter ID"),)
+                    entity_label = f"Encounter {r.get('Encounter ID')} (Person {r.get('Person ID')})"
+                else:
+                    identity = (r.get("Person ID"), r.get("Concept"), r.get("Obs Date"), r.get("Value"))
+                    entity_label = f"Person {r.get('Person ID')}: {r.get('Concept')} = {r.get('Value')}"
                 findings.append({
                     "issue_key": make_key("validity", r["Rule"], *identity),
                     "tab": "validity", "rule_id": r["Rule"], "severity": r["Severity"],
-                    "entity_label": f"Person {r.get('Person ID')}: {r.get('Concept')} = {r.get('Value')}",
+                    "entity_label": entity_label,
                     "facility": r.get("Facility"), "district": None, "programme": program,
                 })
             try:
