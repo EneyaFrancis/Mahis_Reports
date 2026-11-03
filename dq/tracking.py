@@ -97,6 +97,8 @@ def upsert_findings(route: str, findings: list[dict]) -> None:
             con.execute(f"CREATE UNIQUE INDEX idx_{_TABLE}_key ON {_TABLE} (issue_key)")
             return
 
+        _ensure_unique_index(con)
+
         set_clause = ", ".join(f"{c} = EXCLUDED.{c}" for c in _REFRESHED_ON_RESCAN)
         con.execute(f"""
             INSERT INTO {_TABLE}
@@ -105,6 +107,46 @@ def upsert_findings(route: str, findings: list[dict]) -> None:
         """)
     finally:
         con.close()
+
+
+def _ensure_unique_index(con) -> None:
+    """Self-heals a table left without its unique index by an older code
+    path or an ad hoc repair -- without it, ON CONFLICT has no target and
+    every upsert fails outright (silently, from each tab's own try/except),
+    so findings stop persisting and re-running "Run DQ" just keeps
+    inserting fresh duplicate rows per issue_key instead of updating one.
+    """
+    has_index = con.sql(
+        "SELECT count(*) FROM duckdb_indexes() WHERE table_name = ? AND is_unique",
+        params=[_TABLE],
+    ).fetchone()[0] > 0
+    if has_index:
+        return
+
+    # Collapse any duplicate issue_keys accumulated while the index was
+    # missing before adding it back -- a plain CREATE UNIQUE INDEX would
+    # otherwise fail outright if duplicates are present. Keeps the
+    # earliest first_seen/latest last_seen, and prefers a non-'new' status
+    # over 'new' so review progress already recorded on any duplicate row
+    # survives the collapse.
+    con.execute(f"""
+        CREATE TABLE {_TABLE}_dedup AS
+        SELECT
+            issue_key,
+            any_value(tab) AS tab, any_value(rule_id) AS rule_id,
+            any_value(severity) AS severity, any_value(entity_label) AS entity_label,
+            any_value(facility) AS facility, any_value(district) AS district,
+            any_value(programme) AS programme,
+            min(first_seen) AS first_seen, max(last_seen) AS last_seen,
+            coalesce(max(CASE WHEN status != 'new' THEN status END), any_value(status)) AS status,
+            any_value(assigned_to) AS assigned_to, any_value(notes) AS notes,
+            any_value(reviewed_by) AS reviewed_by, any_value(reviewed_at) AS reviewed_at
+        FROM {_TABLE}
+        GROUP BY issue_key
+    """)
+    con.execute(f"DROP TABLE {_TABLE}")
+    con.execute(f"ALTER TABLE {_TABLE}_dedup RENAME TO {_TABLE}")
+    con.execute(f"CREATE UNIQUE INDEX idx_{_TABLE}_key ON {_TABLE} (issue_key)")
 
 
 def query_issues(route: str) -> pd.DataFrame:

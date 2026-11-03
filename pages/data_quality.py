@@ -28,6 +28,7 @@ from dq.checks.users import (
     RULES as USER_RULES, RULE_ORDER as USER_RULE_ORDER, load_user_roster, evaluate_users,
 )
 from dq.tracking import make_key, upsert_findings, query_issues, update_issue, STATUS_OPTIONS
+from dq.checks.reconciliation import available as reconciliation_available, compute_reconciliation
 
 dash.register_page(__name__, path="/data_quality", title="Data Quality")
 
@@ -731,6 +732,15 @@ layout = html.Div(
                             children=html.Div(
                                 className="results-card",
                                 children=html.Div(id="dq-users-content"),
+                            ),
+                        ),
+                        dcc.Tab(
+                            id="dq-tab-reconciliation",
+                            label="Reconciliation", value="reconciliation",
+                            style=_TAB_STYLE, selected_style=_TAB_SELECTED_STYLE,
+                            children=html.Div(
+                                className="results-card",
+                                children=html.Div(id="dq-reconciliation-content"),
                             ),
                         ),
                         dcc.Tab(
@@ -2272,6 +2282,136 @@ def render_users_tab(urlparams, run_clicks):
 
     label, style = _tab_label_and_style("Users", len(flagged))
     return html.Div(panels), label, style
+
+
+@callback(
+    Output("dq-reconciliation-content", "children"),
+    Output("dq-tab-reconciliation", "label"),
+    Output("dq-tab-reconciliation", "style"),
+    Input("dq-run-btn", "n_clicks"),
+)
+def render_reconciliation_tab(run_clicks):
+    """DQ20 -- WHO DQR's external cross-check dimension: recompute each
+    indicator independently from MAHIS (the facility source-record route)
+    and compare it against HMIS/DHIS2 (the officially reported route).
+    Cross-route by nature, so unlike every other tab here it ignores the
+    date/scope/facility/programme filter bar entirely -- those filters
+    describe one route's own data, not a comparison between two routes.
+    """
+    if not run_clicks:
+        return (
+            _empty_state(
+                "Click \"Run DQ\" to see results",
+                "Compares MAHIS against HMIS/DHIS2 for every indicator both routes publish.",
+            ),
+            "Reconciliation", _TAB_STYLE,
+        )
+
+    if not reconciliation_available():
+        return (
+            _empty_state(
+                "Reconciliation data not available",
+                "Needs both data/mnid_aggregates/default/indicator_aggregates.parquet and "
+                "data/mnid_aggregates/dhis2/indicator_aggregates.parquet.",
+            ),
+            "Reconciliation", _TAB_STYLE,
+        )
+
+    result = compute_reconciliation()
+    rows = result["rows"]
+    if not rows:
+        return (
+            _empty_state(
+                "No comparable indicators",
+                "MAHIS and HMIS/DHIS2 don't currently publish any of the same indicator ids for a shared period.",
+            ),
+            "Reconciliation", _TAB_STYLE,
+        )
+
+    within_tolerance = sum(1 for r in rows if r["vf"] is not None and abs(r["vf"] - 100) < 20)
+    flagged = [r for r in rows if r["severity"] in ("critical", "high", "medium")]
+    critical = sum(1 for r in rows if r["severity"] == "critical")
+
+    findings = [
+        {
+            "issue_key": make_key("reconciliation", "DQ20", r["indicator_id"]),
+            "tab": "reconciliation", "rule_id": "DQ20", "severity": r["severity"],
+            "entity_label": f"{r['label']}: VF {r['vf']}%" if r["vf"] is not None else f"{r['label']}: DHIS2 total is 0",
+            "facility": None, "district": None, "programme": r["category"],
+        }
+        for r in flagged
+    ]
+    if findings:
+        try:
+            upsert_findings("default", findings)
+        except Exception:
+            pass
+
+    summary_strip = html.Div(
+        [
+            _kpi_card("Indicators compared", f"{len(rows):,}"),
+            _kpi_card(
+                "Within tolerance (±20%)", f"{within_tolerance:,}",
+                rag=_rag_for_rate(100 * within_tolerance / len(rows) if rows else None),
+            ),
+            _kpi_card("Flagged", f"{len(flagged):,}"),
+            _kpi_card("Critical mismatches", f"{critical:,}"),
+        ],
+        className="dq-kpi-row",
+    )
+
+    note = html.Div(
+        [
+            html.Div(
+                f"Period compared -- {result['period_label']}. MAHIS and HMIS/DHIS2 don't share a common "
+                "reporting history (MAHIS's extract currently spans far fewer months than DHIS2's), so this "
+                "sums both sides over whichever period MAHIS actually covers rather than comparing a single "
+                "month from each in isolation -- a single quiet month on either side would otherwise look like "
+                "a verification failure on every indicator.",
+                className="dq-panel-note",
+            ),
+            html.Div(
+                "Verification Factor (VF) = MAHIS total ÷ HMIS/DHIS2 total × 100%, summed nationally across all "
+                "facilities (facility codes aren't comparable across the two routes, so this can't be done "
+                "per-facility). VF=100% means the two routes agree exactly; WHO's own guidance treats roughly "
+                "±20% as the point a gap becomes worth investigating, escalating toward 'critical' as it widens "
+                "further. A REVIEW flag here is a lead, not a confirmed error in either source.",
+                className="dq-panel-note",
+            ),
+        ],
+        className="dq-panel",
+    )
+
+    table = dash_table.DataTable(
+        columns=[
+            {"name": "Indicator", "id": "label"},
+            {"name": "Category", "id": "category"},
+            {"name": "MAHIS total", "id": "mahis_numerator"},
+            {"name": "HMIS/DHIS2 total", "id": "dhis2_numerator"},
+            {"name": "VF %", "id": "vf"},
+            {"name": "Severity", "id": "severity"},
+        ],
+        data=[
+            {
+                "label": r["label"], "category": r["category"],
+                "mahis_numerator": r["mahis_numerator"], "dhis2_numerator": r["dhis2_numerator"],
+                "vf": r["vf"] if r["vf"] is not None else "N/A (HMIS/DHIS2 total is 0)",
+                "severity": r["severity"],
+            }
+            for r in rows
+        ],
+        page_size=20,
+        sort_action="native",
+        filter_action="native",
+    )
+
+    content = html.Div([
+        summary_strip,
+        note,
+        html.Div([html.H4("Per-indicator comparison", className="dq-panel-title"), table], className="dq-panel"),
+    ])
+    label, style = _tab_label_and_style("Reconciliation", len(flagged))
+    return content, label, style
 
 
 @callback(
