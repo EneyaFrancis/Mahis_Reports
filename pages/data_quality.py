@@ -24,10 +24,7 @@ from dq.checks.duplicates import (
 from dq.checks.validity import (
     RULES as VAL_RULES, RULE_ORDER as VAL_RULE_ORDER, rule_predicates as validity_rule_predicates,
 )
-from dq.checks.users import (
-    RULES as USER_RULES, RULE_ORDER as USER_RULE_ORDER, load_user_roster, evaluate_users,
-)
-from dq.tracking import make_key, upsert_findings, query_issues, update_issue, STATUS_OPTIONS
+from dq.tracking import make_key, upsert_findings
 from dq.checks.reconciliation import available as reconciliation_available, compute_reconciliation
 
 dash.register_page(__name__, path="/data_quality", title="Data Quality")
@@ -538,13 +535,6 @@ layout = html.Div(
             ],
         ),
         html.Div(id="dq-alert"),
-        dcc.Store(id="dq-last-run-filters"),
-        html.Div(
-            "Filters changed since the last run — click \"Run DQ\" above to refresh these results.",
-            id="dq-stale-banner",
-            className="dq-stale-banner",
-            style={"display": "none"},
-        ),
         html.Div(
             id="dq-tabs-wrapper",
             children=[
@@ -726,15 +716,6 @@ layout = html.Div(
                             ),
                         ),
                         dcc.Tab(
-                            id="dq-tab-users",
-                            label="Users", value="users",
-                            style=_TAB_STYLE, selected_style=_TAB_SELECTED_STYLE,
-                            children=html.Div(
-                                className="results-card",
-                                children=html.Div(id="dq-users-content"),
-                            ),
-                        ),
-                        dcc.Tab(
                             id="dq-tab-reconciliation",
                             label="Reconciliation", value="reconciliation",
                             style=_TAB_STYLE, selected_style=_TAB_SELECTED_STYLE,
@@ -743,66 +724,12 @@ layout = html.Div(
                                 children=html.Div(id="dq-reconciliation-content"),
                             ),
                         ),
-                        dcc.Tab(
-                            id="dq-tab-issues",
-                            label="Issues", value="issues",
-                            style=_TAB_STYLE, selected_style=_TAB_SELECTED_STYLE,
-                            children=html.Div(
-                                className="results-card",
-                                children=html.Div(id="dq-issues-content"),
-                            ),
-                        ),
                     ],
                 ),
             ],
         ),
     ],
 )
-
-
-@callback(
-    Output("dq-last-run-filters", "data"),
-    Input("dq-run-btn", "n_clicks"),
-    State("dq-date-range", "start_date"),
-    State("dq-date-range", "end_date"),
-    State("dq-scope", "value"),
-    State("dq-facility-filter", "value"),
-    State("dq-program-filter", "value"),
-    prevent_initial_call=True,
-)
-def snapshot_filters_on_run(_n_clicks, start_date, end_date, districts, facilities, program):
-    """Captures the shared filter bar's values at the moment "Run DQ" is
-    clicked -- compared against live filter values below to tell whether
-    what's on screen still reflects the current filters."""
-    return {
-        "start_date": start_date, "end_date": end_date,
-        "districts": districts, "facilities": facilities, "program": program,
-    }
-
-
-@callback(
-    Output("dq-tabs-wrapper", "className"),
-    Output("dq-stale-banner", "style"),
-    Input("dq-date-range", "start_date"),
-    Input("dq-date-range", "end_date"),
-    Input("dq-scope", "value"),
-    Input("dq-facility-filter", "value"),
-    Input("dq-program-filter", "value"),
-    State("dq-last-run-filters", "data"),
-)
-def flag_stale_results(start_date, end_date, districts, facilities, program, last_run):
-    """Dims the results and shows a banner when the shared filter bar no
-    longer matches what was actually used for the results on screen --
-    scoped to the shared bar only (date/scope/facility/programme), not each
-    tab's own extra pickers (rule checklists etc.), to keep this to one
-    mechanism instead of five bespoke ones."""
-    current = {
-        "start_date": start_date, "end_date": end_date,
-        "districts": districts, "facilities": facilities, "program": program,
-    }
-    if last_run is None or current == last_run:
-        return "", {"display": "none"}
-    return "dq-stale", {"display": "block"}
 
 
 @callback(
@@ -2100,205 +2027,6 @@ def render_validity_tab(urlparams, run_clicks, start_date, end_date, districts, 
 
 
 @callback(
-    Output("dq-users-content", "children"),
-    Output("dq-tab-users", "label"),
-    Output("dq-tab-users", "style"),
-    Input("url-params-store", "data"),
-    Input("dq-run-btn", "n_clicks"),
-)
-def render_users_tab(urlparams, run_clicks):
-    """Audits this route's own user roster (not patient records) --
-    orphaned district/facility scope, duplicate uuids, missing role, bad
-    user_level, and a loud flag when users_data.csv is absent entirely,
-    since that silently degrades every user not in user_properties.json to
-    unauthorized. Independent of the date/scope/facility/programme filter
-    bar above -- none of that applies to a user roster.
-    """
-    urlparams = urlparams or {}
-    data_route = urlparams.get("route", ["default"])[0]
-    location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
-    user_data = _load_user_registry(data_route)
-    user_row, _scope = _resolve_user_scope(urlparams, user_data)
-    if user_row is None or not location:
-        return None, "Users", _TAB_STYLE
-
-    if not run_clicks:
-        return (
-            _empty_state(
-                "Click \"Run DQ\" to see results",
-                "Set your filters above, then click Run DQ to compute this tab.",
-            ),
-            "Users", _TAB_STYLE,
-        )
-
-    data_path = f"data/{data_route}/parquet"
-    roster_df, users_csv_present = load_user_roster(data_route)
-
-    source_available = _data_source_available(data_route)
-    if source_available:
-        try:
-            dist_df = DataStorage.query_duckdb(f"SELECT DISTINCT {DISTRICT_} FROM '{data_path}'")
-            valid_districts = set(dist_df[DISTRICT_].dropna().tolist())
-        except Exception:
-            valid_districts = set()
-        try:
-            fac_df = DataStorage.query_duckdb(f"SELECT DISTINCT {FACILITY_CODE_} FROM '{data_path}'")
-            valid_facility_codes = set(fac_df[FACILITY_CODE_].dropna().tolist())
-        except Exception:
-            valid_facility_codes = set()
-        try:
-            fd_df = DataStorage.query_duckdb(
-                f"SELECT DISTINCT {FACILITY_CODE_}, {DISTRICT_} FROM '{data_path}' "
-                f"WHERE {FACILITY_CODE_} IS NOT NULL AND {DISTRICT_} IS NOT NULL"
-            )
-            facility_district_map = dict(zip(fd_df[FACILITY_CODE_], fd_df[DISTRICT_]))
-        except Exception:
-            facility_district_map = {}
-    else:
-        # No raw extract to check scope against -- None (not an empty set)
-        # tells evaluate_users to skip U1/U2/U7 rather than flag every
-        # assigned district/facility as orphaned against nothing.
-        valid_districts = None
-        valid_facility_codes = None
-        facility_district_map = None
-
-    evaluated = evaluate_users(roster_df, valid_districts, valid_facility_codes, facility_district_map)
-
-    alert = None
-    if not source_available:
-        alert = html.Div(
-            f"data/{data_route}/parquet doesn't exist, so district/facility assignments can't be checked "
-            "against real data on this route -- U1 (Orphaned district), U2 (Orphaned facility code) and U7 "
-            "(Facility/district mismatch) are skipped below, not clean. Other checks (duplicate uuid, "
-            "missing role, invalid level, scope not set, conflicting entries) don't depend on the raw "
-            "extract and still ran normally.",
-            className="dq-status-message",
-        )
-    elif not users_csv_present:
-        alert = html.Div(
-            f"data/{data_route}/single_tables/users_data.csv does not exist. Every user not explicitly "
-            "listed in user_properties.json is unauthorized on this route -- this is a structural gap, "
-            "not a per-user issue.",
-            className="dq-status-message",
-        )
-
-    if evaluated.empty:
-        return (
-            html.Div([alert] if alert else [html.Div("No users found for this route.", className="dq-empty-state")]),
-            "Users", _TAB_STYLE,
-        )
-
-    total_users = len(evaluated)
-    flagged = evaluated[evaluated["issues"].apply(bool)]
-    per_rule_counts = {rid: int(evaluated[rid].sum()) for rid in USER_RULE_ORDER}
-    critical_users = sum(
-        1 for _, row in flagged.iterrows()
-        if any(USER_RULES[rid]["severity"] == "critical" for rid in row["issues"])
-    )
-
-    if not flagged.empty:
-        findings = []
-        for _, row in flagged.iterrows():
-            identity = row.get("uuid") or row.get("username")
-            for rid in row["issues"]:
-                findings.append({
-                    "issue_key": make_key("users", rid, identity),
-                    "tab": "users", "rule_id": rid, "severity": USER_RULES[rid]["severity"],
-                    "entity_label": f"{row.get('username') or identity}: {USER_RULES[rid]['label']}",
-                    "facility": row.get("facility_name") or row.get("facility_code"),
-                    "district": row.get("district"), "programme": None,
-                })
-        try:
-            upsert_findings(data_route, findings)
-        except Exception:
-            pass
-
-    summary_strip = html.Div(
-        [
-            _kpi_card("Users in roster", f"{total_users:,}"),
-            _kpi_card("Users with an issue", f"{len(flagged):,}"),
-            _kpi_card("Critical severity", f"{critical_users:,}"),
-            _kpi_card("users_data.csv", "Missing" if not users_csv_present else "Present"),
-        ],
-        className="dq-kpi-row",
-    )
-
-    per_rule_table = dash_table.DataTable(
-        columns=[
-            {"name": "Rule", "id": "rule"}, {"name": "Severity", "id": "severity"},
-            {"name": "Description", "id": "description"},
-            {"name": "Users flagged", "id": "count"},
-        ],
-        data=[
-            {
-                "rule": f"{rid} — {USER_RULES[rid]['label']}",
-                "severity": USER_RULES[rid]["severity"],
-                "description": USER_RULES[rid]["description"],
-                "count": per_rule_counts[rid],
-            }
-            for rid in USER_RULE_ORDER
-        ],
-        page_size=6,
-    )
-
-    flagged_display = flagged.copy()
-    flagged_display["Issues"] = flagged_display["issues"].apply(lambda ids: ", ".join(ids))
-    def _join_name(r):
-        parts = [str(v) for v in (r.get("given_name"), r.get("family_name")) if pd.notna(v) and str(v).strip()]
-        return " ".join(parts) or "—"
-
-    def _facility_label(r):
-        for v in (r.get("facility_name"), r.get("facility_code")):
-            if pd.notna(v) and str(v).strip():
-                return str(v)
-        return "—"
-
-    flagged_display["Name"] = flagged_display.apply(_join_name, axis=1)
-    flagged_display["Facility"] = flagged_display.apply(_facility_label, axis=1)
-    _severity_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-    flagged_display["Severity"] = flagged_display["issues"].apply(
-        lambda ids: min((USER_RULES[rid]["severity"] for rid in ids), key=lambda s: _severity_rank[s])
-    )
-    display_cols = ["Name", "username", "role", "user_level", "district", "Facility", "Severity", "uuid", "Issues"]
-    display_names = ["Name", "Username", "Role", "Level", "District", "Facility", "Severity", "UUID", "Issues"]
-
-    flagged_table = html.Div([
-        dash_table.DataTable(
-            columns=[{"name": n, "id": c} for c, n in zip(display_cols, display_names)],
-            data=flagged_display[display_cols].to_dict("records"),
-            page_size=15,
-            sort_action="native",
-        ),
-        html.Div(
-            "Name is resolved from the user's own person_id where users_data.csv provides one; "
-            "Facility is the name configured directly in user_properties.json where set, otherwise "
-            "looked up from locations_data.csv (that file is known to carry stale location codes, so "
-            "treat a looked-up facility name as a lead to verify, not a fact). UUID is kept for exact "
-            "lookup, not as the primary way to identify someone.",
-            className="dq-panel-note",
-        ),
-    ]) if not flagged.empty else html.Div("No flagged users on this route.", className="dq-empty-state")
-
-    panels = []
-    if alert:
-        panels.append(alert)
-    panels.extend([
-        summary_strip,
-        html.Div([html.H4("Per-rule breakdown", className="dq-panel-title"), per_rule_table], className="dq-panel"),
-        html.Div(
-            [
-                html.H4("Flagged users", className="dq-panel-title"),
-                flagged_table,
-            ],
-            className="dq-panel",
-        ),
-    ])
-
-    label, style = _tab_label_and_style("Users", len(flagged))
-    return html.Div(panels), label, style
-
-
-@callback(
     Output("dq-reconciliation-content", "children"),
     Output("dq-tab-reconciliation", "label"),
     Output("dq-tab-reconciliation", "style"),
@@ -2428,141 +2156,3 @@ def render_reconciliation_tab(run_clicks):
     return content, label, style
 
 
-@callback(
-    Output("dq-issues-content", "children"),
-    Output("dq-tab-issues", "label"),
-    Output("dq-tab-issues", "style"),
-    Input("url-params-store", "data"),
-    Input("dq-tabs", "value"),
-)
-def render_issues_tab(urlparams, active_tab):
-    """Persistent issue tracker fed automatically by Duplicates/Validity/
-    Users on every Run DQ -- independent of the filter bar and Run DQ
-    itself, since tracked issues accumulate across scans rather than being
-    recomputed from the current scope. Status/Assigned to/Notes are
-    editable directly in the table; handle_issue_edit below persists them.
-    """
-    if active_tab != "issues":
-        raise PreventUpdate
-    urlparams = urlparams or {}
-    data_route = urlparams.get("route", ["default"])[0]
-    location = (urlparams.get("Location") or urlparams.get("?Location") or [None])[0]
-    user_data = _load_user_registry(data_route)
-    user_row, _scope = _resolve_user_scope(urlparams, user_data)
-    if user_row is None or not location:
-        return None, "Issues", _TAB_STYLE
-
-    df = query_issues(data_route)
-    if df.empty:
-        return (
-            _empty_state(
-                "No tracked issues yet",
-                "Run the Duplicates, Validity, or Users checks at least once -- every finding they "
-                "surface gets tracked here automatically.",
-            ),
-            "Issues", _TAB_STYLE,
-        )
-
-    status_counts = df["status"].value_counts().to_dict()
-    summary_strip = html.Div(
-        [_kpi_card(s.replace("_", " ").title(), f"{status_counts.get(s, 0):,}") for s in STATUS_OPTIONS]
-        + [_kpi_card("Total tracked", f"{len(df):,}")],
-        className="dq-kpi-row",
-    )
-
-    display_cols = [
-        "tab", "rule_id", "severity", "entity_label", "facility", "district", "programme",
-        "first_seen", "last_seen", "status", "assigned_to", "notes", "reviewed_by", "reviewed_at",
-    ]
-    display_names = [
-        "Tab", "Rule", "Severity", "Issue", "Facility", "District", "Programme",
-        "First seen", "Last seen", "Status", "Assigned to", "Notes", "Reviewed by", "Reviewed at",
-    ]
-    editable_cols = {"status", "assigned_to", "notes"}
-
-    columns = []
-    for c, n in zip(display_cols, display_names):
-        col = {"name": n, "id": c, "editable": c in editable_cols}
-        if c == "status":
-            col["presentation"] = "dropdown"
-        columns.append(col)
-
-    # issue_key rides along in each row's data (needed by handle_issue_edit
-    # to know which tracked row to update) without being a visible column,
-    # since it's never added to `columns` above.
-    data_records = df[display_cols + ["issue_key"]].to_dict("records")
-
-    table = dash_table.DataTable(
-        id="dq-issues-table",
-        columns=columns,
-        data=data_records,
-        dropdown={
-            "status": {"options": [{"label": s.replace("_", " ").title(), "value": s} for s in STATUS_OPTIONS]},
-        },
-        editable=True,
-        filter_action="native",
-        sort_action="native",
-        export_format="csv",
-        export_headers="display",
-        page_size=20,
-        style_cell={"textAlign": "left", "fontSize": "0.8rem"},
-    )
-
-    content = html.Div([
-        summary_strip,
-        html.Div(
-            "Status, Assigned to, and Notes are editable directly in the table -- click a cell to change "
-            "it. Every finding from Duplicates/Validity/Users is tracked here automatically on each Run "
-            "DQ; re-finding the same issue updates \"Last seen\" without resetting your review progress.",
-            className="dq-panel-note",
-        ),
-        html.Div(id="dq-issue-save-status"),
-        table,
-    ])
-    label, style = _tab_label_and_style("Issues", int(status_counts.get("new", 0)))
-    return content, label, style
-
-
-@callback(
-    Output("dq-issue-save-status", "children"),
-    Input("dq-issues-table", "data"),
-    State("dq-issues-table", "data_previous"),
-    State("url-params-store", "data"),
-    prevent_initial_call=True,
-)
-def handle_issue_edit(data, data_previous, urlparams):
-    """Diffs the DataTable's data against its previous value, cell by cell,
-    and persists only the fields that actually changed for each edited row
-    -- fires on every data change (including the initial populate, where
-    data_previous is None and this is a no-op)."""
-    if not data_previous:
-        raise PreventUpdate
-    urlparams = urlparams or {}
-    data_route = urlparams.get("route", ["default"])[0]
-    reviewer = (urlparams.get("uuid") or [None])[0]
-
-    changed = 0
-    for new_row, old_row in zip(data, data_previous):
-        if new_row == old_row:
-            continue
-        key = new_row.get("issue_key")
-        if not key:
-            continue
-        kwargs = {}
-        if new_row.get("status") != old_row.get("status"):
-            kwargs["status"] = new_row.get("status")
-        if new_row.get("assigned_to") != old_row.get("assigned_to"):
-            kwargs["assigned_to"] = new_row.get("assigned_to")
-        if new_row.get("notes") != old_row.get("notes"):
-            kwargs["notes"] = new_row.get("notes")
-        if kwargs:
-            kwargs["reviewed_by"] = reviewer
-            try:
-                update_issue(data_route, key, **kwargs)
-                changed += 1
-            except Exception:
-                pass
-
-    if changed:
-        return html.Div(f"Saved {changed} change{'s' if changed != 1 else ''}.", className="dq-panel-note")
-    return ""
