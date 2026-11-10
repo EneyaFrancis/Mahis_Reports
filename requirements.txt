@@ -5,13 +5,13 @@ sshtunnel
 PyMySQL
 paramiko<3.0
 plotly
-dash
+dash>=4.5,<5
 isoweek
 openpyxl
 gunicorn
 pyarrow
 dash-bootstrap-components
-dash-mantine-components
+dash-mantine-components>=3,<4
 dash-iconify
 typing_extensions
 reportlab

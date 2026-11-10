@@ -1,5 +1,11 @@
 import logging
 import dash
+
+# Dash Mantine Components v3 requires React 19, but Dash 4.5 still defaults
+# to React 18.3.1 and only ships 19.2.4 as an opt-in. Must run before the
+# Dash app is created (wsgi.py imports this module, so production is covered).
+dash._dash_renderer._set_react_version("19.2.4")
+
 import dash_mantine_components as dmc
 import plotly.express as px
 from dash import dcc, html, page_container
